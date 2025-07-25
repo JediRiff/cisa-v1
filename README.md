@@ -1,0 +1,2 @@
+# cisa-capri
+CAPRI (CISA Alert Prioritization and Readiness Index) transforms Shields Up/Ready alerts and threat advisories into operational CPCON posture/levels. This model extracts fields like observed exploitation, urgency, KEV linkages, and sector targeting -- then maps them to a risk-weighted index with sectoral mission-criticality.
