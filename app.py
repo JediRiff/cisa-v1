@@ -22,6 +22,14 @@ st.markdown("""
         color: #000000;
         font-family: 'Segoe UI', sans-serif;
     }
+    .stButton > button {
+        background-color: #005288;
+        color: white;
+    }
+    .stTabs [data-baseweb="tab"] {
+        font-weight: 600;
+        background-color: #f1f1f1;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -94,16 +102,19 @@ def fetch_cisa_alerts():
         response = requests.get(RSS_FEED_URL)
         root = ET.fromstring(response.content)
         for item in root.findall(".//item"):
-            title = item.find("title").text
-            pub_date = item.find("pubDate").text
-            parsed_alert = parse_alert_input(f"posture: Shields Up, sector: Unknown, urgency: medium, kev: false")
-            parsed_alert["alert_meta"]["title"] = title
-            parsed_alert["alert_meta"]["timestamp"] = pub_date
-            meta = parsed_alert.get("alert_meta", {})
-            scores = parsed_alert.get("scores", {})
-            context = parsed_alert.get("cvss_context", {})
-            result = mapper.process_alert(meta, scores, context)
-            alert_log.append(result)
+            try:
+                title = item.find("title").text
+                pub_date = item.find("pubDate").text
+                parsed_alert = parse_alert_input("posture: Shields Up, sector: Unknown, urgency: medium, kev: false")
+                parsed_alert["alert_meta"]["title"] = title
+                parsed_alert["alert_meta"]["timestamp"] = pub_date
+                meta = parsed_alert.get("alert_meta", {})
+                scores = parsed_alert.get("scores", {})
+                context = parsed_alert.get("cvss_context", {})
+                result = mapper.process_alert(meta, scores, context)
+                alert_log.append(result)
+            except:
+                continue
         with open(LOG_FILE, "w") as f:
             json.dump(alert_log, f, indent=2)
     except Exception as e:
@@ -164,6 +175,10 @@ with st.expander("📊 CAPRI Scoring Weights by Category", expanded=False):
     | **E**  | Exploitation      | 20%    | Active exploitation observed in the wild       |
     | **P**  | Posture           | 15%    | National posture (e.g., Shields Up)            |
     | **S**  | Sector Criticality| 10%    | Based on sector's weight in CPCON matrix       |
+    | **X**  | Cross-Sector      | 5%     | Targeting across multiple sectors              |
+    | **C**  | Criticality       | 10%    | Based on infrastructure impact                 |
+    | **A**  | Active Threat     | 10%    | Indicator from active attack behavior          |
+    | **CSS**| Composite Score   | 100%   | Final normalized risk-weighted score           |
     """)
 
 # Summary + Breakdown
