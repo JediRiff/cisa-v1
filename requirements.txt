@@ -1,5 +1,5 @@
-fastapi
-uvicorn
-pydantic
 streamlit
-requests
+pandas
+numpy
+fastapi
+scikit-learn
