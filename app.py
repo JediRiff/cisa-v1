@@ -4,6 +4,7 @@ import pandas as pd
 import re
 import requests
 import xml.etree.ElementTree as ET
+import pydeck as pdk
 from cisa_cpcon import mapper
 
 # Set light-themed page config
@@ -61,6 +62,14 @@ SECTOR_FEED_URLS = {
         "https://www.cisa.gov/sites/default/files/feeds/sbd_alerts.xml",
         "https://www.cisa.gov/sites/default/files/feeds/cybersecurity-advisories.xml"
     ]
+}
+
+# Sector location mapping
+SECTOR_COORDINATES = {
+    "Energy": {"lat": 38.9, "lon": -77.0},
+    "Healthcare": {"lat": 41.8, "lon": -87.6},
+    "Finance": {"lat": 40.7, "lon": -74.0},
+    "Transportation": {"lat": 33.7, "lon": -84.4}
 }
 
 def fetch_sector_threats(sector):
@@ -168,5 +177,48 @@ if alert_log:
 
     with st.expander("🧮 Per-Category Breakdown for Latest Alert"):
         st.json(latest.get("scores", {}), expanded=False)
+
+    with st.expander("🗺️ Geospatial Sector Risk Map"):
+        map_data = []
+        for alert in alert_log:
+            sectors = alert.get("alert_meta", {}).get("sectors_targeted", [])
+            score = alert["cpcon"]["final_level"]
+            for s in sectors:
+                coords = SECTOR_COORDINATES.get(s)
+                if coords:
+                    map_data.append({
+                        "lat": coords["lat"],
+                        "lon": coords["lon"],
+                        "sector": s,
+                        "score": score
+                    })
+
+        if map_data:
+            df = pd.DataFrame(map_data)
+            st.pydeck_chart(pdk.Deck(
+                map_style="mapbox://styles/mapbox/light-v9",
+                initial_view_state=pdk.ViewState(
+                    latitude=38.9,
+                    longitude=-77.0,
+                    zoom=4,
+                    pitch=40,
+                ),
+                layers=[
+                    pdk.Layer(
+                        "ColumnLayer",
+                        data=df,
+                        get_position=["lon", "lat"],
+                        get_elevation="score * 1000",
+                        elevation_scale=1,
+                        radius=20000,
+                        get_fill_color="[255 - score * 50, score * 100, 100]",
+                        pickable=True,
+                        auto_highlight=True,
+                    )
+                ],
+                tooltip={"text": "{sector}\nCAPRI Level: {score}"}
+            ))
+        else:
+            st.info("No mappable sector alerts yet.")
 else:
     st.info("No alerts ingested yet.")
