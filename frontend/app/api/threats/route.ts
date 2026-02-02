@@ -13,6 +13,13 @@ export async function GET() {
     // Calculate energy sector score
     const scoreResult = calculateEnergyScore(feedResult.items)
 
+    // Count alerts from the past 7 days
+    const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+    const alertsThisWeek = feedResult.items.filter(item => {
+      const itemDate = new Date(item.pubDate).getTime()
+      return itemDate >= oneWeekAgo
+    }).length
+
     // Return combined data
     return NextResponse.json({
       success: true,
@@ -27,6 +34,7 @@ export async function GET() {
         sourcesOnline: feedResult.sourcesOnline,
         sourcesTotal: feedResult.sourcesTotal,
         totalItems: feedResult.items.length,
+        alertsThisWeek,
         errors: feedResult.errors,
       }
     })

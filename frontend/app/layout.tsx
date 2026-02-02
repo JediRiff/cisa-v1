@@ -1,33 +1,45 @@
 import './globals.css'
 import { Metadata } from 'next'
+import Image from 'next/image'
 
 export const metadata: Metadata = {
-  title: 'CAPRI-E | Energy Sector Cyber Risk Index',
-  description: 'CISA Alert Prioritization and Readiness Index for the Energy Sector',
+  title: 'CAPRI | Cyber Alert Prioritization & Readiness Index',
+  description: 'CISA Cyber Alert Prioritization and Readiness Index',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <header className="bg-cisa-navy text-white py-4 px-6 shadow-lg">
+        {/* Government-style red-white-blue top border */}
+        <div className="govt-top-border" />
+
+        <header className="bg-cisa-navy text-white py-5 px-6 shadow-lg">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">CAPRI-E</h1>
-              <p className="text-sm text-blue-200">Energy Sector Cyber Risk Index</p>
+            <div className="flex items-center gap-6">
+              {/* Official CISA Logo - with subtle background for visibility */}
+              <div className="bg-white/10 rounded-lg px-3 py-1.5">
+                <Image
+                  src="/cisa-logo.svg"
+                  alt="CISA - Cybersecurity and Infrastructure Security Agency"
+                  width={180}
+                  height={36}
+                  className="h-9 w-auto"
+                  priority
+                />
+              </div>
+              <div className="border-l border-white/30 pl-6">
+                <h1 className="text-2xl font-bold tracking-tight">CAPRI</h1>
+                <p className="text-sm text-blue-200 tracking-wide">Cyber Alert Prioritization & Readiness Index</p>
+              </div>
             </div>
-            <div className="text-right text-sm">
-              <p className="text-blue-200">Proposed for CISA</p>
-              <p className="font-medium">Shields Up Integration</p>
+            <div className="text-right hidden md:block">
+              <p className="text-xs text-blue-300 uppercase tracking-wider">Proposed for</p>
+              <p className="font-semibold text-white">CISA Shields Up</p>
             </div>
           </div>
         </header>
         <main>{children}</main>
-        <footer className="bg-cisa-navy text-white py-4 px-6 mt-8">
-          <div className="max-w-7xl mx-auto text-center text-sm">
-            <p>CAPRI-E Prototype | Not an official CISA product</p>
-          </div>
-        </footer>
       </body>
     </html>
   )

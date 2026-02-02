@@ -64,6 +64,13 @@ export interface ScoreResult {
   thresholds: typeof SCORE_THRESHOLDS
 }
 
+export interface FactorItem {
+  id: string
+  title: string
+  link: string
+  source: string
+}
+
 export interface ScoreFactor {
   name: string
   impact: number
@@ -71,6 +78,7 @@ export interface ScoreFactor {
   description: string
   weight: number
   maxImpact: number
+  items: FactorItem[]
 }
 
 // Nation-state actors known to target energy sector
@@ -112,7 +120,13 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
       count: recentKEVs.length,
       description: 'Actively exploited vulnerabilities added to CISA KEV in last 7 days',
       weight: SCORING_WEIGHTS.kevEntry.perItem,
-      maxImpact: SCORING_WEIGHTS.kevEntry.maxImpact
+      maxImpact: SCORING_WEIGHTS.kevEntry.maxImpact,
+      items: recentKEVs.slice(0, 10).map(item => ({
+        id: item.id,
+        title: item.title,
+        link: item.link,
+        source: item.source
+      }))
     })
   }
 
@@ -127,7 +141,13 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
       count: energyThreats.length,
       description: 'Threats specifically targeting energy/critical infrastructure',
       weight: SCORING_WEIGHTS.energyThreat.perItem,
-      maxImpact: SCORING_WEIGHTS.energyThreat.maxImpact
+      maxImpact: SCORING_WEIGHTS.energyThreat.maxImpact,
+      items: energyThreats.slice(0, 10).map(item => ({
+        id: item.id,
+        title: item.title,
+        link: item.link,
+        source: item.source
+      }))
     })
   }
 
@@ -145,7 +165,13 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
       count: nationStateThreats.length,
       description: 'Reports of nation-state actors (Volt Typhoon, Sandworm, etc.)',
       weight: SCORING_WEIGHTS.nationState.perItem,
-      maxImpact: SCORING_WEIGHTS.nationState.maxImpact
+      maxImpact: SCORING_WEIGHTS.nationState.maxImpact,
+      items: nationStateThreats.slice(0, 10).map(item => ({
+        id: item.id,
+        title: item.title,
+        link: item.link,
+        source: item.source
+      }))
     })
   }
 
@@ -163,7 +189,13 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
       count: icsThreats.length,
       description: 'Industrial control system specific threats',
       weight: SCORING_WEIGHTS.icsScada.perItem,
-      maxImpact: SCORING_WEIGHTS.icsScada.maxImpact
+      maxImpact: SCORING_WEIGHTS.icsScada.maxImpact,
+      items: icsThreats.slice(0, 10).map(item => ({
+        id: item.id,
+        title: item.title,
+        link: item.link,
+        source: item.source
+      }))
     })
   }
 
@@ -180,7 +212,13 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
       count: criticalVendorItems.length,
       description: 'Critical severity reports from security vendors',
       weight: SCORING_WEIGHTS.vendorCritical.perItem,
-      maxImpact: SCORING_WEIGHTS.vendorCritical.maxImpact
+      maxImpact: SCORING_WEIGHTS.vendorCritical.maxImpact,
+      items: criticalVendorItems.slice(0, 10).map(item => ({
+        id: item.id,
+        title: item.title,
+        link: item.link,
+        source: item.source
+      }))
     })
   }
 

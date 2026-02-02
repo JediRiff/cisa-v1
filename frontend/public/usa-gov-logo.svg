@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40" fill="none">
+  <g>
+    <!-- USA.gov wordmark -->
+    <text x="5" y="28" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#112e51">USA</text>
+    <text x="58" y="28" font-family="Arial, sans-serif" font-size="22" font-weight="normal" fill="#112e51">.gov</text>
+    <!-- Red underline accent -->
+    <rect x="5" y="32" width="105" height="3" fill="#d92525"/>
+  </g>
+</svg>

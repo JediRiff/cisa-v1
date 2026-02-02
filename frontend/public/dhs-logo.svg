@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 50" fill="none">
+  <g>
+    <!-- DHS Shield -->
+    <path d="M15 5 L30 5 L30 25 C30 35 22.5 42 22.5 42 C22.5 42 15 35 15 25 Z" fill="#003366" stroke="#003366" stroke-width="1"/>
+    <path d="M19 10 L26 10 L26 23 C26 30 22.5 35 22.5 35 C22.5 35 19 30 19 23 Z" fill="#ffffff"/>
+    <circle cx="22.5" cy="20" r="4" fill="#003366"/>
+    <!-- Text -->
+    <text x="40" y="22" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#003366">U.S. Department of</text>
+    <text x="40" y="38" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#003366">Homeland Security</text>
+  </g>
+</svg>

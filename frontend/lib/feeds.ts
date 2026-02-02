@@ -33,8 +33,8 @@ const FEED_SOURCES = [
   { name: 'CrowdStrike', url: 'https://www.crowdstrike.com/blog/feed/', type: 'rss', sourceType: 'vendor' as const },
   { name: 'SentinelOne', url: 'https://www.sentinelone.com/labs/feed/', type: 'rss', sourceType: 'vendor' as const },
 
-  // Tier 3: Energy-Specific
-  { name: 'Dragos', url: 'https://www.dragos.com/blog/feed/', type: 'rss', sourceType: 'energy' as const },
+  // Tier 3: Advanced Threat Intelligence
+  { name: 'Mandiant', url: 'https://cloudblog.withgoogle.com/topics/threat-intelligence/rss/', type: 'rss', sourceType: 'vendor' as const },
 ]
 
 // Energy sector keywords for relevance detection
