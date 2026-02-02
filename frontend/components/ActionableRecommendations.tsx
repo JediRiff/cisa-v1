@@ -1,63 +1,125 @@
 'use client'
 
 import { ExternalLink } from 'lucide-react'
-import { getRecommendations, type ThreatLevelConfig } from '@/lib/recommendations'
 
-interface ActionableRecommendationsProps {
-  score: number
+export interface KEVAction {
+  cveId: string
+  vendor: string
+  product: string
+  dueDate: string
+  description: string
+  advisoryUrl: string
+  nvdUrl: string
+  isOverdue: boolean
+  ransomwareUse: boolean
 }
 
-export default function ActionableRecommendations({ score }: ActionableRecommendationsProps) {
-  const config: ThreatLevelConfig = getRecommendations(score)
+interface ActionableRecommendationsProps {
+  kevItems: KEVAction[]
+}
+
+function formatDueDate(dateStr: string): string {
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+export default function ActionableRecommendations({ kevItems }: ActionableRecommendationsProps) {
+  // Sort: overdue first, then by due date (most urgent first)
+  const sortedItems = [...kevItems].sort((a, b) => {
+    if (a.isOverdue && !b.isOverdue) return -1
+    if (!a.isOverdue && b.isOverdue) return 1
+    return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+  })
 
   return (
     <section className="py-8 px-4 bg-white">
       <div className="max-w-4xl mx-auto">
-        {/* Simple Header */}
         <h2 className="text-2xl font-bold text-cisa-navy mb-6">
           Recommended Actions
         </h2>
 
-        {/* Compact Recommendations List */}
-        <div className="space-y-2">
-          {config.recommendations.map((rec, index) => (
-            <div
-              key={rec.id}
-              className="flex items-center gap-3 p-3 bg-cisa-light rounded-lg"
-              style={{ borderLeft: `4px solid ${config.color}` }}
-            >
-              {/* Number */}
+        {kevItems.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">No active KEV items requiring action.</p>
+        ) : (
+          <div className="space-y-3">
+            {sortedItems.slice(0, 5).map((item) => (
               <div
-                className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                style={{ backgroundColor: config.color }}
+                key={item.cveId}
+                className={`p-4 rounded-lg border-l-4 ${
+                  item.isOverdue
+                    ? 'bg-red-50 border-red-600'
+                    : 'bg-cisa-light border-amber-500'
+                }`}
               >
-                {index + 1}
+                {/* Header: Badges + Product + CVE */}
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  {item.isOverdue && (
+                    <span className="px-2 py-0.5 bg-red-600 text-white text-xs font-bold rounded uppercase">
+                      Overdue
+                    </span>
+                  )}
+                  {item.ransomwareUse && (
+                    <span className="px-2 py-0.5 bg-purple-600 text-white text-xs font-bold rounded uppercase">
+                      Ransomware
+                    </span>
+                  )}
+                  <span className="font-bold text-gray-900">
+                    {item.vendor} {item.product}
+                  </span>
+                  <span className="text-gray-500 text-sm">— {item.cveId}</span>
+                </div>
+
+                {/* Description + Due Date */}
+                <p className="text-sm text-gray-700 mb-3">
+                  {item.description.length > 150
+                    ? item.description.slice(0, 150) + '...'
+                    : item.description}
+                  <span className={`ml-2 font-semibold ${item.isOverdue ? 'text-red-600' : 'text-amber-600'}`}>
+                    Due {formatDueDate(item.dueDate)}.
+                  </span>
+                </p>
+
+                {/* Links */}
+                <div className="flex flex-wrap gap-3">
+                  {item.advisoryUrl && (
+                    <a
+                      href={item.advisoryUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm font-medium text-cisa-navy hover:underline"
+                    >
+                      → Vendor Advisory
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                  <a
+                    href={item.nvdUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:underline"
+                  >
+                    NVD Details
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
               </div>
+            ))}
+          </div>
+        )}
 
-              {/* Title & Description */}
-              <div className="flex-1 min-w-0">
-                <span className="text-sm font-semibold text-gray-900">{rec.title}</span>
-                <span className="text-sm text-gray-500 ml-2 hidden md:inline">— {rec.description.split('.')[0]}</span>
-              </div>
-
-              {/* NERC CIP Link Only */}
-              <a
-                href={rec.nercCip.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 bg-cisa-navy text-white rounded text-xs font-medium hover:bg-cisa-navy-dark transition-colors"
-              >
-                {rec.nercCip.control}
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-          ))}
-        </div>
-
-        {/* Additional Resources - Compact */}
+        {/* Resources Footer */}
         <div className="mt-6 pt-4 border-t border-gray-200">
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex flex-wrap items-center gap-4 text-sm">
             <span className="text-gray-500">Resources:</span>
+            <a
+              href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-cisa-navy hover:underline font-medium"
+            >
+              Full KEV Catalog
+              <ExternalLink className="h-3 w-3" />
+            </a>
             <a
               href="https://www.eisac.com/"
               target="_blank"

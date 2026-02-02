@@ -1,9 +1,15 @@
-// CAPRI-E Threat Intelligence API Endpoint
+// CAPRI Threat Intelligence API Endpoint
 import { NextResponse } from 'next/server'
 import { fetchAllFeeds } from '@/lib/feeds'
 import { calculateEnergyScore } from '@/lib/scoring'
 
 export const revalidate = 0 // No caching - always fetch fresh data
+
+// Extract first URL from KEV notes field
+function parseAdvisoryUrl(notes: string): string {
+  const urlMatch = notes.match(/https?:\/\/[^\s;]+/)
+  return urlMatch ? urlMatch[0] : ''
+}
 
 export async function GET() {
   try {
@@ -20,15 +26,31 @@ export async function GET() {
       return itemDate >= oneWeekAgo
     }).length
 
+    // Process KEV items for actionable recommendations
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const kevActions = feedResult.kevItems.map(kev => ({
+      cveId: kev.cveID,
+      vendor: kev.vendorProject,
+      product: kev.product,
+      dueDate: kev.dueDate,
+      description: kev.shortDescription,
+      advisoryUrl: parseAdvisoryUrl(kev.notes),
+      nvdUrl: `https://nvd.nist.gov/vuln/detail/${kev.cveID}`,
+      isOverdue: new Date(kev.dueDate) < today,
+      ransomwareUse: kev.knownRansomwareCampaignUse === 'Known'
+    }))
+
     // Return combined data
     return NextResponse.json({
       success: true,
       score: scoreResult,
       threats: {
-        all: feedResult.items.slice(0, 50), // Limit to 50 most recent
+        all: feedResult.items.slice(0, 50),
         energyRelevant: feedResult.items.filter(item => item.isEnergyRelevant).slice(0, 20),
         critical: feedResult.items.filter(item => item.severity === 'critical').slice(0, 20),
       },
+      kev: kevActions, // Actionable KEV items for recommendations
       meta: {
         lastUpdated: feedResult.lastUpdated,
         sourcesOnline: feedResult.sourcesOnline,

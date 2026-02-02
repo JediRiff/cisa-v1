@@ -5,8 +5,7 @@ import Image from 'next/image'
 import { AlertTriangle, Shield, RefreshCw, ExternalLink, Clock, CheckCircle, XCircle, Bell, BellOff, ChevronDown } from 'lucide-react'
 import { saveScore } from '@/lib/history'
 import { checkAndTriggerAlerts, requestNotificationPermission, getNotificationPermission, setWebhookUrl, getWebhookUrl } from '@/lib/alerts'
-import ActionableRecommendations from '@/components/ActionableRecommendations'
-import QuickExport from '@/components/QuickExport'
+import ActionableRecommendations, { type KEVAction } from '@/components/ActionableRecommendations'
 import ScoreBreakdown from '@/components/ScoreBreakdown'
 import KeyMetrics from '@/components/KeyMetrics'
 
@@ -61,6 +60,7 @@ interface ApiResponse {
     energyRelevant: ThreatItem[]
     critical: ThreatItem[]
   }
+  kev: KEVAction[]
   meta: {
     lastUpdated: string
     sourcesOnline: number
@@ -304,21 +304,9 @@ export default function Dashboard() {
       )}
 
       {/* Actionable Recommendations - THE CORE VALUE */}
+      {/* Now shows specific KEV items with due dates, not generic advice */}
       {data && (
-        <ActionableRecommendations score={data.score.score} />
-      )}
-
-      {/* Quick Export / Briefing */}
-      {data && (
-        <QuickExport
-          score={data.score.score}
-          label={data.score.label}
-          color={data.score.color}
-          sourcesOnline={data.meta.sourcesOnline}
-          sourcesTotal={data.meta.sourcesTotal}
-          threats={data.threats.energyRelevant.length > 0 ? data.threats.energyRelevant : data.threats.all}
-          lastUpdated={data.meta.lastUpdated}
-        />
+        <ActionableRecommendations kevItems={data.kev} />
       )}
 
       {/* Decorative Divider */}

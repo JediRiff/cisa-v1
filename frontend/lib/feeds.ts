@@ -13,8 +13,20 @@ export interface ThreatItem {
   isEnergyRelevant: boolean
 }
 
+// Raw KEV item from CISA catalog (for actionable recommendations)
+export interface KEVItem {
+  cveID: string
+  vendorProject: string
+  product: string
+  dueDate: string
+  shortDescription: string
+  notes: string
+  knownRansomwareCampaignUse: string
+}
+
 export interface FeedResult {
   items: ThreatItem[]
+  kevItems: KEVItem[]  // Raw KEV data for recommendations
   errors: string[]
   lastUpdated: string
   sourcesOnline: number
@@ -124,6 +136,7 @@ function parseKEV(json: any): ThreatItem[] {
 export async function fetchAllFeeds(): Promise<FeedResult> {
   const items: ThreatItem[] = []
   const errors: string[] = []
+  let kevItems: KEVItem[] = []
   let sourcesOnline = 0
 
   const fetchPromises = FEED_SOURCES.map(async (source) => {
@@ -139,7 +152,25 @@ export async function fetchAllFeeds(): Promise<FeedResult> {
       sourcesOnline++
 
       if (source.type === 'json') {
-        return parseKEV(JSON.parse(text))
+        const json = JSON.parse(text)
+        // Store raw KEV items for recommendations (most recent 10 by due date)
+        const vulns = json.vulnerabilities || []
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        kevItems = vulns
+          .filter((v: any) => new Date(v.dateAdded) >= thirtyDaysAgo)
+          .sort((a: any, b: any) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime())
+          .slice(0, 10)
+          .map((v: any) => ({
+            cveID: v.cveID,
+            vendorProject: v.vendorProject,
+            product: v.product,
+            dueDate: v.dueDate,
+            shortDescription: v.shortDescription || '',
+            notes: v.notes || '',
+            knownRansomwareCampaignUse: v.knownRansomwareCampaignUse || 'Unknown'
+          }))
+        return parseKEV(json)
       } else {
         return parseRSS(text, source.name, source.sourceType)
       }
@@ -156,6 +187,7 @@ export async function fetchAllFeeds(): Promise<FeedResult> {
 
   return {
     items,
+    kevItems,
     errors,
     lastUpdated: new Date().toISOString(),
     sourcesOnline,
