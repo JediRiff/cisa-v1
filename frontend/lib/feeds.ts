@@ -129,8 +129,8 @@ export async function fetchAllFeeds(): Promise<FeedResult> {
   const fetchPromises = FEED_SOURCES.map(async (source) => {
     try {
       const response = await fetch(source.url, {
-        headers: { 'User-Agent': 'CAPRI-E/1.0' },
-        next: { revalidate: 300 }
+        headers: { 'User-Agent': 'CAPRI/1.0' },
+        cache: 'no-store'
       })
 
       if (!response.ok) throw new Error('HTTP ' + response.status)

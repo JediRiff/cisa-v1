@@ -80,39 +80,36 @@ export default function QuickExport({
         </div>
       </section>
 
-      {/* Print-Only Content - Hidden on screen, visible when printing */}
-      {/* Simplified 3-4 sentence briefing */}
+      {/* Print-Only Content - Single page briefing */}
       <div className="hidden print:block print-report">
-        <div className="max-w-2xl mx-auto py-8">
-          {/* Header */}
-          <div className="border-b-2 border-cisa-navy pb-4 mb-6">
-            <div className="flex justify-between items-center">
-              <h1 className="text-2xl font-bold text-cisa-navy">CAPRI Briefing</h1>
-              <p className="text-gray-600">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+        <div className="max-w-xl mx-auto py-6">
+          <div className="border-b-2 border-cisa-navy pb-3 mb-4 flex justify-between items-center">
+            <span className="text-xl font-bold text-cisa-navy">CAPRI Briefing</span>
+            <span className="text-gray-500">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+          </div>
+
+          <div className="space-y-3 text-base">
+            <div className="flex justify-between items-center py-2 border-b border-gray-200">
+              <span className="font-semibold">Threat Level</span>
+              <span className="font-bold" style={{ color: config.color }}>{label.toUpperCase()} ({score.toFixed(1)})</span>
             </div>
-          </div>
-
-          {/* Brief Summary - 3-4 sentences */}
-          <div className="text-lg leading-relaxed text-gray-800 space-y-4">
-            <p>
-              <strong style={{ color: config.color }}>Current threat level is {label.toUpperCase()} ({score.toFixed(1)})</strong> based on {threats.length} alerts from {sourcesOnline} active intelligence sources.
-              {threats.length > 0 && ` Top threats include ${threats.slice(0, 2).map(t => t.title.substring(0, 40)).join(', ')}.`}
-            </p>
-
-            <p>
-              <strong>Recommended action:</strong> {config.recommendations[0]?.title || 'Continue routine monitoring'}.
-              {config.recommendations[0]?.description && ` ${config.recommendations[0].description.split('.')[0]}.`}
-            </p>
-
-            <p className="text-gray-600 text-base">
-              Sources: {sourcesOnline}/{sourcesTotal} online | E-ISAC: eisac.com | CISA: cisa.gov/shields-up
-            </p>
-          </div>
-
-          {/* Footer */}
-          <div className="mt-8 pt-4 border-t border-gray-200 text-sm text-gray-500">
-            <p>CAPRI | Cyber Alert Prioritization & Readiness Index</p>
-            <p>Validate with primary sources before action.</p>
+            <div className="flex justify-between items-center py-2 border-b border-gray-200">
+              <span className="font-semibold">New Alerts</span>
+              <span>{threats.length} this week</span>
+            </div>
+            {threats.length > 0 && (
+              <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                <span className="font-semibold">Top Concern</span>
+                <span className="text-right max-w-xs truncate">{threats[0].title.substring(0, 50)}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center py-2 border-b border-gray-200">
+              <span className="font-semibold">Action</span>
+              <span>{config.recommendations[0]?.title || 'Continue monitoring'}</span>
+            </div>
+            <div className="text-sm text-gray-500 pt-2">
+              Sources: {sourcesOnline}/{sourcesTotal} online | cisa.gov/shields-up
+            </div>
           </div>
         </div>
       </div>

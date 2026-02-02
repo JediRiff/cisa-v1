@@ -585,17 +585,6 @@ export default function Dashboard() {
       <footer className="bg-cisa-navy text-white">
         <div className="max-w-7xl mx-auto px-6 py-10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-            {/* Logo and Title */}
-            <div className="flex items-center gap-4 bg-white/10 rounded-lg px-4 py-2">
-              <Image
-                src="/cisa-logo.svg"
-                alt="CISA"
-                width={240}
-                height={48}
-                className="h-12 w-auto"
-              />
-            </div>
-
             {/* Social Icons */}
             <div className="flex items-center gap-4">
               <span className="text-sm text-blue-200 mr-2">Follow CISA:</span>

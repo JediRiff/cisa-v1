@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { fetchAllFeeds } from '@/lib/feeds'
 import { calculateEnergyScore } from '@/lib/scoring'
 
-export const revalidate = 300 // Cache for 5 minutes
+export const revalidate = 0 // No caching - always fetch fresh data
 
 export async function GET() {
   try {

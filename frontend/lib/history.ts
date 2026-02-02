@@ -70,11 +70,7 @@ export function getLastWeekScore(): { score: number; label: string } | null {
   })
 
   if (lastWeekEntries.length === 0) {
-    // If no entries from last week, use oldest available as fallback
-    const oldestEntry = history[0]
-    if (oldestEntry) {
-      return { score: oldestEntry.score, label: oldestEntry.label }
-    }
+    // No data from 7-14 days ago - return null (don't show misleading fallback)
     return null
   }
 
