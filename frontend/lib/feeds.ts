@@ -38,6 +38,7 @@ const FEED_SOURCES = [
   // Tier 1: Government
   { name: 'CISA KEV', url: 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json', type: 'json', sourceType: 'government' as const },
   { name: 'CISA Advisories', url: 'https://www.cisa.gov/cybersecurity-advisories/all.xml', type: 'rss', sourceType: 'government' as const },
+  { name: 'CISA ICS-CERT', url: 'https://www.cisa.gov/uscert/ics/advisories.xml', type: 'rss', sourceType: 'government' as const },
 
   // Tier 2: Security Vendors
   { name: 'Microsoft Security', url: 'https://www.microsoft.com/en-us/security/blog/feed/', type: 'rss', sourceType: 'vendor' as const },
@@ -47,6 +48,7 @@ const FEED_SOURCES = [
 
   // Tier 3: Advanced Threat Intelligence
   { name: 'Mandiant', url: 'https://cloudblog.withgoogle.com/topics/threat-intelligence/rss/', type: 'rss', sourceType: 'vendor' as const },
+  { name: 'SANS ISC', url: 'https://isc.sans.edu/rssfeed_full.xml', type: 'rss', sourceType: 'vendor' as const },
 ]
 
 // Energy sector keywords for relevance detection

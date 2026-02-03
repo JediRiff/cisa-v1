@@ -7,6 +7,7 @@ import { saveScore } from '@/lib/history'
 import { checkAndTriggerAlerts, requestNotificationPermission, getNotificationPermission, setWebhookUrl, getWebhookUrl } from '@/lib/alerts'
 import ActionableRecommendations, { type KEVAction } from '@/components/ActionableRecommendations'
 import ScoreBreakdown from '@/components/ScoreBreakdown'
+import ScoringMethodology from '@/components/ScoringMethodology'
 import KeyMetrics from '@/components/KeyMetrics'
 
 interface ThreatItem {
@@ -303,6 +304,9 @@ export default function Dashboard() {
         />
       )}
 
+      {/* Scoring Methodology - Expandable Explanation */}
+      <ScoringMethodology />
+
       {/* Actionable Recommendations - THE CORE VALUE */}
       {/* Now shows specific KEV items with due dates, not generic advice */}
       {data && (
@@ -393,8 +397,8 @@ export default function Dashboard() {
             {/* Energy-Relevant Threats */}
             <div className="card-premium-trump p-8">
               <h3 className="text-2xl font-bold text-cisa-navy mb-6 flex items-center gap-3">
-                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
-                  <AlertTriangle className="h-6 w-6 text-amber-600" />
+                <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
                 </div>
                 Energy Sector Alerts
                 <span className="text-sm font-normal text-gray-500 ml-auto">({data?.threats.energyRelevant.length || 0})</span>

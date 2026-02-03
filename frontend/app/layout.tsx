@@ -17,19 +17,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="bg-cisa-navy text-white py-5 px-6 shadow-lg">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-6">
-              {/* Official CISA Logo - with subtle background for visibility */}
-              <div className="bg-white/10 rounded-lg px-3 py-1.5">
+              {/* Official CISA Logo - white background for visibility */}
+              <div className="bg-white rounded-lg px-3 py-2">
                 <Image
                   src="/cisa-logo.svg"
                   alt="CISA - Cybersecurity and Infrastructure Security Agency"
-                  width={180}
-                  height={36}
-                  className="h-9 w-auto"
+                  width={160}
+                  height={32}
+                  className="h-8 w-auto"
                   priority
                 />
               </div>
               <div className="border-l border-white/30 pl-6">
-                <h1 className="text-2xl font-bold tracking-tight">CAPRI</h1>
+                <h1 className="text-xl font-bold tracking-tight">CAPRI</h1>
                 <p className="text-sm text-blue-200 tracking-wide">Cyber Alert Prioritization & Readiness Index</p>
               </div>
             </div>

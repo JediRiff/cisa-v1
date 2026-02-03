@@ -23,6 +23,17 @@ export default function KeyMetrics({ score, label, color, alertsThisWeek }: KeyM
     return '#16a34a'
   }
 
+  // Calculate trend arrow (higher score = better, so if current > lastWeek, it's improving)
+  const getTrend = () => {
+    if (!lastWeek) return null
+    const diff = score - lastWeek.score
+    if (diff > 0.3) return { arrow: '↑', label: 'Improving', color: '#86efac' }
+    if (diff < -0.3) return { arrow: '↓', label: 'Worsening', color: '#fca5a5' }
+    return { arrow: '→', label: 'Stable', color: '#93c5fd' }
+  }
+
+  const trend = getTrend()
+
   return (
     <section className="py-8 px-4 bg-white">
       <div className="max-w-4xl mx-auto">
@@ -30,8 +41,15 @@ export default function KeyMetrics({ score, label, color, alertsThisWeek }: KeyM
           {/* Current Score */}
           <div className="bg-cisa-navy rounded-xl p-6 text-center">
             <p className="text-blue-200 text-sm font-medium uppercase tracking-wider mb-2">Score</p>
-            <p className="text-white text-4xl font-bold mb-1">{score.toFixed(1)}</p>
-            <p className="text-lg font-semibold" style={{ color: color === '#16a34a' ? '#86efac' : color === '#f59e0b' ? '#fde047' : '#fca5a5' }}>
+            <div className="flex items-center justify-center gap-2">
+              <p className="text-white text-4xl font-bold">{score.toFixed(1)}</p>
+              {trend && (
+                <span className="text-2xl font-bold" style={{ color: trend.color }} title={trend.label}>
+                  {trend.arrow}
+                </span>
+              )}
+            </div>
+            <p className="text-lg font-semibold mt-1" style={{ color: color === '#16a34a' ? '#86efac' : color === '#f59e0b' ? '#fde047' : '#fca5a5' }}>
               {label}
             </p>
           </div>
