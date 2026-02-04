@@ -1,6 +1,0 @@
-streamlit
-pandas
-numpy
-fastapi
-scikit-learn
-plotly
