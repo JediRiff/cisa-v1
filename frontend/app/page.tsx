@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { AlertTriangle, Shield, RefreshCw, ExternalLink, Clock, CheckCircle, XCircle, Bell, BellOff, ChevronDown } from 'lucide-react'
 import { saveScore } from '@/lib/history'
 import { checkAndTriggerAlerts, requestNotificationPermission, getNotificationPermission, setWebhookUrl, getWebhookUrl } from '@/lib/alerts'
-import ActionableRecommendations, { type KEVAction } from '@/components/ActionableRecommendations'
+import ActionableRecommendations, { type KEVAction, type ICSAdvisory } from '@/components/ActionableRecommendations'
 import ScoreBreakdown from '@/components/ScoreBreakdown'
 import ScoringMethodology from '@/components/ScoringMethodology'
 import KeyMetrics from '@/components/KeyMetrics'
@@ -62,6 +62,7 @@ interface ApiResponse {
     critical: ThreatItem[]
   }
   kev: KEVAction[]
+  icsAdvisories: ICSAdvisory[]
   meta: {
     lastUpdated: string
     sourcesOnline: number
@@ -159,6 +160,11 @@ export default function Dashboard() {
       energy: 'bg-amber-50 text-amber-700',
     }
     return styles[sourceType] || 'bg-gray-50 text-gray-700'
+  }
+
+  const isCISASource = (source: string) => {
+    return source.startsWith('CISA') || source === 'CISA KEV' ||
+           source === 'CISA Advisories' || source === 'CISA ICS-CERT'
   }
 
   const toggleFaq = (id: string) => {
@@ -324,7 +330,7 @@ export default function Dashboard() {
       {/* Actionable Recommendations - THE CORE VALUE */}
       {/* Now shows specific KEV items with due dates, not generic advice */}
       {data && (
-        <ActionableRecommendations kevItems={data.kev} />
+        <ActionableRecommendations kevItems={data.kev} icsAdvisories={data.icsAdvisories} />
       )}
 
       {/* Decorative Divider */}
@@ -429,6 +435,9 @@ export default function Dashboard() {
                         <ExternalLink className="h-4 w-4 flex-shrink-0 mt-1" />
                       </a>
                       <div className="flex items-center gap-2 flex-wrap">
+                        {isCISASource(item.source) && (
+                          <span className="px-1.5 py-0.5 text-xs font-semibold bg-blue-600 text-white rounded">CISA</span>
+                        )}
                         <span className={'text-xs px-2.5 py-1 rounded-full font-medium ' + getSourceStyle(item.sourceType)}>{item.source}</span>
                         <span className={'text-xs px-2.5 py-1 rounded-full border font-medium ' + getSeverityStyle(item.severity)}>{item.severity}</span>
                         <span className="text-xs text-gray-500">{formatDate(item.pubDate)}</span>
@@ -457,6 +466,9 @@ export default function Dashboard() {
                       <ExternalLink className="h-4 w-4 flex-shrink-0 mt-1" />
                     </a>
                     <div className="flex items-center gap-2 flex-wrap">
+                      {isCISASource(item.source) && (
+                        <span className="px-1.5 py-0.5 text-xs font-semibold bg-blue-600 text-white rounded">CISA</span>
+                      )}
                       <span className={'text-xs px-2.5 py-1 rounded-full font-medium ' + getSourceStyle(item.sourceType)}>{item.source}</span>
                       <span className={'text-xs px-2.5 py-1 rounded-full border font-medium ' + getSeverityStyle(item.severity)}>{item.severity}</span>
                       <span className="text-xs text-gray-500">{formatDate(item.pubDate)}</span>

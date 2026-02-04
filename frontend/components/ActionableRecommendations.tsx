@@ -16,6 +16,14 @@ export interface KEVAction {
   ransomwareUse: boolean
 }
 
+export interface ICSAdvisory {
+  id: string
+  title: string
+  link: string
+  pubDate: string
+  source: string
+}
+
 // Format the date when KEV was added to catalog
 function formatAddedDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', {
@@ -25,6 +33,7 @@ function formatAddedDate(dateStr: string): string {
 
 interface ActionableRecommendationsProps {
   kevItems: KEVAction[]
+  icsAdvisories?: ICSAdvisory[]
 }
 
 // Convert due date to relative time (e.g., "in 9 days" or "3 days ago")
@@ -98,7 +107,7 @@ function getWhyItMatters(description: string, vendor: string, product: string): 
   return `This vulnerability in ${vendor} ${product} is actively exploited in the wild. Patch immediately.`
 }
 
-export default function ActionableRecommendations({ kevItems }: ActionableRecommendationsProps) {
+export default function ActionableRecommendations({ kevItems, icsAdvisories = [] }: ActionableRecommendationsProps) {
   const [searchQuery, setSearchQuery] = useState('')
 
   // Sort: overdue first, then by due date (most urgent first)
@@ -256,6 +265,46 @@ export default function ActionableRecommendations({ kevItems }: ActionableRecomm
             </a>
           </div>
         </div>
+
+        {/* ICS-CERT Advisories Section */}
+        {icsAdvisories.length > 0 && (
+          <div className="mt-8 pt-8 border-t border-gray-200">
+            <h3 className="text-lg font-bold text-cisa-navy mb-4 flex items-center gap-2">
+              <span className="px-2 py-0.5 text-xs font-semibold bg-blue-600 text-white rounded">CISA</span>
+              ICS-CERT Advisories
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Recent industrial control system security advisories from CISA.
+            </p>
+            <div className="space-y-3">
+              {icsAdvisories.slice(0, 5).map((advisory) => (
+                <a
+                  key={advisory.id}
+                  href={advisory.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  <p className="font-medium text-gray-900">{advisory.title}</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {new Date(advisory.pubDate).toLocaleDateString('en-US', {
+                      month: 'short', day: 'numeric', year: 'numeric'
+                    })}
+                  </p>
+                </a>
+              ))}
+            </div>
+            <a
+              href="https://www.cisa.gov/news-events/ics-advisories"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-cisa-navy hover:underline"
+            >
+              View all ICS-CERT Advisories
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        )}
       </div>
     </section>
   )

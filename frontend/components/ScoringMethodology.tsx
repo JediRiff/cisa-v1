@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronUp, Info, MessageSquare } from 'lucide-react'
 
 // GitHub repo URL for feedback submissions
-const GITHUB_REPO = 'https://github.com/JediRiff/capri'
+const GITHUB_REPO = 'https://github.com/JediRiff/cisa-v1'
 
 export default function ScoringMethodology() {
   const [isOpen, setIsOpen] = useState(false)

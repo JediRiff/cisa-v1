@@ -17,6 +17,11 @@ function formatDate(dateStr: string): string {
   })
 }
 
+function isCISASource(source: string): boolean {
+  return source.startsWith('CISA') || source === 'CISA KEV' ||
+         source === 'CISA Advisories' || source === 'CISA ICS-CERT'
+}
+
 interface ScoreFactor {
   name: string
   impact: number
@@ -119,6 +124,9 @@ export default function ScoreBreakdown({ score, label, color, factors }: ScoreBr
                       >
                         <span className="w-1.5 h-1.5 bg-gray-400 rounded-full flex-shrink-0" />
                         <span className="truncate flex-1">{item.title.substring(0, 60)}{item.title.length > 60 ? '...' : ''}</span>
+                        {isCISASource(item.source) && (
+                          <span className="px-1 py-0.5 text-[10px] font-semibold bg-blue-600 text-white rounded flex-shrink-0">CISA</span>
+                        )}
                         <span className="text-gray-400 flex-shrink-0">
                           {item.source}
                           {item.pubDate && item.source === 'CISA KEV' && ` · Added ${formatDate(item.pubDate)}`}
