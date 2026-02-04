@@ -68,6 +68,12 @@ interface ApiResponse {
     sourcesTotal: number
     totalItems: number
     alertsThisWeek: number
+    last24h: {
+      kev: number
+      nationState: number
+      ics: number
+      total: number
+    }
     errors: string[]
   }
 }
@@ -163,8 +169,16 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <RefreshCw className="h-16 w-16 animate-spin text-cisa-navy mx-auto mb-6" />
-          <p className="text-xl text-gray-600">Loading threat intelligence from 7 sources...</p>
+          <Image
+            src="/cisa-logo.svg"
+            alt="CISA"
+            width={300}
+            height={60}
+            className="h-14 w-auto mx-auto mb-6"
+          />
+          <p className="text-2xl font-bold text-cisa-navy mb-2">CAPRI</p>
+          <p className="text-lg text-gray-600">Critical Infrastructure Alert Prioritization Index</p>
+          <RefreshCw className="h-8 w-8 animate-spin text-cisa-navy mx-auto mt-4" />
         </div>
       </div>
     )
@@ -290,7 +304,7 @@ export default function Dashboard() {
           score={data.score.score}
           label={data.score.label}
           color={data.score.color}
-          alertsThisWeek={data.meta.alertsThisWeek || 0}
+          last24h={data.meta.last24h || { kev: 0, nationState: 0, ics: 0, total: 0 }}
         />
       )}
 

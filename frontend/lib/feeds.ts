@@ -1,5 +1,5 @@
-// CAPRI-E Threat Intelligence Feed Aggregator
-// Fetches from 7 verified sources (Tiers 1-3)
+// CAPRI Threat Intelligence Feed Aggregator
+// Fetches from 12 verified sources (Tiers 1-3)
 
 export interface ThreatItem {
   id: string
@@ -19,6 +19,7 @@ export interface KEVItem {
   vendorProject: string
   product: string
   dueDate: string
+  dateAdded: string
   shortDescription: string
   notes: string
   knownRansomwareCampaignUse: string
@@ -38,17 +39,20 @@ const FEED_SOURCES = [
   // Tier 1: Government
   { name: 'CISA KEV', url: 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json', type: 'json', sourceType: 'government' as const },
   { name: 'CISA Advisories', url: 'https://www.cisa.gov/cybersecurity-advisories/all.xml', type: 'rss', sourceType: 'government' as const },
-  { name: 'CISA ICS-CERT', url: 'https://www.cisa.gov/uscert/ics/advisories.xml', type: 'rss', sourceType: 'government' as const },
+  { name: 'CISA ICS-CERT', url: 'https://www.cisa.gov/cybersecurity-advisories/ics-advisories.xml', type: 'rss', sourceType: 'government' as const },
+  { name: 'UK NCSC', url: 'https://www.ncsc.gov.uk/api/1/services/v1/report-rss-feed.xml', type: 'rss', sourceType: 'government' as const },
 
   // Tier 2: Security Vendors
   { name: 'Microsoft Security', url: 'https://www.microsoft.com/en-us/security/blog/feed/', type: 'rss', sourceType: 'vendor' as const },
   { name: 'Unit42', url: 'https://unit42.paloaltonetworks.com/feed/', type: 'rss', sourceType: 'vendor' as const },
   { name: 'CrowdStrike', url: 'https://www.crowdstrike.com/blog/feed/', type: 'rss', sourceType: 'vendor' as const },
   { name: 'SentinelOne', url: 'https://www.sentinelone.com/labs/feed/', type: 'rss', sourceType: 'vendor' as const },
+  { name: 'Cisco Talos', url: 'https://blog.talosintelligence.com/rss/', type: 'rss', sourceType: 'vendor' as const },
 
   // Tier 3: Advanced Threat Intelligence
   { name: 'Mandiant', url: 'https://cloudblog.withgoogle.com/topics/threat-intelligence/rss/', type: 'rss', sourceType: 'vendor' as const },
-  { name: 'SANS ISC', url: 'https://isc.sans.edu/rssfeed_full.xml', type: 'rss', sourceType: 'vendor' as const },
+  { name: 'Google TAG', url: 'https://blog.google/threat-analysis-group/rss/', type: 'rss', sourceType: 'vendor' as const },
+  { name: 'DFIR Report', url: 'https://thedfirreport.com/feed/', type: 'rss', sourceType: 'vendor' as const },
 ]
 
 // Energy sector keywords for relevance detection
@@ -168,6 +172,7 @@ export async function fetchAllFeeds(): Promise<FeedResult> {
             vendorProject: v.vendorProject,
             product: v.product,
             dueDate: v.dueDate,
+            dateAdded: v.dateAdded,
             shortDescription: v.shortDescription || '',
             notes: v.notes || '',
             knownRansomwareCampaignUse: v.knownRansomwareCampaignUse || 'Unknown'

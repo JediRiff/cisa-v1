@@ -3,14 +3,21 @@
 import { useEffect, useState } from 'react'
 import { getLastWeekScore } from '@/lib/history'
 
+interface Last24h {
+  kev: number
+  nationState: number
+  ics: number
+  total: number
+}
+
 interface KeyMetricsProps {
   score: number
   label: string
   color: string
-  alertsThisWeek: number
+  last24h: Last24h
 }
 
-export default function KeyMetrics({ score, label, color, alertsThisWeek }: KeyMetricsProps) {
+export default function KeyMetrics({ score, label, color, last24h }: KeyMetricsProps) {
   const [lastWeek, setLastWeek] = useState<{ score: number; label: string } | null>(null)
 
   useEffect(() => {
@@ -54,11 +61,18 @@ export default function KeyMetrics({ score, label, color, alertsThisWeek }: KeyM
             </p>
           </div>
 
-          {/* New Alerts This Week */}
+          {/* Last 24 Hours Summary */}
           <div className="bg-cisa-navy rounded-xl p-6 text-center">
-            <p className="text-blue-200 text-sm font-medium uppercase tracking-wider mb-2">New Alerts</p>
-            <p className="text-white text-4xl font-bold mb-1">{alertsThisWeek}</p>
-            <p className="text-blue-200 text-lg">This Week</p>
+            <p className="text-blue-200 text-sm font-medium uppercase tracking-wider mb-2">Last 24 Hours</p>
+            <p className="text-white text-2xl font-bold mb-2">{last24h.total} New</p>
+            <p className="text-blue-200 text-sm">
+              {last24h.kev > 0 && <span className="text-red-300">{last24h.kev} KEV</span>}
+              {last24h.kev > 0 && (last24h.nationState > 0 || last24h.ics > 0) && <span> · </span>}
+              {last24h.nationState > 0 && <span className="text-orange-300">{last24h.nationState} Nation-State</span>}
+              {last24h.nationState > 0 && last24h.ics > 0 && <span> · </span>}
+              {last24h.ics > 0 && <span className="text-yellow-300">{last24h.ics} ICS</span>}
+              {last24h.kev === 0 && last24h.nationState === 0 && last24h.ics === 0 && <span>No critical alerts</span>}
+            </p>
           </div>
 
           {/* Last Week's Score */}

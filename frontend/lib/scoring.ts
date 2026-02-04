@@ -14,35 +14,35 @@ export const SCORING_WEIGHTS = {
   kevEntry: {
     name: 'CISA KEV Entry',
     perItem: -0.3,
-    maxImpact: -1.5,
+    maxImpact: -1.2,  // Reduced from -1.5 for better dynamic range
     timeWindow: '7 days',
     rationale: 'Known Exploited Vulnerabilities indicate active exploitation in the wild'
   },
   energyThreat: {
     name: 'Energy Sector Threat',
     perItem: -0.2,
-    maxImpact: -1.0,
+    maxImpact: -0.8,  // Reduced from -1.0 for better dynamic range
     timeWindow: '30 days',
     rationale: 'Threats specifically mentioning energy, grid, SCADA, or critical infrastructure'
   },
   nationState: {
     name: 'Nation-State Activity',
     perItem: -0.4,
-    maxImpact: -1.2,
+    maxImpact: -0.8,  // Reduced from -1.2 for better dynamic range
     timeWindow: '30 days',
     rationale: 'Reports involving Volt Typhoon, Sandworm, or other nation-state actors targeting infrastructure'
   },
   icsScada: {
     name: 'ICS/SCADA Vulnerability',
     perItem: -0.3,
-    maxImpact: -0.9,
+    maxImpact: -0.6,  // Reduced from -0.9 for better dynamic range
     timeWindow: '30 days',
     rationale: 'Industrial control system vulnerabilities directly impact energy operations'
   },
   vendorCritical: {
     name: 'Vendor Critical Alert',
     perItem: -0.15,
-    maxImpact: -0.6,
+    maxImpact: -0.4,  // Reduced from -0.6 for better dynamic range
     timeWindow: '7 days',
     rationale: 'Critical severity reports from Microsoft, CrowdStrike, Unit42, etc.'
   }
@@ -69,6 +69,7 @@ export interface FactorItem {
   title: string
   link: string
   source: string
+  pubDate: string
 }
 
 export interface ScoreFactor {
@@ -98,6 +99,7 @@ const ICS_INDICATORS = [
 export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
   let score = 5.0 // Start at Normal
   const factors: ScoreFactor[] = []
+  const usedItemIds = new Set<string>() // Track items to prevent double-counting
 
   const now = new Date()
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
@@ -107,57 +109,19 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
   const recentItems = items.filter(item => new Date(item.pubDate) >= thirtyDaysAgo)
   const veryRecentItems = items.filter(item => new Date(item.pubDate) >= sevenDaysAgo)
 
-  // Factor 1: Critical KEVs in last 7 days (-0.3 each, max -1.5)
-  const recentKEVs = veryRecentItems.filter(item =>
-    item.source === 'CISA KEV' && item.severity === 'critical'
-  )
-  if (recentKEVs.length > 0) {
-    const impact = Math.min(recentKEVs.length * 0.3, 1.5)
-    score -= impact
-    factors.push({
-      name: 'Recent KEV Entries',
-      impact: -impact,
-      count: recentKEVs.length,
-      description: 'Actively exploited vulnerabilities added to CISA KEV in last 7 days',
-      weight: SCORING_WEIGHTS.kevEntry.perItem,
-      maxImpact: SCORING_WEIGHTS.kevEntry.maxImpact,
-      items: recentKEVs.slice(0, 10).map(item => ({
-        id: item.id,
-        title: item.title,
-        link: item.link,
-        source: item.source
-      }))
-    })
-  }
+  // Process factors in order of per-item impact (highest first)
+  // This ensures items are assigned to their highest-impact category
 
-  // Factor 2: Energy-relevant threats (-0.2 each, max -1.0)
-  const energyThreats = recentItems.filter(item => item.isEnergyRelevant)
-  if (energyThreats.length > 0) {
-    const impact = Math.min(energyThreats.length * 0.2, 1.0)
-    score -= impact
-    factors.push({
-      name: 'Energy Sector Threats',
-      impact: -impact,
-      count: energyThreats.length,
-      description: 'Threats specifically targeting energy/critical infrastructure',
-      weight: SCORING_WEIGHTS.energyThreat.perItem,
-      maxImpact: SCORING_WEIGHTS.energyThreat.maxImpact,
-      items: energyThreats.slice(0, 10).map(item => ({
-        id: item.id,
-        title: item.title,
-        link: item.link,
-        source: item.source
-      }))
-    })
-  }
-
-  // Factor 3: Nation-state activity (-0.4 each, max -1.2)
+  // Factor 1: Nation-state activity (-0.4 each, max -0.8) - HIGHEST IMPACT
   const nationStateThreats = recentItems.filter(item => {
+    if (usedItemIds.has(item.id)) return false
     const text = (item.title + ' ' + item.description).toLowerCase()
-    return NATION_STATE_INDICATORS.some(indicator => text.includes(indicator))
+    const matches = NATION_STATE_INDICATORS.some(indicator => text.includes(indicator))
+    if (matches) usedItemIds.add(item.id)
+    return matches
   })
   if (nationStateThreats.length > 0) {
-    const impact = Math.min(nationStateThreats.length * 0.4, 1.2)
+    const impact = Math.min(nationStateThreats.length * 0.4, 0.8)
     score -= impact
     factors.push({
       name: 'Nation-State Activity',
@@ -170,18 +134,49 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
         id: item.id,
         title: item.title,
         link: item.link,
-        source: item.source
+        source: item.source,
+        pubDate: item.pubDate
       }))
     })
   }
 
-  // Factor 4: ICS/SCADA vulnerabilities (-0.3 each, max -0.9)
+  // Factor 2: Critical KEVs in last 7 days (-0.3 each, max -1.2)
+  const recentKEVs = veryRecentItems.filter(item => {
+    if (usedItemIds.has(item.id)) return false
+    const matches = item.source === 'CISA KEV' && item.severity === 'critical'
+    if (matches) usedItemIds.add(item.id)
+    return matches
+  })
+  if (recentKEVs.length > 0) {
+    const impact = Math.min(recentKEVs.length * 0.3, 1.2)
+    score -= impact
+    factors.push({
+      name: 'Recent KEV Entries',
+      impact: -impact,
+      count: recentKEVs.length,
+      description: 'Actively exploited vulnerabilities added to CISA KEV in last 7 days',
+      weight: SCORING_WEIGHTS.kevEntry.perItem,
+      maxImpact: SCORING_WEIGHTS.kevEntry.maxImpact,
+      items: recentKEVs.slice(0, 10).map(item => ({
+        id: item.id,
+        title: item.title,
+        link: item.link,
+        source: item.source,
+        pubDate: item.pubDate
+      }))
+    })
+  }
+
+  // Factor 3: ICS/SCADA vulnerabilities (-0.3 each, max -0.6)
   const icsThreats = recentItems.filter(item => {
+    if (usedItemIds.has(item.id)) return false
     const text = (item.title + ' ' + item.description).toLowerCase()
-    return ICS_INDICATORS.some(indicator => text.includes(indicator))
+    const matches = ICS_INDICATORS.some(indicator => text.includes(indicator))
+    if (matches) usedItemIds.add(item.id)
+    return matches
   })
   if (icsThreats.length > 0) {
-    const impact = Math.min(icsThreats.length * 0.3, 0.9)
+    const impact = Math.min(icsThreats.length * 0.3, 0.6)
     score -= impact
     factors.push({
       name: 'ICS/SCADA Vulnerabilities',
@@ -194,17 +189,48 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
         id: item.id,
         title: item.title,
         link: item.link,
-        source: item.source
+        source: item.source,
+        pubDate: item.pubDate
       }))
     })
   }
 
-  // Factor 5: Critical severity items from vendors (-0.15 each, max -0.6)
-  const criticalVendorItems = veryRecentItems.filter(item =>
-    item.sourceType === 'vendor' && item.severity === 'critical'
-  )
+  // Factor 4: Energy-relevant threats (-0.2 each, max -0.8)
+  const energyThreats = recentItems.filter(item => {
+    if (usedItemIds.has(item.id)) return false
+    const matches = item.isEnergyRelevant
+    if (matches) usedItemIds.add(item.id)
+    return matches
+  })
+  if (energyThreats.length > 0) {
+    const impact = Math.min(energyThreats.length * 0.2, 0.8)
+    score -= impact
+    factors.push({
+      name: 'Energy Sector Threats',
+      impact: -impact,
+      count: energyThreats.length,
+      description: 'Threats specifically targeting energy/critical infrastructure',
+      weight: SCORING_WEIGHTS.energyThreat.perItem,
+      maxImpact: SCORING_WEIGHTS.energyThreat.maxImpact,
+      items: energyThreats.slice(0, 10).map(item => ({
+        id: item.id,
+        title: item.title,
+        link: item.link,
+        source: item.source,
+        pubDate: item.pubDate
+      }))
+    })
+  }
+
+  // Factor 5: Critical severity items from vendors (-0.15 each, max -0.4) - LOWEST IMPACT
+  const criticalVendorItems = veryRecentItems.filter(item => {
+    if (usedItemIds.has(item.id)) return false
+    const matches = item.sourceType === 'vendor' && item.severity === 'critical'
+    if (matches) usedItemIds.add(item.id)
+    return matches
+  })
   if (criticalVendorItems.length > 0) {
-    const impact = Math.min(criticalVendorItems.length * 0.15, 0.6)
+    const impact = Math.min(criticalVendorItems.length * 0.15, 0.4)
     score -= impact
     factors.push({
       name: 'Vendor Critical Alerts',
@@ -217,7 +243,8 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
         id: item.id,
         title: item.title,
         link: item.link,
-        source: item.source
+        source: item.source,
+        pubDate: item.pubDate
       }))
     })
   }

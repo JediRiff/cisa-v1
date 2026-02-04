@@ -8,6 +8,13 @@ interface FactorItem {
   title: string
   link: string
   source: string
+  pubDate?: string
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric'
+  })
 }
 
 interface ScoreFactor {
@@ -112,7 +119,10 @@ export default function ScoreBreakdown({ score, label, color, factors }: ScoreBr
                       >
                         <span className="w-1.5 h-1.5 bg-gray-400 rounded-full flex-shrink-0" />
                         <span className="truncate flex-1">{item.title.substring(0, 60)}{item.title.length > 60 ? '...' : ''}</span>
-                        <span className="text-gray-400 flex-shrink-0">{item.source}</span>
+                        <span className="text-gray-400 flex-shrink-0">
+                          {item.source}
+                          {item.pubDate && item.source === 'CISA KEV' && ` · Added ${formatDate(item.pubDate)}`}
+                        </span>
                         <ExternalLink className="h-3 w-3 flex-shrink-0" />
                       </a>
                     ))}

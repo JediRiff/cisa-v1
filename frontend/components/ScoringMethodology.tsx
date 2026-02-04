@@ -1,7 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, Info, ExternalLink } from 'lucide-react'
+import { ChevronDown, ChevronUp, Info, MessageSquare } from 'lucide-react'
+
+// GitHub repo URL for feedback submissions
+const GITHUB_REPO = 'https://github.com/JediRiff/capri'
 
 export default function ScoringMethodology() {
   const [isOpen, setIsOpen] = useState(false)
@@ -33,7 +36,7 @@ export default function ScoringMethodology() {
               <h3 className="font-bold text-gray-900 mb-2">How the Score is Calculated</h3>
               <p className="text-sm text-gray-600">
                 CAPRI starts at 5.0 (Normal) and deducts points based on active threats
-                detected across 9 intelligence sources. Lower scores indicate higher risk.
+                detected across 12 intelligence sources. Lower scores indicate higher risk.
               </p>
             </div>
 
@@ -54,36 +57,39 @@ export default function ScoringMethodology() {
                     <tr className="bg-white">
                       <td className="px-3 py-2 font-medium">CISA KEV Entries</td>
                       <td className="px-3 py-2 text-center">-0.3 each</td>
-                      <td className="px-3 py-2 text-center">-1.5</td>
-                      <td className="px-3 py-2 text-gray-600">Known exploited vulnerabilities require immediate patching</td>
+                      <td className="px-3 py-2 text-center">-1.2</td>
+                      <td className="px-3 py-2 text-gray-600">Confirmed exploited. High volume, capped to prevent single-category spikes.</td>
                     </tr>
                     <tr className="bg-gray-50">
                       <td className="px-3 py-2 font-medium">Nation-State Activity</td>
                       <td className="px-3 py-2 text-center">-0.4 each</td>
-                      <td className="px-3 py-2 text-center">-1.2</td>
-                      <td className="px-3 py-2 text-gray-600">APT groups (Volt Typhoon, Sandworm) targeting infrastructure</td>
+                      <td className="px-3 py-2 text-center">-0.8</td>
+                      <td className="px-3 py-2 text-gray-600">Highest weight. Strategic campaigns are rare but critical.</td>
                     </tr>
                     <tr className="bg-white">
                       <td className="px-3 py-2 font-medium">ICS/SCADA Vulnerabilities</td>
                       <td className="px-3 py-2 text-center">-0.3 each</td>
-                      <td className="px-3 py-2 text-center">-0.9</td>
-                      <td className="px-3 py-2 text-gray-600">Industrial control system threats directly impact operations</td>
+                      <td className="px-3 py-2 text-center">-0.6</td>
+                      <td className="px-3 py-2 text-gray-600">Direct operational threat. Lower cap since ICS reports are less frequent.</td>
                     </tr>
                     <tr className="bg-gray-50">
                       <td className="px-3 py-2 font-medium">Energy Sector Threats</td>
                       <td className="px-3 py-2 text-center">-0.2 each</td>
-                      <td className="px-3 py-2 text-center">-1.0</td>
-                      <td className="px-3 py-2 text-gray-600">Threats mentioning grid, SCADA, or critical infrastructure</td>
+                      <td className="px-3 py-2 text-center">-0.8</td>
+                      <td className="px-3 py-2 text-gray-600">Broader keyword filter. Lower weight, higher cap for cumulative effect.</td>
                     </tr>
                     <tr className="bg-white">
                       <td className="px-3 py-2 font-medium">Vendor Critical Alerts</td>
                       <td className="px-3 py-2 text-center">-0.15 each</td>
-                      <td className="px-3 py-2 text-center">-0.6</td>
-                      <td className="px-3 py-2 text-gray-600">Critical severity reports from security vendors</td>
+                      <td className="px-3 py-2 text-center">-0.4</td>
+                      <td className="px-3 py-2 text-gray-600">High publication volume with variable quality.</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
+              <p className="text-xs text-gray-500 mt-3 italic">
+                Weight × Cap = Max Impact. SEVERE triggers only when multiple categories are active, not from a spike in one.
+              </p>
             </div>
 
             {/* Score Thresholds */}
@@ -107,7 +113,7 @@ export default function ScoringMethodology() {
 
             {/* Data Sources */}
             <div className="mb-6">
-              <h3 className="font-bold text-gray-900 mb-3">Intelligence Sources</h3>
+              <h3 className="font-bold text-gray-900 mb-3">Sources (12)</h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
@@ -120,6 +126,10 @@ export default function ScoringMethodology() {
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
                   <span>CISA ICS-CERT Advisories</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
+                  <span>UK NCSC Reports</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
@@ -139,11 +149,19 @@ export default function ScoringMethodology() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                  <span>Cisco Talos</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
                   <span>Mandiant Threat Intel</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                  <span>SANS Internet Storm Center</span>
+                  <span>Google Threat Analysis Group</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                  <span>The DFIR Report</span>
                 </div>
               </div>
               <p className="text-xs text-gray-500 mt-2">
@@ -152,36 +170,23 @@ export default function ScoringMethodology() {
               </p>
             </div>
 
-            {/* Reference Standards */}
-            <div>
-              <h3 className="font-bold text-gray-900 mb-2">Reference Standards</h3>
-              <div className="flex flex-wrap gap-2 text-xs">
+            {/* Feedback Section */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-gray-900">Not satisfied with the weights?</h3>
+                  <p className="text-sm text-gray-600">
+                    Submit feedback or propose adjustments via GitHub.
+                  </p>
+                </div>
                 <a
-                  href="https://www.nist.gov/cyberframework"
+                  href={`${GITHUB_REPO}/issues/new?template=weight-adjustment.yml`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100"
+                  className="px-4 py-2 bg-cisa-navy text-white rounded-lg hover:bg-blue-800 transition-colors flex items-center gap-2"
                 >
-                  NIST CSF 2.0
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-                <a
-                  href="https://www.nerc.com/pa/Stand/Pages/CIPStandards.aspx"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100"
-                >
-                  NERC CIP Standards
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-                <a
-                  href="https://attack.mitre.org/techniques/ics/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100"
-                >
-                  MITRE ATT&CK for ICS
-                  <ExternalLink className="h-3 w-3" />
+                  <MessageSquare className="h-4 w-4" />
+                  Submit Feedback
                 </a>
               </div>
             </div>

@@ -1,0 +1,35 @@
+name: Propose Weight Adjustment
+description: Suggest changes to the CAPRI scoring weights or caps
+title: "[Weights] "
+labels: ["weights", "feedback"]
+body:
+  - type: dropdown
+    id: factor
+    attributes:
+      label: Which factor?
+      options:
+        - CISA KEV Entries
+        - Nation-State Activity
+        - ICS/SCADA Vulnerabilities
+        - Energy Sector Threats
+        - Vendor Critical Alerts
+    validations:
+      required: true
+  - type: input
+    id: current-value
+    attributes:
+      label: Current weight/cap
+      placeholder: "e.g., -0.3 per item, -1.2 max"
+  - type: input
+    id: proposed-value
+    attributes:
+      label: Proposed weight/cap
+      placeholder: "e.g., -0.4 per item, -1.5 max"
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Why should this change?
+      description: Provide evidence or reasoning for your proposed adjustment
+      placeholder: "Based on recent attack trends, threat intelligence reports, or operational experience..."
+    validations:
+      required: true

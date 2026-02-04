@@ -26,6 +26,37 @@ export async function GET() {
       return itemDate >= oneWeekAgo
     }).length
 
+    // Count last 24h alerts by category
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000
+    const last24hItems = feedResult.items.filter(item => {
+      const itemDate = new Date(item.pubDate).getTime()
+      return itemDate >= oneDayAgo
+    })
+
+    const NATION_STATE_INDICATORS = [
+      'volt typhoon', 'sandworm', 'xenotime', 'chernovite', 'kamacite',
+      'apt28', 'apt29', 'lazarus', 'kimsuky', 'temp.veles',
+      'china', 'russia', 'iran', 'north korea', 'dprk'
+    ]
+    const ICS_INDICATORS = [
+      'scada', 'ics', 'plc', 'hmi', 'rtu', 'dcs',
+      'modbus', 'dnp3', 'iec 61850', 'opc',
+      'industrial control', 'operational technology'
+    ]
+
+    const last24h = {
+      kev: last24hItems.filter(item => item.source === 'CISA KEV').length,
+      nationState: last24hItems.filter(item => {
+        const text = (item.title + ' ' + item.description).toLowerCase()
+        return NATION_STATE_INDICATORS.some(indicator => text.includes(indicator))
+      }).length,
+      ics: last24hItems.filter(item => {
+        const text = (item.title + ' ' + item.description).toLowerCase()
+        return ICS_INDICATORS.some(indicator => text.includes(indicator))
+      }).length,
+      total: last24hItems.length
+    }
+
     // Process KEV items for actionable recommendations
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -34,6 +65,7 @@ export async function GET() {
       vendor: kev.vendorProject,
       product: kev.product,
       dueDate: kev.dueDate,
+      dateAdded: kev.dateAdded,
       description: kev.shortDescription,
       advisoryUrl: parseAdvisoryUrl(kev.notes),
       nvdUrl: `https://nvd.nist.gov/vuln/detail/${kev.cveID}`,
@@ -57,6 +89,7 @@ export async function GET() {
         sourcesTotal: feedResult.sourcesTotal,
         totalItems: feedResult.items.length,
         alertsThisWeek,
+        last24h,
         errors: feedResult.errors,
       }
     })

@@ -8,11 +8,19 @@ export interface KEVAction {
   vendor: string
   product: string
   dueDate: string
+  dateAdded: string
   description: string
   advisoryUrl: string
   nvdUrl: string
   isOverdue: boolean
   ransomwareUse: boolean
+}
+
+// Format the date when KEV was added to catalog
+function formatAddedDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric'
+  })
 }
 
 interface ActionableRecommendationsProps {
@@ -175,7 +183,7 @@ export default function ActionableRecommendations({ kevItems }: ActionableRecomm
 
                   {/* Due Date - Relative Time */}
                   <p className={`text-sm font-semibold mb-2 ${relativeTime.isOverdue ? 'text-red-600' : 'text-cisa-navy'}`}>
-                    {relativeTime.text}
+                    <span className="text-gray-500 font-normal">Added to KEV:</span> {formatAddedDate(item.dateAdded)} · {relativeTime.text}
                   </p>
 
                   {/* Why It Matters - Plain English */}
