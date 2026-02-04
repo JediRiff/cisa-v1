@@ -1,20 +1,16 @@
-# CAPRI-E: Cyber Attack Posture Rating Index for Energy Sector
+# CAPRI for NYU
 
-A real-time threat intelligence dashboard that aggregates data from 12+ security sources to generate an energy sector-specific threat posture score.
-
-**Live Demo:** [https://frontend-zacharyriffles-projects.vercel.app](https://frontend-zacharyriffles-projects.vercel.app)
-
-## What It Does
+## What
 
 CAPRI-E monitors threat intelligence feeds from government agencies (CISA, NCSC) and security vendors (Microsoft, CrowdStrike, Palo Alto, etc.) to calculate a risk score specifically for energy sector organizations.
 
-### Scoring System
+### Scoring System (s/o to US Cyber's CPCON)
 
 - **5.0 (Normal)** - Baseline threat level
 - **3.0 (Elevated)** - Heightened threat activity
 - **1.0 (Severe)** - Active threats targeting energy sector
 
-### Scoring Factors
+### Scoring
 
 | Factor | Weight | Max Impact |
 |--------|--------|------------|
@@ -37,16 +33,6 @@ CAPRI-E monitors threat intelligence feeds from government agencies (CISA, NCSC)
 - **Frontend:** Next.js 13, React, TypeScript
 - **Styling:** Tailwind CSS
 - **Deployment:** Vercel
-
-## Getting Started
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Data Sources
 
