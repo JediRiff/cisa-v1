@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import { AlertTriangle, Shield, RefreshCw, ExternalLink, Clock, CheckCircle, XCircle, Bell, BellOff, ChevronDown } from 'lucide-react'
+import { AlertTriangle, Shield, RefreshCw, ExternalLink, Clock, CheckCircle, XCircle, Bell, BellOff, ChevronDown, MessageSquare } from 'lucide-react'
 import { saveScore } from '@/lib/history'
 import { checkAndTriggerAlerts, requestNotificationPermission, getNotificationPermission, setWebhookUrl, getWebhookUrl } from '@/lib/alerts'
 import ActionableRecommendations, { type KEVAction } from '@/components/ActionableRecommendations'
@@ -560,6 +560,26 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* General Feedback Banner */}
+      <section className="py-8 px-4 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <div className="p-6 bg-blue-50 border border-blue-200 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-blue-800 font-medium text-center sm:text-left">
+              Have any feedback? Want to change something?
+            </p>
+            <a
+              href="https://github.com/JediRiff/cisa-v1/issues/new"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-3 bg-cisa-navy text-white rounded-lg font-medium hover:bg-cisa-navy-dark transition-colors flex items-center gap-2 whitespace-nowrap"
+            >
+              <MessageSquare className="h-5 w-5" />
+              Submit feedback here
+            </a>
           </div>
         </div>
       </section>
