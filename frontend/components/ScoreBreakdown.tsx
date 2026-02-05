@@ -19,7 +19,7 @@ function formatDate(dateStr: string): string {
 
 function isCISASource(source: string): boolean {
   return source.startsWith('CISA') || source === 'CISA KEV' ||
-         source === 'CISA Advisories' || source === 'CISA ICS-CERT'
+         source === 'CISA Advisories'
 }
 
 interface ScoreFactor {

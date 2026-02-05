@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { AlertTriangle, Shield, RefreshCw, ExternalLink, Clock, CheckCircle, XCircle, Bell, BellOff, ChevronDown } from 'lucide-react'
 import { saveScore } from '@/lib/history'
 import { checkAndTriggerAlerts, requestNotificationPermission, getNotificationPermission, setWebhookUrl, getWebhookUrl } from '@/lib/alerts'
-import ActionableRecommendations, { type KEVAction, type ICSAdvisory } from '@/components/ActionableRecommendations'
+import ActionableRecommendations, { type KEVAction } from '@/components/ActionableRecommendations'
 import ScoreBreakdown from '@/components/ScoreBreakdown'
 import ScoringMethodology from '@/components/ScoringMethodology'
 import KeyMetrics from '@/components/KeyMetrics'
@@ -62,7 +62,6 @@ interface ApiResponse {
     critical: ThreatItem[]
   }
   kev: KEVAction[]
-  icsAdvisories: ICSAdvisory[]
   meta: {
     lastUpdated: string
     sourcesOnline: number
@@ -164,7 +163,7 @@ export default function Dashboard() {
 
   const isCISASource = (source: string) => {
     return source.startsWith('CISA') || source === 'CISA KEV' ||
-           source === 'CISA Advisories' || source === 'CISA ICS-CERT'
+           source === 'CISA Advisories'
   }
 
   const toggleFaq = (id: string) => {
@@ -330,7 +329,7 @@ export default function Dashboard() {
       {/* Actionable Recommendations - THE CORE VALUE */}
       {/* Now shows specific KEV items with due dates, not generic advice */}
       {data && (
-        <ActionableRecommendations kevItems={data.kev} icsAdvisories={data.icsAdvisories} />
+        <ActionableRecommendations kevItems={data.kev} />
       )}
 
       {/* Decorative Divider */}

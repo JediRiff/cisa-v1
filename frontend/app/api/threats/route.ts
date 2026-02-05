@@ -73,18 +73,6 @@ export async function GET() {
       ransomwareUse: kev.knownRansomwareCampaignUse === 'Known'
     }))
 
-    // Get ICS-CERT advisories for the ICS-CERT section
-    const icsAdvisories = feedResult.items
-      .filter(item => item.source === 'CISA ICS-CERT')
-      .slice(0, 10)
-      .map(item => ({
-        id: item.id,
-        title: item.title,
-        link: item.link,
-        pubDate: item.pubDate,
-        source: item.source
-      }))
-
     // Return combined data
     return NextResponse.json({
       success: true,
@@ -95,7 +83,6 @@ export async function GET() {
         critical: feedResult.items.filter(item => item.severity === 'critical').slice(0, 20),
       },
       kev: kevActions, // Actionable KEV items for recommendations
-      icsAdvisories, // ICS-CERT advisories for the recommendations section
       meta: {
         lastUpdated: feedResult.lastUpdated,
         sourcesOnline: feedResult.sourcesOnline,

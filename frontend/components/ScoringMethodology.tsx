@@ -113,7 +113,7 @@ export default function ScoringMethodology() {
 
             {/* Data Sources */}
             <div className="mb-6">
-              <h3 className="font-bold text-gray-900 mb-3">Sources (12)</h3>
+              <h3 className="font-bold text-gray-900 mb-3">Sources (11)</h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
@@ -122,10 +122,6 @@ export default function ScoringMethodology() {
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
                   <span>CISA Cybersecurity Advisories</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
-                  <span>CISA ICS-CERT Advisories</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-blue-600 rounded-full"></span>

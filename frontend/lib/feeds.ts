@@ -39,7 +39,6 @@ const FEED_SOURCES = [
   // Tier 1: Government
   { name: 'CISA KEV', url: 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json', type: 'json', sourceType: 'government' as const },
   { name: 'CISA Advisories', url: 'https://www.cisa.gov/cybersecurity-advisories/all.xml', type: 'rss', sourceType: 'government' as const },
-  { name: 'CISA ICS-CERT', url: 'https://www.cisa.gov/cybersecurity-advisories/ics-advisories.xml', type: 'rss', sourceType: 'government' as const },
   { name: 'UK NCSC', url: 'https://www.ncsc.gov.uk/api/1/services/v1/report-rss-feed.xml', type: 'rss', sourceType: 'government' as const },
 
   // Tier 2: Security Vendors
