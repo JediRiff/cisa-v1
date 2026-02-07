@@ -11,6 +11,14 @@ export interface ThreatItem {
   sourceType: 'government' | 'vendor' | 'energy'
   severity: 'critical' | 'high' | 'medium' | 'low' | 'unknown'
   isEnergyRelevant: boolean
+  // AI Analysis fields (populated by Claude analysis)
+  aiSeverityScore?: number           // 1-10
+  aiThreatType?: 'apt' | 'ransomware' | 'vulnerability' | 'supply-chain' | 'other'
+  aiUrgency?: 'active' | 'imminent' | 'emerging' | 'historical'
+  aiAffectedVendors?: string[]
+  aiAffectedSystems?: string[]
+  aiAffectedProtocols?: string[]
+  aiRationale?: string
 }
 
 // Raw KEV item from CISA catalog (for actionable recommendations)

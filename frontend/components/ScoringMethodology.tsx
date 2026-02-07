@@ -73,10 +73,10 @@ export default function ScoringMethodology() {
                       <td className="px-3 py-2 text-gray-600">Direct operational threat. Lower cap since ICS reports are less frequent.</td>
                     </tr>
                     <tr className="bg-gray-50">
-                      <td className="px-3 py-2 font-medium">Energy Sector Threats</td>
-                      <td className="px-3 py-2 text-center">-0.2 each</td>
+                      <td className="px-3 py-2 font-medium">AI-Assessed Energy Threats</td>
+                      <td className="px-3 py-2 text-center">Variable (-0.1 to -0.4)</td>
                       <td className="px-3 py-2 text-center">-0.8</td>
-                      <td className="px-3 py-2 text-gray-600">Broader keyword filter. Lower weight, higher cap for cumulative effect.</td>
+                      <td className="px-3 py-2 text-gray-600">AI analyzes threats with graduated severity: 9-10 critical (-0.4), 7-8 direct threat (-0.3), 5-6 relevant (-0.2), 3-4 tangential (-0.1). Keywords filter for display only.</td>
                     </tr>
                     <tr className="bg-white">
                       <td className="px-3 py-2 font-medium">Vendor Critical Alerts</td>

@@ -1,7 +1,8 @@
 // CAPRI Threat Intelligence API Endpoint
 import { NextResponse } from 'next/server'
-import { fetchAllFeeds } from '@/lib/feeds'
+import { fetchAllFeeds, ThreatItem } from '@/lib/feeds'
 import { calculateEnergyScore } from '@/lib/scoring'
+import { analyzeThreatsWithAI, AIAnalysisResult } from '@/lib/ai-analysis'
 
 export const revalidate = 0 // No caching - always fetch fresh data
 
@@ -16,7 +17,43 @@ export async function GET() {
     // Fetch all threat intelligence feeds
     const feedResult = await fetchAllFeeds()
 
-    // Calculate energy sector score
+    // AI Analysis: Analyze energy-relevant items for severity scoring
+    const energyItems = feedResult.items.filter(item => item.isEnergyRelevant)
+    let aiResults: AIAnalysisResult[] = []
+
+    if (energyItems.length > 0) {
+      console.log(`Analyzing ${energyItems.length} energy-relevant items with AI...`)
+      aiResults = await analyzeThreatsWithAI(
+        energyItems.map(item => ({
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          source: item.source,
+        }))
+      )
+      console.log(`AI analysis complete: ${aiResults.length} results`)
+    }
+
+    // Merge AI results into threat items
+    const aiResultsMap = new Map(aiResults.map(r => [r.id, r]))
+    feedResult.items = feedResult.items.map(item => {
+      const aiResult = aiResultsMap.get(item.id)
+      if (aiResult) {
+        return {
+          ...item,
+          aiSeverityScore: aiResult.severityScore,
+          aiThreatType: aiResult.threatType,
+          aiUrgency: aiResult.urgency,
+          aiAffectedVendors: aiResult.affectedVendors,
+          aiAffectedSystems: aiResult.affectedSystems,
+          aiAffectedProtocols: aiResult.affectedProtocols,
+          aiRationale: aiResult.rationale,
+        }
+      }
+      return item
+    })
+
+    // Calculate energy sector score (now uses AI severity scores)
     const scoreResult = calculateEnergyScore(feedResult.items)
 
     // Count alerts from the past 7 days

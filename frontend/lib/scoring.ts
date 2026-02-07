@@ -19,11 +19,11 @@ export const SCORING_WEIGHTS = {
     rationale: 'Known Exploited Vulnerabilities indicate active exploitation in the wild'
   },
   energyThreat: {
-    name: 'Energy Sector Threat',
-    perItem: -0.2,
-    maxImpact: -0.8,  // Reduced from -1.0 for better dynamic range
+    name: 'AI-Assessed Energy Threats',
+    perItem: -0.1,  // Base, actual impact varies by AI severity (0.1-0.4)
+    maxImpact: -0.8,
     timeWindow: '30 days',
-    rationale: 'Threats specifically mentioning energy, grid, SCADA, or critical infrastructure'
+    rationale: 'AI-analyzed threats with graduated impact based on energy sector relevance (severity 9-10: -0.4, 7-8: -0.3, 5-6: -0.2, 3-4: -0.1)'
   },
   nationState: {
     name: 'Nation-State Activity',
@@ -195,24 +195,64 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
     })
   }
 
-  // Factor 4: Energy-relevant threats (-0.2 each, max -0.8)
-  const energyThreats = recentItems.filter(item => {
+  // Factor 4: AI-Assessed Energy Threats (graduated impact based on AI severity score)
+  // Items with aiSeverityScore: 9-10 = -0.4, 7-8 = -0.3, 5-6 = -0.2, 3-4 = -0.1, 1-2 = 0
+  const aiAnalyzedThreats = recentItems.filter(item => {
     if (usedItemIds.has(item.id)) return false
-    const matches = item.isEnergyRelevant
+    // Only count items that have AI analysis and score >= 3 (not false positives)
+    const hasValidAIScore = item.aiSeverityScore !== undefined && item.aiSeverityScore >= 3
+    if (hasValidAIScore) usedItemIds.add(item.id)
+    return hasValidAIScore
+  })
+  if (aiAnalyzedThreats.length > 0) {
+    // Calculate graduated impact based on AI severity scores
+    let totalImpact = 0
+    for (const item of aiAnalyzedThreats) {
+      const aiScore = item.aiSeverityScore || 5
+      if (aiScore >= 9) totalImpact += 0.4       // Critical
+      else if (aiScore >= 7) totalImpact += 0.3 // Direct threat
+      else if (aiScore >= 5) totalImpact += 0.2 // Relevant
+      else if (aiScore >= 3) totalImpact += 0.1 // Tangential
+      // Score 1-2 = 0 (false positive, already filtered out)
+    }
+    const impact = Math.min(totalImpact, 0.8)
+    score -= impact
+    factors.push({
+      name: 'AI-Assessed Energy Threats',
+      impact: -impact,
+      count: aiAnalyzedThreats.length,
+      description: 'AI-analyzed threats with graduated severity scoring',
+      weight: SCORING_WEIGHTS.energyThreat.perItem,
+      maxImpact: SCORING_WEIGHTS.energyThreat.maxImpact,
+      items: aiAnalyzedThreats.slice(0, 10).map(item => ({
+        id: item.id,
+        title: item.title,
+        link: item.link,
+        source: item.source,
+        pubDate: item.pubDate
+      }))
+    })
+  }
+
+  // Fallback: Energy-relevant threats without AI analysis (keyword-based, lower impact)
+  const keywordOnlyThreats = recentItems.filter(item => {
+    if (usedItemIds.has(item.id)) return false
+    // Only items with keyword match but NO AI analysis
+    const matches = item.isEnergyRelevant && item.aiSeverityScore === undefined
     if (matches) usedItemIds.add(item.id)
     return matches
   })
-  if (energyThreats.length > 0) {
-    const impact = Math.min(energyThreats.length * 0.2, 0.8)
+  if (keywordOnlyThreats.length > 0) {
+    const impact = Math.min(keywordOnlyThreats.length * 0.1, 0.3) // Lower impact for keyword-only
     score -= impact
     factors.push({
-      name: 'Energy Sector Threats',
+      name: 'Energy Sector Keywords (Pending AI)',
       impact: -impact,
-      count: energyThreats.length,
-      description: 'Threats specifically targeting energy/critical infrastructure',
-      weight: SCORING_WEIGHTS.energyThreat.perItem,
-      maxImpact: SCORING_WEIGHTS.energyThreat.maxImpact,
-      items: energyThreats.slice(0, 10).map(item => ({
+      count: keywordOnlyThreats.length,
+      description: 'Keyword-matched items awaiting AI analysis',
+      weight: -0.1,
+      maxImpact: -0.3,
+      items: keywordOnlyThreats.slice(0, 10).map(item => ({
         id: item.id,
         title: item.title,
         link: item.link,
@@ -269,7 +309,8 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
   }
 
   // Generate summary
-  const summary = generateSummary(score, energyThreats.length, recentKEVs.length)
+  const aiThreatCount = aiAnalyzedThreats.length + keywordOnlyThreats.length
+  const summary = generateSummary(score, aiThreatCount, recentKEVs.length)
 
   return {
     score,
