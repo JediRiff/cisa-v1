@@ -62,14 +62,18 @@ function RainbowHR() {
 export default function CoolToolsTown() {
   const [data, setData] = useState<ThreatData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [visitorCount] = useState(() => Math.floor(Math.random() * 900) + 1337)
   const [showGuestbook, setShowGuestbook] = useState(false)
 
   useEffect(() => {
     fetch('/api/threats')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Feed broke')
+        return res.json()
+      })
       .then(json => { setData(json); setLoading(false) })
-      .catch(() => setLoading(false))
+      .catch(() => { setError(true); setLoading(false) })
   }, [])
 
   const getRetroLabel = (label: string) => {
@@ -86,7 +90,7 @@ export default function CoolToolsTown() {
 
   return (
     <>
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes marquee {
           0% { transform: translateX(100%); }
           100% { transform: translateX(-100%); }
@@ -105,7 +109,7 @@ export default function CoolToolsTown() {
           100% { color: #ff0000; }
         }
         .rainbow-animate { animation: rainbow-text 3s linear infinite; }
-      `}</style>
+      ` }} />
 
       <div style={{
         background: '#000033',
@@ -248,7 +252,14 @@ export default function CoolToolsTown() {
                         </p>
                       </>
                     ) : (
-                      <p style={{ color: '#ff0000' }}>ERROR 404: DANGER NOT FOUND (jk we broke something)</p>
+                      <div style={{ padding: '20px' }}>
+                        <p style={{ color: '#ff0000', fontSize: '16px', fontWeight: 'bold' }}>
+                          {error ? 'ERROR 500: THE HAMSTER POWERING OUR SERVER FELL OFF THE WHEEL' : 'ERROR 404: DANGER NOT FOUND (jk we broke something)'}
+                        </p>
+                        <p style={{ color: '#808080', fontSize: '11px', marginTop: '8px' }}>
+                          Try hitting that VIEW THREATS button up top
+                        </p>
+                      </div>
                     )}
 
                     <RainbowHR />

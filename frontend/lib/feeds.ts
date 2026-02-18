@@ -146,6 +146,51 @@ function parseKEV(json: any): ThreatItem[] {
     }))
 }
 
+// ICS Advisory interface for Federal OT Guidance section
+export interface ICSAdvisory {
+  title: string
+  link: string
+  pubDate: string
+  description: string
+  source: string
+}
+
+// Fetch CISA ICS Advisories (separate from main feed aggregation)
+export async function fetchICSAdvisories(): Promise<ICSAdvisory[]> {
+  try {
+    const response = await fetch('https://www.cisa.gov/cybersecurity-advisories/ics-advisories.xml', {
+      headers: { 'User-Agent': 'CAPRI/1.0' },
+      cache: 'no-store'
+    })
+    if (!response.ok) return []
+
+    const xml = await response.text()
+    const advisories: ICSAdvisory[] = []
+    const itemRegex = /<item>([\s\S]*?)<\/item>/gi
+    let match
+
+    while ((match = itemRegex.exec(xml)) !== null) {
+      const itemXml = match[1]
+      const titleMatch = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || itemXml.match(/<title>(.*?)<\/title>/)
+      const title = titleMatch ? titleMatch[1].replace(/<[^>]*>/g, '').trim() : ''
+      const linkMatch = itemXml.match(/<link>(.*?)<\/link>/) || itemXml.match(/<link><!\[CDATA\[(.*?)\]\]><\/link>/)
+      const link = linkMatch ? linkMatch[1].trim() : ''
+      const descMatch = itemXml.match(/<description><!\[CDATA\[([\s\S]*?)\]\]><\/description>/) || itemXml.match(/<description>([\s\S]*?)<\/description>/)
+      const description = descMatch ? descMatch[1].replace(/<[^>]*>/g, '').substring(0, 300).trim() : ''
+      const dateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/)
+      const pubDate = dateMatch ? new Date(dateMatch[1]).toISOString() : new Date().toISOString()
+
+      if (title) {
+        advisories.push({ title, link, pubDate, description, source: 'CISA ICS' })
+      }
+    }
+
+    return advisories.slice(0, 5)
+  } catch {
+    return []
+  }
+}
+
 export async function fetchAllFeeds(): Promise<FeedResult> {
   const items: ThreatItem[] = []
   const errors: string[] = []

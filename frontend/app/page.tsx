@@ -62,6 +62,7 @@ interface ApiResponse {
     critical: ThreatItem[]
   }
   kev: KEVAction[]
+  icsAdvisories?: { title: string; link: string; pubDate: string; description: string; source: string }[]
   meta: {
     lastUpdated: string
     sourcesOnline: number
@@ -236,7 +237,7 @@ export default function Dashboard() {
           {/* Score Display - Centered and Enlarged */}
           <div className="flex flex-col items-center gap-6 mb-12">
             <div
-              className={`w-44 h-44 rounded-2xl flex items-center justify-center text-white text-6xl font-bold score-card-glass ${
+              className={`w-44 h-44 rounded-2xl flex items-center justify-center text-white text-6xl font-bold ${
                 (data?.score.score ?? 5) <= 2.0 ? 'score-glow-severe' :
                 (data?.score.score ?? 5) <= 3.0 ? 'score-glow-elevated' :
                 'score-glow-normal'
@@ -264,7 +265,7 @@ export default function Dashboard() {
               className={`flex items-center gap-2 px-8 py-4 rounded-xl font-semibold text-lg transition-all shadow-md hover:shadow-lg ${
                 notificationStatus === 'granted'
                   ? 'bg-green-600 text-white hover:bg-green-700'
-                  : 'bg-white text-cisa-navy border-2 border-cisa-navy hover:bg-cisa-light'
+                  : 'bg-white dark:bg-gray-800 text-cisa-navy dark:text-blue-300 border-2 border-cisa-navy dark:border-blue-400 hover:bg-cisa-light dark:hover:bg-gray-700'
               }`}
             >
               {notificationStatus === 'granted' ? <Bell className="h-6 w-6" /> : <BellOff className="h-6 w-6" />}
@@ -282,9 +283,9 @@ export default function Dashboard() {
 
           {/* Alert Settings Panel */}
           {showAlertSettings && (
-            <div className="max-w-lg mx-auto mt-8 p-6 bg-white rounded-2xl shadow-card-premium border border-gray-100">
-              <h4 className="font-semibold text-cisa-navy mb-2 text-lg">Alert Settings</h4>
-              <p className="text-sm text-gray-600 mb-4">
+            <div className="max-w-lg mx-auto mt-8 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-card-premium border border-gray-100 dark:border-gray-700">
+              <h4 className="font-semibold text-cisa-navy dark:text-blue-300 mb-2 text-lg">Alert Settings</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 Receive notifications when the score drops to Severe (≤2.0).
               </p>
               <div className="flex gap-2">
@@ -293,7 +294,7 @@ export default function Dashboard() {
                   placeholder="Optional: Webhook URL (Slack, etc.)"
                   value={webhookUrl}
                   onChange={(e) => setWebhookUrlState(e.target.value)}
-                  className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:border-cisa-navy focus:outline-none"
+                  className="flex-1 px-4 py-3 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-900 dark:text-white rounded-xl text-sm focus:border-cisa-navy focus:outline-none"
                 />
                 <button
                   onClick={handleWebhookSave}
@@ -333,7 +334,7 @@ export default function Dashboard() {
       {/* Actionable Recommendations - THE CORE VALUE */}
       {/* Now shows specific KEV items with due dates, not generic advice */}
       {data && (
-        <ActionableRecommendations kevItems={data.kev} />
+        <ActionableRecommendations kevItems={data.kev} icsAdvisories={data.icsAdvisories || []} />
       )}
 
       {/* Decorative Divider */}
@@ -390,21 +391,21 @@ export default function Dashboard() {
       <div className="govt-top-border"></div>
 
       {/* Live Feed Sources */}
-      <section className="py-8 px-4 bg-cisa-light">
+      <section className="py-8 px-4 bg-cisa-light dark:bg-gray-900">
         <div className="max-w-6xl mx-auto">
           <div className="card-premium-trump p-6 flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                <CheckCircle className="h-7 w-7 text-green-600" />
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
+                <CheckCircle className="h-7 w-7 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <span className="text-3xl font-bold text-cisa-navy">{data?.meta.sourcesOnline}/{data?.meta.sourcesTotal}</span>
-                <span className="text-gray-600 ml-2 text-lg">Sources Online</span>
+                <span className="text-3xl font-bold text-cisa-navy dark:text-blue-300">{data?.meta.sourcesOnline}/{data?.meta.sourcesTotal}</span>
+                <span className="text-gray-600 dark:text-gray-400 ml-2 text-lg">Sources Online</span>
               </div>
             </div>
-            <div className="text-gray-600 text-lg font-medium">{data?.meta.totalItems} threat items aggregated</div>
+            <div className="text-gray-600 dark:text-gray-400 text-lg font-medium">{data?.meta.totalItems} threat items aggregated</div>
             {data?.meta.errors && data.meta.errors.length > 0 && (
-              <details className="text-sm text-red-600">
+              <details className="text-sm text-red-600 dark:text-red-400">
                 <summary className="cursor-pointer font-medium">{data.meta.errors.length} feed error(s)</summary>
                 <ul className="mt-2 text-xs">{data.meta.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
               </details>
@@ -653,7 +654,7 @@ export default function Dashboard() {
         </div>
 
         {/* Bottom Tier - Light Gray */}
-        <div className="bg-slate-200 text-gray-700">
+        <div className="bg-slate-200 dark:bg-gray-900 text-gray-700 dark:text-gray-300">
           <div className="max-w-7xl mx-auto px-6 py-8">
             <div className="flex flex-col lg:flex-row items-start justify-between gap-8">
               {/* Government Logos */}
@@ -681,8 +682,8 @@ export default function Dashboard() {
               </div>
 
               {/* CAPRI-E Status Widget */}
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 min-w-[200px]">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Current Threat Level</p>
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700 min-w-[200px]">
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Current Threat Level</p>
                 <div className="flex items-center gap-3">
                   <div
                     className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg"
@@ -692,7 +693,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <p className="font-semibold" style={{ color: data?.score.color }}>{data?.score.label}</p>
-                    <p className="text-xs text-gray-500">{data?.meta.sourcesOnline}/{data?.meta.sourcesTotal} sources</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{data?.meta.sourcesOnline}/{data?.meta.sourcesTotal} sources</p>
                   </div>
                 </div>
               </div>
