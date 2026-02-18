@@ -204,9 +204,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen dark:bg-gray-950">
       {/* Hero Section - TrumpCard.gov Style */}
-      <section className="hero-bg-pattern relative py-24 px-4 overflow-hidden">
+      <section className="hero-bg-pattern dark:bg-gray-900 relative py-24 px-4 overflow-hidden">
         <div className="max-w-5xl mx-auto relative">
           {/* CISA Agency Identifier with Official Logo */}
           <div className="flex justify-center mb-10">
@@ -236,17 +236,21 @@ export default function Dashboard() {
           {/* Score Display - Centered and Enlarged */}
           <div className="flex flex-col items-center gap-6 mb-12">
             <div
-              className="w-40 h-40 rounded-full flex items-center justify-center text-white text-6xl font-bold shadow-hero"
+              className={`w-44 h-44 rounded-2xl flex items-center justify-center text-white text-6xl font-bold score-card-glass ${
+                (data?.score.score ?? 5) <= 2.0 ? 'score-glow-severe' :
+                (data?.score.score ?? 5) <= 3.0 ? 'score-glow-elevated' :
+                'score-glow-normal'
+              }`}
               style={{ backgroundColor: data?.score.color }}
             >
               {data?.score.score.toFixed(1)}
             </div>
             <div className="text-center">
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Current Threat Level</h2>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Current Threat Level</h2>
               <p className="text-2xl font-semibold" style={{ color: data?.score.color }}>
                 {data?.score.label}
               </p>
-              <p className="text-sm text-gray-500 flex items-center justify-center gap-2 mt-3">
+              <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center gap-2 mt-3">
                 <Clock className="h-4 w-4" />
                 Updated {lastRefresh ? getTimeSince(lastRefresh) : 'never'}
               </p>
@@ -410,26 +414,26 @@ export default function Dashboard() {
       </section>
 
       {/* Threat Feeds */}
-      <section className="py-12 px-4 bg-white">
+      <section className="py-12 px-4 bg-white dark:bg-gray-950">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-2 gap-8">
             {/* Energy-Relevant Threats */}
             <div className="card-premium-trump p-8">
-              <h3 className="text-2xl font-bold text-cisa-navy mb-6 flex items-center gap-3">
-                <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+              <h3 className="text-2xl font-bold text-cisa-navy dark:text-blue-300 mb-6 flex items-center gap-3">
+                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center">
                   <AlertTriangle className="h-6 w-6 text-red-600" />
                 </div>
                 Energy Sector Alerts
-                <span className="text-sm font-normal text-gray-500 ml-auto">({data?.threats.energyRelevant.length || 0})</span>
+                <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-auto">({data?.threats.energyRelevant.length || 0})</span>
               </h3>
               <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
                 {data?.threats.energyRelevant.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">No energy-specific threats detected</p>
                 ) : (
                   data?.threats.energyRelevant.map((item) => (
-                    <div key={item.id} className="p-4 border border-gray-100 rounded-xl hover:bg-cisa-light transition-colors">
+                    <div key={item.id} className="p-4 border border-gray-100 dark:border-gray-700 rounded-xl hover:bg-cisa-light dark:hover:bg-gray-800 transition-colors">
                       <a href={item.link} target="_blank" rel="noopener noreferrer"
-                        className="font-medium text-gray-900 hover:text-cisa-navy flex items-start gap-2 mb-2">
+                        className="font-medium text-gray-900 dark:text-gray-100 hover:text-cisa-navy dark:hover:text-blue-300 flex items-start gap-2 mb-2">
                         <span>{item.title.substring(0, 100)}{item.title.length > 100 ? '...' : ''}</span>
                         <ExternalLink className="h-4 w-4 flex-shrink-0 mt-1" />
                       </a>
@@ -449,18 +453,18 @@ export default function Dashboard() {
 
             {/* All Recent Threats */}
             <div className="card-premium-trump p-8">
-              <h3 className="text-2xl font-bold text-cisa-navy mb-6 flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <Shield className="h-6 w-6 text-cisa-navy" />
+              <h3 className="text-2xl font-bold text-cisa-navy dark:text-blue-300 mb-6 flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                  <Shield className="h-6 w-6 text-cisa-navy dark:text-blue-400" />
                 </div>
                 All Recent Threats
-                <span className="text-sm font-normal text-gray-500 ml-auto">({data?.threats.all.length || 0})</span>
+                <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-auto">({data?.threats.all.length || 0})</span>
               </h3>
               <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
                 {data?.threats.all.slice(0, 15).map((item) => (
-                  <div key={item.id} className="p-4 border border-gray-100 rounded-xl hover:bg-cisa-light transition-colors">
+                  <div key={item.id} className="p-4 border border-gray-100 dark:border-gray-700 rounded-xl hover:bg-cisa-light dark:hover:bg-gray-800 transition-colors">
                     <a href={item.link} target="_blank" rel="noopener noreferrer"
-                      className="font-medium text-gray-900 hover:text-cisa-navy flex items-start gap-2 mb-2">
+                      className="font-medium text-gray-900 dark:text-gray-100 hover:text-cisa-navy dark:hover:text-blue-300 flex items-start gap-2 mb-2">
                       <span>{item.title.substring(0, 100)}{item.title.length > 100 ? '...' : ''}</span>
                       <ExternalLink className="h-4 w-4 flex-shrink-0 mt-1" />
                     </a>
@@ -565,10 +569,10 @@ export default function Dashboard() {
       </section>
 
       {/* General Feedback Banner */}
-      <section className="py-8 px-4 bg-white">
+      <section className="py-8 px-4 bg-white dark:bg-gray-950">
         <div className="max-w-6xl mx-auto">
-          <div className="p-6 bg-blue-50 border border-blue-200 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-blue-800 font-medium text-center sm:text-left">
+          <div className="p-6 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-blue-800 dark:text-blue-300 font-medium text-center sm:text-left">
               Have any feedback? Want to change something?
             </p>
             <a
@@ -585,33 +589,33 @@ export default function Dashboard() {
       </section>
 
       {/* Score Scale Legend */}
-      <section className="py-12 px-4 bg-cisa-light">
+      <section className="py-12 px-4 bg-cisa-light dark:bg-gray-900">
         <div className="max-w-6xl mx-auto">
-          <h3 className="text-2xl font-bold text-cisa-navy mb-8 text-center">CAPRI Score Scale</h3>
+          <h3 className="text-2xl font-bold text-cisa-navy dark:text-blue-300 mb-8 text-center">CAPRI Score Scale</h3>
           <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-xl p-6 border-l-4 border-severity-severe shadow-sm">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border-l-4 border-severity-severe shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-full bg-severity-severe"></div>
                 <span className="text-xl font-bold text-severity-severe">1.0 - 2.0</span>
               </div>
-              <h4 className="font-semibold text-gray-900 mb-1">Severe</h4>
-              <p className="text-gray-600 text-sm">High threat activity. Immediate attention recommended.</p>
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-1">Severe</h4>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">High threat activity. Immediate attention recommended.</p>
             </div>
-            <div className="bg-white rounded-xl p-6 border-l-4 border-severity-elevated shadow-sm">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border-l-4 border-severity-elevated shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-full bg-severity-elevated"></div>
                 <span className="text-xl font-bold text-severity-elevated">2.1 - 3.0</span>
               </div>
-              <h4 className="font-semibold text-gray-900 mb-1">Elevated</h4>
-              <p className="text-gray-600 text-sm">Increased threat activity. Enhanced monitoring advised.</p>
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-1">Elevated</h4>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">Increased threat activity. Enhanced monitoring advised.</p>
             </div>
-            <div className="bg-white rounded-xl p-6 border-l-4 border-severity-normal shadow-sm">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border-l-4 border-severity-normal shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-full bg-severity-normal"></div>
                 <span className="text-xl font-bold text-severity-normal">3.1 - 5.0</span>
               </div>
-              <h4 className="font-semibold text-gray-900 mb-1">Normal</h4>
-              <p className="text-gray-600 text-sm">Baseline threat levels. Standard security posture.</p>
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-1">Normal</h4>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">Baseline threat levels. Standard security posture.</p>
             </div>
           </div>
         </div>
@@ -668,7 +672,7 @@ export default function Dashboard() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-x-12 gap-y-3 text-sm">
                 <a href="https://www.cisa.gov/about" className="hover:text-cisa-navy hover:underline">About CISA</a>
                 <a href="https://www.dhs.gov" className="hover:text-cisa-navy hover:underline">DHS.gov</a>
-                <a href="https://www.cisa.gov/foia" className="hover:text-cisa-navy hover:underline">FOIA Requests</a>
+                <a href="/cool-tools-town" className="hover:text-cisa-navy hover:underline" style={{ fontFamily: 'Comic Sans MS, cursive' }}>Cool Tools Town</a>
                 <a href="https://www.whitehouse.gov" className="hover:text-cisa-navy hover:underline">The White House</a>
                 <a href="https://www.cisa.gov/privacy-policy" className="hover:text-cisa-navy hover:underline">Privacy Policy</a>
                 <a href="https://www.usa.gov" className="hover:text-cisa-navy hover:underline">USA.gov</a>

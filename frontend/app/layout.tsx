@@ -1,6 +1,7 @@
 import './globals.css'
 import { Metadata } from 'next'
 import Image from 'next/image'
+import { DarkModeToggle } from '@/components/DarkModeToggle'
 
 export const metadata: Metadata = {
   title: 'CAPRI | Cyber Alert Prioritization & Readiness Index',
@@ -9,8 +10,22 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            (function() {
+              try {
+                var mode = localStorage.getItem('darkMode');
+                if (mode === 'true' || (!mode && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                  document.documentElement.classList.add('dark');
+                }
+              } catch(e) {}
+            })();
+          `
+        }} />
+      </head>
+      <body className="bg-white dark:bg-gray-950 transition-colors">
         {/* Government-style red-white-blue top border */}
         <div className="govt-top-border" />
 
@@ -33,9 +48,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <p className="text-sm text-blue-200 tracking-wide">Cyber Alert Prioritization & Readiness Index</p>
               </div>
             </div>
-            <div className="text-right hidden md:block">
-              <p className="text-xs text-blue-300 uppercase tracking-wider">Proposed for</p>
-              <p className="font-semibold text-white">CISA Shields Up</p>
+            <div className="flex items-center gap-6">
+              <DarkModeToggle />
+              <div className="text-right hidden md:block">
+                <p className="text-xs text-blue-300 uppercase tracking-wider">Proposed for</p>
+                <p className="font-semibold text-white">CISA Shields Up</p>
+              </div>
             </div>
           </div>
         </header>

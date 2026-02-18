@@ -98,6 +98,34 @@ function getWhyItMatters(description: string, vendor: string, product: string): 
   return `This vulnerability in ${vendor} ${product} is actively exploited in the wild. Patch immediately.`
 }
 
+// Federal OT Guidance from DOE CESER / CISA
+const federalGuidance = [
+  {
+    id: 'ceser-1',
+    title: 'Eliminate Default Credentials on OT Devices',
+    source: 'DOE CESER / CISA',
+    sourceUrl: 'https://www.cisa.gov/news-events/alerts/2026/02/10/poland-energy-sector-cyber-incident-highlights-ot-and-ics-security-gaps',
+    summary: 'Immediately change default passwords on all OT devices and enforce requirements for integrators and suppliers to change credentials before deployment. The Poland incident exploited default credentials to move laterally to HMIs and RTUs.',
+    context: 'Poland Energy Sector Incident (Dec 2025)',
+  },
+  {
+    id: 'ceser-2',
+    title: 'Verify Firmware Integrity on OT/ICS Devices',
+    source: 'DOE CESER / CISA',
+    sourceUrl: 'https://www.cisa.gov/news-events/alerts/2026/02/10/poland-energy-sector-cyber-incident-highlights-ot-and-ics-security-gaps',
+    summary: 'Review firmware update availability and enable firmware verification capabilities on all OT devices. Lack of firmware verification enabled permanent damage to operational technology devices in the Poland attack.',
+    context: 'Poland Energy Sector Incident (Dec 2025)',
+  },
+  {
+    id: 'ceser-3',
+    title: 'Develop OT Incident Response Plans for Device Loss',
+    source: 'DOE ETAC / CISA',
+    sourceUrl: 'https://www.cisa.gov/news-events/alerts/2026/02/10/poland-energy-sector-cyber-incident-highlights-ot-and-ics-security-gaps',
+    summary: 'Create and test incident response plans that account for completely inoperative OT devices. The wiper malware destroyed HMI data and corrupted firmware, causing loss of visibility and control between facilities and distribution operators.',
+    context: 'DOE Energy Threat Analysis Center Advisory',
+  },
+]
+
 export default function ActionableRecommendations({ kevItems }: ActionableRecommendationsProps) {
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -118,11 +146,59 @@ export default function ActionableRecommendations({ kevItems }: ActionableRecomm
     : sortedItems
 
   return (
-    <section className="py-8 px-4 bg-white">
+    <section className="py-8 px-4 bg-white dark:bg-gray-900">
       <div className="max-w-4xl mx-auto">
-        <h2 className="text-2xl font-bold text-cisa-navy mb-4">
+        <h2 className="text-2xl font-bold text-cisa-navy dark:text-blue-300 mb-4">
           Recommended Actions
         </h2>
+
+        {/* Federal OT Guidance - CESER/DOE */}
+        <div className="mb-8">
+          <h3 className="text-lg font-bold text-red-800 dark:text-red-400 mb-3 flex items-center gap-2">
+            <span className="px-2 py-0.5 bg-red-700 text-white text-xs font-bold rounded uppercase">Federal Guidance</span>
+            OT/ICS Security Priorities
+          </h3>
+          <div className="space-y-3">
+            {federalGuidance.map((item) => (
+              <div
+                key={item.id}
+                className="p-4 rounded-lg border-l-4 bg-red-50 border-red-600 dark:bg-red-950/30 dark:border-red-500"
+              >
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span className="px-2 py-0.5 bg-red-700 text-white text-xs font-bold rounded uppercase">
+                    {item.source}
+                  </span>
+                  <span className="font-bold text-gray-900 dark:text-gray-100">
+                    {item.title}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-2">
+                  {item.context}
+                </p>
+                <div className="mb-3 p-3 bg-white/50 dark:bg-black/20 rounded-lg">
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                    {item.summary}
+                  </p>
+                </div>
+                <a
+                  href={item.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm font-medium text-red-700 dark:text-red-400 hover:underline"
+                >
+                  → CISA Alert
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mb-4">
+          <h3 className="text-lg font-bold text-cisa-navy dark:text-blue-300 mb-3">
+            Known Exploited Vulnerabilities (KEV)
+          </h3>
+        </div>
 
         {/* Vendor Quick Check */}
         <div className="mb-6">
