@@ -55,6 +55,13 @@ interface ScoringWeight {
   rationale: string
 }
 
+interface WeeklyTrend {
+  week: string
+  threats: number
+  energyThreats: number
+  kevCount: number
+}
+
 interface ApiResponse {
   success: boolean
   score: {
@@ -72,6 +79,7 @@ interface ApiResponse {
     critical: ThreatItem[]
   }
   kev: KEVAction[]
+  trend: WeeklyTrend[]
   meta: {
     lastUpdated: string
     sourcesOnline: number
@@ -401,7 +409,9 @@ export default function Dashboard() {
       )}
 
       {/* Score Trend Chart */}
-      <ScoreTrend />
+      {data && (
+        <ScoreTrend trend={data.trend || []} currentScore={data.score.score} />
+      )}
 
       {/* Score Breakdown - How It's Calculated */}
       {data && (

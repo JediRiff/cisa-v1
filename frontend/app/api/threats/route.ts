@@ -1,11 +1,38 @@
 // CAPRI Threat Intelligence API Endpoint
 import { NextResponse } from 'next/server'
-import { fetchAllFeeds } from '@/lib/feeds'
+import { fetchAllFeeds, ThreatItem } from '@/lib/feeds'
 import { calculateEnergyScore } from '@/lib/scoring'
 import { analyzeThreatsWithAI, AIAnalysisResult } from '@/lib/ai-analysis'
-import { saveScoreToHistory, shouldSaveNewEntry } from '@/lib/redis'
 
 export const revalidate = 0 // No caching - always fetch fresh data
+
+// Calculate weekly threat activity for trend visualization
+// Returns threat counts per week for the last 4 weeks
+function calculateWeeklyTrend(items: ThreatItem[]): { week: string; threats: number; energyThreats: number; kevCount: number }[] {
+  const now = Date.now()
+  const weeks: { week: string; threats: number; energyThreats: number; kevCount: number }[] = []
+
+  for (let i = 3; i >= 0; i--) {
+    const weekStart = now - (i + 1) * 7 * 24 * 60 * 60 * 1000
+    const weekEnd = now - i * 7 * 24 * 60 * 60 * 1000
+
+    const weekItems = items.filter(item => {
+      const itemDate = new Date(item.pubDate).getTime()
+      return itemDate >= weekStart && itemDate < weekEnd
+    })
+
+    const weekLabel = new Date(weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+    weeks.push({
+      week: weekLabel,
+      threats: weekItems.length,
+      energyThreats: weekItems.filter(item => item.isEnergyRelevant).length,
+      kevCount: weekItems.filter(item => item.source === 'CISA KEV').length,
+    })
+  }
+
+  return weeks
+}
 
 // In-memory cache with 5-minute TTL
 let cachedResponse: { data: any; timestamp: number } | null = null
@@ -69,13 +96,6 @@ export async function GET() {
     // Calculate energy sector score (now uses AI severity scores)
     const scoreResult = calculateEnergyScore(feedResult.items)
 
-    // Save score to server-side history (for trend chart)
-    // Only save if enough time has passed since last entry
-    if (await shouldSaveNewEntry()) {
-      await saveScoreToHistory(scoreResult.score, scoreResult.label)
-      console.log(`Saved score to history: ${scoreResult.score} (${scoreResult.label})`)
-    }
-
     // Count alerts from the past 7 days
     const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
     const alertsThisWeek = feedResult.items.filter(item => {
@@ -130,6 +150,9 @@ export async function GET() {
       ransomwareUse: kev.knownRansomwareCampaignUse === 'Known'
     }))
 
+    // Calculate weekly trend for visualization
+    const weeklyTrend = calculateWeeklyTrend(feedResult.items)
+
     // Build response data
     const responseData = {
       success: true,
@@ -140,6 +163,7 @@ export async function GET() {
         critical: feedResult.items.filter(item => item.severity === 'critical').slice(0, 20),
       },
       kev: kevActions,
+      trend: weeklyTrend,
       meta: {
         lastUpdated: feedResult.lastUpdated,
         sourcesOnline: feedResult.sourcesOnline,
