@@ -5,10 +5,14 @@ import Link from 'next/link'
 
 interface ThreatData {
   score: { score: number; label: string; color: string; factors: any[] }
-  items: any[]
-  kevActions: any[]
-  sources: { name: string; status: string; itemCount: number }[]
   threats: { all: any[]; energyRelevant: any[] }
+  kev: any[]
+  meta: {
+    sourcesOnline: number
+    sourcesTotal: number
+    totalItems: number
+    errors: string[]
+  }
 }
 
 function RetroMarquee({ children, speed = 'normal' }: { children: React.ReactNode; speed?: string }) {
@@ -216,7 +220,7 @@ export default function CoolToolsTown() {
                         <br />
                         <span style={{ color: '#808080', fontSize: '11px' }}>(Your 56k modem is working hard)</span>
                       </div>
-                    ) : data ? (
+                    ) : data?.score ? (
                       <>
                         <div style={{
                           display: 'inline-block',
@@ -265,7 +269,7 @@ export default function CoolToolsTown() {
                     <RainbowHR />
 
                     {/* CISA Points */}
-                    {data && data.score.factors.length > 0 && (
+                    {data?.score?.factors && data.score.factors.length > 0 && (
                       <div style={{ textAlign: 'left', marginTop: '12px' }}>
                         <h2 style={{
                           fontSize: '18px',
@@ -335,7 +339,7 @@ export default function CoolToolsTown() {
                       lineHeight: '1.6',
                     }}>
                       <li>Cool Tools Town has a <span style={{ color: '#ff0000', fontWeight: 'bold' }}>new design</span>!</li>
-                      <li>Now tracking {data?.sources?.length || '??'} spy networks</li>
+                      <li>Now tracking {data?.meta?.sourcesOnline ?? '??'} spy networks</li>
                       <li>AI-powered threat brain installed</li>
                       <li>Y2K bug: still patching</li>
                     </ul>
@@ -390,8 +394,8 @@ export default function CoolToolsTown() {
                     </span>
                   </div>
 
-                  {/* Our Super Secret Spy Network */}
-                  {data && (
+                  {/* Feed Status */}
+                  {data?.meta && (
                     <div style={{ marginBottom: '12px' }}>
                       <h3 style={{
                         fontSize: '13px',
@@ -402,11 +406,17 @@ export default function CoolToolsTown() {
                         &#128373; Our Super Secret Spy Network
                       </h3>
                       <div style={{ fontSize: '10px', fontFamily: '"Courier New", monospace' }}>
-                        {data.sources.map((s: any, i: number) => (
-                          <div key={i} style={{ color: s.status === 'ok' ? '#00ff00' : '#ff0000', marginBottom: '2px' }}>
-                            {s.status === 'ok' ? '[ONLINE]' : '[DEAD]'} {s.name} ({s.itemCount})
+                        <div style={{ color: '#00ff00', marginBottom: '2px' }}>
+                          [ONLINE] {data.meta.sourcesOnline} of {data.meta.sourcesTotal} feeds active
+                        </div>
+                        <div style={{ color: '#00ffff', marginBottom: '2px' }}>
+                          [ITEMS] {data.meta.totalItems} threats collected
+                        </div>
+                        {data.meta.errors.length > 0 && (
+                          <div style={{ color: '#ff0000', marginBottom: '2px' }}>
+                            [DEAD] {data.meta.errors.length} feed(s) down
                           </div>
-                        ))}
+                        )}
                       </div>
                     </div>
                   )}
@@ -418,7 +428,7 @@ export default function CoolToolsTown() {
           <RainbowHR />
 
           {/* CISA Master Priorities */}
-          {data && data.kevActions && data.kevActions.length > 0 && (
+          {data?.kev && data.kev.length > 0 && (
             <div style={{ marginTop: '16px' }}>
               <h2 style={{
                 fontSize: '22px',
@@ -450,7 +460,7 @@ export default function CoolToolsTown() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.kevActions.slice(0, 8).map((kev: any, i: number) => (
+                  {data.kev.slice(0, 8).map((kev: any, i: number) => (
                     <tr key={i} style={{ background: i % 2 === 0 ? '#000033' : '#000044' }}>
                       <td style={{ border: '1px solid #333366', padding: '4px', color: '#00ffff' }}>{kev.cveId}</td>
                       <td style={{ border: '1px solid #333366', padding: '4px', color: '#00ff00' }}>{kev.vendor}</td>
@@ -472,7 +482,7 @@ export default function CoolToolsTown() {
           <RainbowHR />
 
           {/* Power Grid Panic Zone */}
-          {data && data.threats && (
+          {data?.threats && (
             <div style={{ marginTop: '16px' }}>
               <h2 style={{
                 fontSize: '20px',

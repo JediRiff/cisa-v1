@@ -1,6 +1,6 @@
 // CAPRI Threat Intelligence API Endpoint
 import { NextResponse } from 'next/server'
-import { fetchAllFeeds, fetchICSAdvisories, ThreatItem } from '@/lib/feeds'
+import { fetchAllFeeds } from '@/lib/feeds'
 import { calculateEnergyScore } from '@/lib/scoring'
 import { analyzeThreatsWithAI, AIAnalysisResult } from '@/lib/ai-analysis'
 
@@ -14,11 +14,8 @@ function parseAdvisoryUrl(notes: string): string {
 
 export async function GET() {
   try {
-    // Fetch all threat intelligence feeds + ICS advisories in parallel
-    const [feedResult, icsAdvisories] = await Promise.all([
-      fetchAllFeeds(),
-      fetchICSAdvisories()
-    ])
+    // Fetch all threat intelligence feeds
+    const feedResult = await fetchAllFeeds()
 
     // AI Analysis: Analyze energy-relevant items for severity scoring
     const energyItems = feedResult.items.filter(item => item.isEnergyRelevant)
@@ -122,8 +119,7 @@ export async function GET() {
         energyRelevant: feedResult.items.filter(item => item.isEnergyRelevant).slice(0, 20),
         critical: feedResult.items.filter(item => item.severity === 'critical').slice(0, 20),
       },
-      kev: kevActions, // Actionable KEV items for recommendations
-      icsAdvisories, // Live CISA ICS advisories for Federal OT Guidance
+      kev: kevActions,
       meta: {
         lastUpdated: feedResult.lastUpdated,
         sourcesOnline: feedResult.sourcesOnline,

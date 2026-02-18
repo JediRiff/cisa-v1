@@ -83,64 +83,9 @@ body {
   border: 1px solid rgba(0, 82, 136, 0.05);
 }
 
-:is(.dark) .card-premium-trump {
-  @apply bg-gray-800;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
 .card-premium-trump:hover {
   box-shadow: 0 12px 50px rgba(0, 82, 136, 0.15);
   transform: translateY(-4px);
-}
-
-:is(.dark) .card-premium-trump:hover {
-  box-shadow: 0 12px 50px rgba(0, 0, 0, 0.4);
-}
-
-/* Score card glow animations - subtle color glow + breathing pulse */
-.score-glow-severe {
-  animation: glow-severe 2s ease-in-out infinite, score-pulse 3s ease-in-out infinite;
-}
-
-.score-glow-elevated {
-  animation: glow-elevated 2.5s ease-in-out infinite, score-pulse 4s ease-in-out infinite;
-}
-
-.score-glow-normal {
-  animation: glow-normal 3s ease-in-out infinite, score-pulse 5s ease-in-out infinite;
-}
-
-@keyframes glow-severe {
-  0%, 100% {
-    box-shadow: 0 0 15px rgba(217, 37, 37, 0.3), 0 0 30px rgba(217, 37, 37, 0.15);
-  }
-  50% {
-    box-shadow: 0 0 20px rgba(217, 37, 37, 0.5), 0 0 40px rgba(217, 37, 37, 0.25);
-  }
-}
-
-@keyframes glow-elevated {
-  0%, 100% {
-    box-shadow: 0 0 15px rgba(245, 158, 11, 0.3), 0 0 30px rgba(245, 158, 11, 0.15);
-  }
-  50% {
-    box-shadow: 0 0 20px rgba(245, 158, 11, 0.5), 0 0 40px rgba(245, 158, 11, 0.25);
-  }
-}
-
-@keyframes glow-normal {
-  0%, 100% {
-    box-shadow: 0 0 15px rgba(22, 163, 74, 0.25), 0 0 30px rgba(22, 163, 74, 0.1);
-  }
-  50% {
-    box-shadow: 0 0 20px rgba(22, 163, 74, 0.4), 0 0 40px rgba(22, 163, 74, 0.2);
-  }
-}
-
-@keyframes score-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.02); }
 }
 
 /* TrumpCard-style accordion */
@@ -165,28 +110,6 @@ body {
   @apply px-6 pb-6 leading-relaxed;
   color: #374151;
   border-top: 1px solid #e5e7eb;
-}
-
-:is(.dark) .accordion-trump {
-  background: #1f2937;
-  border-color: #374151;
-}
-
-:is(.dark) .accordion-trigger-trump {
-  color: #93c5fd;
-}
-
-:is(.dark) .accordion-trigger-trump:hover {
-  background: #1e3a5f;
-}
-
-:is(.dark) .accordion-trigger-trump .arrow-icon {
-  color: #93c5fd;
-}
-
-:is(.dark) .accordion-content-trump {
-  color: #d1d5db;
-  border-top-color: #374151;
 }
 
 /* Legacy accordion styles */
@@ -232,7 +155,7 @@ body {
 
 @media print {
   /* Hide screen-only elements */
-  .print\\:hidden,
+  .print\:hidden,
   header,
   footer,
   .govt-top-border,
@@ -242,7 +165,7 @@ body {
   }
 
   /* Show print-only elements */
-  .print\\:block {
+  .print\:block {
     display: block !important;
   }
 

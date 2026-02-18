@@ -23,17 +23,8 @@ function formatAddedDate(dateStr: string): string {
   })
 }
 
-export interface ICSAdvisory {
-  title: string
-  link: string
-  pubDate: string
-  description: string
-  source: string
-}
-
 interface ActionableRecommendationsProps {
   kevItems: KEVAction[]
-  icsAdvisories?: ICSAdvisory[]
 }
 
 // Convert due date to relative time (e.g., "in 9 days" or "3 days ago")
@@ -135,7 +126,7 @@ const federalGuidance = [
   },
 ]
 
-export default function ActionableRecommendations({ kevItems, icsAdvisories = [] }: ActionableRecommendationsProps) {
+export default function ActionableRecommendations({ kevItems }: ActionableRecommendationsProps) {
   const [searchQuery, setSearchQuery] = useState('')
 
   // Sort: overdue first, then by due date (most urgent first)
@@ -155,15 +146,15 @@ export default function ActionableRecommendations({ kevItems, icsAdvisories = []
     : sortedItems
 
   return (
-    <section className="py-8 px-4 bg-white dark:bg-gray-900">
+    <section className="py-8 px-4 bg-white">
       <div className="max-w-4xl mx-auto">
-        <h2 className="text-2xl font-bold text-cisa-navy dark:text-blue-300 mb-4">
+        <h2 className="text-2xl font-bold text-cisa-navy mb-4">
           Recommended Actions
         </h2>
 
         {/* Federal OT Guidance - CESER/DOE */}
         <div className="mb-8">
-          <h3 className="text-lg font-bold text-red-800 dark:text-red-400 mb-3 flex items-center gap-2">
+          <h3 className="text-lg font-bold text-red-800 mb-3 flex items-center gap-2">
             <span className="px-2 py-0.5 bg-red-700 text-white text-xs font-bold rounded uppercase">Federal Guidance</span>
             OT/ICS Security Priorities
           </h3>
@@ -171,21 +162,21 @@ export default function ActionableRecommendations({ kevItems, icsAdvisories = []
             {federalGuidance.map((item) => (
               <div
                 key={item.id}
-                className="p-4 rounded-lg border-l-4 bg-red-50 border-red-600 dark:bg-red-950/30 dark:border-red-500"
+                className="p-4 rounded-lg border-l-4 bg-red-50 border-red-600"
               >
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <span className="px-2 py-0.5 bg-red-700 text-white text-xs font-bold rounded uppercase">
                     {item.source}
                   </span>
-                  <span className="font-bold text-gray-900 dark:text-gray-100">
+                  <span className="font-bold text-gray-900">
                     {item.title}
                   </span>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-2">
+                <p className="text-sm text-gray-500 font-medium mb-2">
                   {item.context}
                 </p>
-                <div className="mb-3 p-3 bg-white/50 dark:bg-black/20 rounded-lg">
-                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                <div className="mb-3 p-3 bg-white/50 rounded-lg">
+                  <p className="text-sm text-gray-700">
                     {item.summary}
                   </p>
                 </div>
@@ -193,7 +184,7 @@ export default function ActionableRecommendations({ kevItems, icsAdvisories = []
                   href={item.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm font-medium text-red-700 dark:text-red-400 hover:underline"
+                  className="inline-flex items-center gap-1 text-sm font-medium text-red-700 hover:underline"
                 >
                   → CISA Alert
                   <ExternalLink className="h-3 w-3" />
@@ -203,54 +194,8 @@ export default function ActionableRecommendations({ kevItems, icsAdvisories = []
           </div>
         </div>
 
-        {/* Live CISA ICS Advisories */}
-        {icsAdvisories.length > 0 && (
-          <div className="mb-8">
-            <h3 className="text-lg font-bold text-cisa-navy dark:text-blue-300 mb-3 flex items-center gap-2">
-              <span className="px-2 py-0.5 bg-blue-700 text-white text-xs font-bold rounded uppercase">Live</span>
-              CISA ICS Advisories
-            </h3>
-            <div className="space-y-3">
-              {icsAdvisories.map((advisory, i) => (
-                <div
-                  key={i}
-                  className="p-4 rounded-lg border-l-4 bg-blue-50 border-blue-600 dark:bg-blue-950/30 dark:border-blue-500"
-                >
-                  <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <span className="px-2 py-0.5 bg-blue-700 text-white text-xs font-bold rounded uppercase">
-                      {advisory.source}
-                    </span>
-                    <span className="font-bold text-gray-900 dark:text-gray-100">
-                      {advisory.title}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-2">
-                    Published {formatAddedDate(advisory.pubDate)}
-                  </p>
-                  {advisory.description && (
-                    <div className="mb-3 p-3 bg-white/50 dark:bg-black/20 rounded-lg">
-                      <p className="text-sm text-gray-700 dark:text-gray-300">
-                        {advisory.description}
-                      </p>
-                    </div>
-                  )}
-                  <a
-                    href={advisory.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-sm font-medium text-blue-700 dark:text-blue-400 hover:underline"
-                  >
-                    → View Advisory
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mb-4">
-          <h3 className="text-lg font-bold text-cisa-navy dark:text-blue-300 mb-3">
+        <div className="border-t border-gray-200 pt-6 mb-4">
+          <h3 className="text-lg font-bold text-cisa-navy mb-3">
             Known Exploited Vulnerabilities (KEV)
           </h3>
         </div>
