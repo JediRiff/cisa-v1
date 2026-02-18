@@ -1,10 +1,14 @@
 // Upstash Redis client for server-side score history
 import { Redis } from '@upstash/redis'
 
-// Initialize Redis client (uses UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN env vars)
+// Initialize Redis client
+// Supports both Vercel integration naming (KV_*) and standard Upstash naming (UPSTASH_*)
+const redisUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || ''
+const redisToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || ''
+
 export const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || '',
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+  url: redisUrl,
+  token: redisToken,
 })
 
 export interface ScoreSnapshot {
@@ -16,9 +20,12 @@ export interface ScoreSnapshot {
 const HISTORY_KEY = 'capri:score-history'
 const MAX_ENTRIES = 1000 // Keep ~30 days of hourly data
 
+// Check if Redis is configured
+const isRedisConfigured = () => !!(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL)
+
 // Save a score snapshot (called when fresh data is fetched)
 export async function saveScoreToHistory(score: number, label: string): Promise<void> {
-  if (!process.env.UPSTASH_REDIS_REST_URL) {
+  if (!isRedisConfigured()) {
     console.log('Redis not configured - skipping history save')
     return
   }
@@ -40,7 +47,7 @@ export async function saveScoreToHistory(score: number, label: string): Promise<
 
 // Get score history (most recent first, then reversed for chart display)
 export async function getScoreHistory(limit: number = 720): Promise<ScoreSnapshot[]> {
-  if (!process.env.UPSTASH_REDIS_REST_URL) {
+  if (!isRedisConfigured()) {
     console.log('Redis not configured - returning empty history')
     return []
   }
@@ -65,7 +72,7 @@ export async function getScoreHistory(limit: number = 720): Promise<ScoreSnapsho
 
 // Get the most recent score
 export async function getLatestScore(): Promise<ScoreSnapshot | null> {
-  if (!process.env.UPSTASH_REDIS_REST_URL) {
+  if (!isRedisConfigured()) {
     return null
   }
 
