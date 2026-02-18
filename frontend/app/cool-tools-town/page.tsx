@@ -136,7 +136,7 @@ export default function CoolToolsTown() {
             <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#ffffff', fontFamily: 'Impact, sans-serif' }}>
               Cool Tools Town
             </span>
-            <span style={{ color: '#ccccff', fontSize: '11px' }}>- A CyberAlley Production</span>
+            <span style={{ color: '#ccccff', fontSize: '11px' }}>- Part of the CISA Cool Tools Town</span>
           </div>
           <div style={{ display: 'flex', gap: '12px', fontSize: '11px' }}>
             <Link href="/" style={{ color: '#ffff00', textDecoration: 'underline' }}>Back to Reality</Link>
@@ -608,7 +608,7 @@ export default function CoolToolsTown() {
           {/* Footer */}
           <div style={{ textAlign: 'center', padding: '16px 0', fontSize: '10px', fontFamily: 'Arial, sans-serif' }}>
             <p style={{ color: '#808080' }}>
-              &#169; 2026 Cool Tools Town | A CyberAlley Neighborhood Production
+              &#169; 2026 Cool Tools Town | Part of CISA Cool Tools Town
             </p>
             <p style={{ color: '#666666', marginTop: '4px' }}>
               Webmaster: <a href="mailto:CISA_h4x0r_2026@aol.com" style={{ color: '#0000ff' }}>CISA_h4x0r_2026@aol.com</a>

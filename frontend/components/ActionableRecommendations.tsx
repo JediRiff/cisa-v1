@@ -146,15 +146,15 @@ export default function ActionableRecommendations({ kevItems }: ActionableRecomm
     : sortedItems
 
   return (
-    <section className="py-8 px-4 bg-white">
+    <section className="py-8 px-4 bg-white dark:bg-slate-900">
       <div className="max-w-4xl mx-auto">
-        <h2 className="text-2xl font-bold text-cisa-navy mb-4">
+        <h2 className="text-2xl font-bold text-cisa-navy dark:text-blue-400 mb-4">
           Recommended Actions
         </h2>
 
         {/* Federal OT Guidance - CESER/DOE */}
         <div className="mb-8">
-          <h3 className="text-lg font-bold text-red-800 mb-3 flex items-center gap-2">
+          <h3 className="text-lg font-bold text-red-800 dark:text-red-400 mb-3 flex items-center gap-2">
             <span className="px-2 py-0.5 bg-red-700 text-white text-xs font-bold rounded uppercase">Federal Guidance</span>
             OT/ICS Security Priorities
           </h3>
@@ -162,21 +162,21 @@ export default function ActionableRecommendations({ kevItems }: ActionableRecomm
             {federalGuidance.map((item) => (
               <div
                 key={item.id}
-                className="p-4 rounded-lg border-l-4 bg-red-50 border-red-600"
+                className="p-4 rounded-lg border-l-4 bg-red-50 dark:bg-red-900/20 border-red-600"
               >
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <span className="px-2 py-0.5 bg-red-700 text-white text-xs font-bold rounded uppercase">
                     {item.source}
                   </span>
-                  <span className="font-bold text-gray-900">
+                  <span className="font-bold text-gray-900 dark:text-gray-100">
                     {item.title}
                   </span>
                 </div>
-                <p className="text-sm text-gray-500 font-medium mb-2">
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-2">
                   {item.context}
                 </p>
-                <div className="mb-3 p-3 bg-white/50 rounded-lg">
-                  <p className="text-sm text-gray-700">
+                <div className="mb-3 p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
                     {item.summary}
                   </p>
                 </div>
@@ -184,7 +184,7 @@ export default function ActionableRecommendations({ kevItems }: ActionableRecomm
                   href={item.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm font-medium text-red-700 hover:underline"
+                  className="inline-flex items-center gap-1 text-sm font-medium text-red-700 dark:text-red-400 hover:underline"
                 >
                   → CISA Alert
                   <ExternalLink className="h-3 w-3" />
@@ -194,8 +194,8 @@ export default function ActionableRecommendations({ kevItems }: ActionableRecomm
           </div>
         </div>
 
-        <div className="border-t border-gray-200 pt-6 mb-4">
-          <h3 className="text-lg font-bold text-cisa-navy mb-3">
+        <div className="border-t border-gray-200 dark:border-slate-700 pt-6 mb-4">
+          <h3 className="text-lg font-bold text-cisa-navy dark:text-blue-400 mb-3">
             Known Exploited Vulnerabilities (KEV)
           </h3>
         </div>
@@ -209,7 +209,7 @@ export default function ActionableRecommendations({ kevItems }: ActionableRecomm
               placeholder="Search vendor or product (e.g., Fortinet, Cisco)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:border-cisa-navy focus:outline-none"
+              className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-xl text-sm focus:border-cisa-navy dark:focus:border-blue-500 focus:outline-none"
             />
           </div>
           {searchQuery.trim() && (
@@ -224,7 +224,7 @@ export default function ActionableRecommendations({ kevItems }: ActionableRecomm
         </div>
 
         {kevItems.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No active KEV items requiring action.</p>
+          <p className="text-gray-500 dark:text-gray-400 text-center py-8">No active KEV items requiring action.</p>
         ) : (
           <div className="space-y-4">
             {filteredItems.slice(0, 5).map((item) => {
@@ -235,8 +235,8 @@ export default function ActionableRecommendations({ kevItems }: ActionableRecomm
                   key={item.cveId}
                   className={`p-4 rounded-lg border-l-4 ${
                     item.isOverdue
-                      ? 'bg-red-50 border-red-600'
-                      : 'bg-cisa-light border-cisa-navy'
+                      ? 'bg-red-50 dark:bg-red-900/20 border-red-600'
+                      : 'bg-cisa-light dark:bg-slate-800 border-cisa-navy dark:border-blue-500'
                   }`}
                 >
                   {/* Header: Badges + Product + CVE */}
@@ -251,21 +251,21 @@ export default function ActionableRecommendations({ kevItems }: ActionableRecomm
                         Ransomware
                       </span>
                     )}
-                    <span className="font-bold text-gray-900">
+                    <span className="font-bold text-gray-900 dark:text-gray-100">
                       {item.vendor} {item.product}
                     </span>
-                    <span className="text-gray-500 text-sm">— {item.cveId}</span>
+                    <span className="text-gray-500 dark:text-gray-400 text-sm">— {item.cveId}</span>
                   </div>
 
                   {/* Due Date - Relative Time */}
-                  <p className={`text-sm font-semibold mb-2 ${relativeTime.isOverdue ? 'text-red-600' : 'text-cisa-navy'}`}>
-                    <span className="text-gray-500 font-normal">Added to KEV:</span> {formatAddedDate(item.dateAdded)} · {relativeTime.text}
+                  <p className={`text-sm font-semibold mb-2 ${relativeTime.isOverdue ? 'text-red-600 dark:text-red-400' : 'text-cisa-navy dark:text-blue-400'}`}>
+                    <span className="text-gray-500 dark:text-gray-400 font-normal">Added to KEV:</span> {formatAddedDate(item.dateAdded)} · {relativeTime.text}
                   </p>
 
                   {/* Why It Matters - Plain English */}
-                  <div className="mb-3 p-3 bg-white/50 rounded-lg">
-                    <p className="text-sm text-gray-700">
-                      <span className="font-semibold text-gray-800">Why it matters:</span>{' '}
+                  <div className="mb-3 p-3 bg-white/50 dark:bg-slate-700/50 rounded-lg">
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      <span className="font-semibold text-gray-800 dark:text-gray-200">Why it matters:</span>{' '}
                       {getWhyItMatters(item.description, item.vendor, item.product)}
                     </p>
                   </div>
@@ -277,7 +277,7 @@ export default function ActionableRecommendations({ kevItems }: ActionableRecomm
                         href={item.advisoryUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-sm font-medium text-cisa-navy hover:underline"
+                        className="inline-flex items-center gap-1 text-sm font-medium text-cisa-navy dark:text-blue-400 hover:underline"
                       >
                         → Vendor Advisory
                         <ExternalLink className="h-3 w-3" />
@@ -287,7 +287,7 @@ export default function ActionableRecommendations({ kevItems }: ActionableRecomm
                       href={item.nvdUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:underline"
+                      className="inline-flex items-center gap-1 text-sm font-medium text-gray-600 dark:text-gray-400 hover:underline"
                     >
                       NVD Details
                       <ExternalLink className="h-3 w-3" />
@@ -300,14 +300,14 @@ export default function ActionableRecommendations({ kevItems }: ActionableRecomm
         )}
 
         {/* Resources Footer */}
-        <div className="mt-6 pt-4 border-t border-gray-200">
+        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-slate-700">
           <div className="flex flex-wrap items-center gap-4 text-sm">
-            <span className="text-gray-500">Resources:</span>
+            <span className="text-gray-500 dark:text-gray-400">Resources:</span>
             <a
               href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-cisa-navy hover:underline font-medium"
+              className="inline-flex items-center gap-1 text-cisa-navy dark:text-blue-400 hover:underline font-medium"
             >
               Full KEV Catalog
               <ExternalLink className="h-3 w-3" />
@@ -316,7 +316,7 @@ export default function ActionableRecommendations({ kevItems }: ActionableRecomm
               href="https://www.eisac.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-cisa-navy hover:underline font-medium"
+              className="inline-flex items-center gap-1 text-cisa-navy dark:text-blue-400 hover:underline font-medium"
             >
               E-ISAC Portal
               <ExternalLink className="h-3 w-3" />
@@ -325,7 +325,7 @@ export default function ActionableRecommendations({ kevItems }: ActionableRecomm
               href="https://www.nerc.com/pa/Stand/Pages/ReliabilityStandards.aspx"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-cisa-navy hover:underline font-medium"
+              className="inline-flex items-center gap-1 text-cisa-navy dark:text-blue-400 hover:underline font-medium"
             >
               NERC Standards
               <ExternalLink className="h-3 w-3" />
