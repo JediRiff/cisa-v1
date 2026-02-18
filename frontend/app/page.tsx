@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import { AlertTriangle, Shield, RefreshCw, ExternalLink, Clock, CheckCircle, XCircle, Bell, BellOff, ChevronDown, MessageSquare } from 'lucide-react'
+import { AlertTriangle, Shield, RefreshCw, ExternalLink, Clock, CheckCircle, XCircle, Bell, BellOff, ChevronDown, MessageSquare, Sparkles, Info } from 'lucide-react'
 import { saveScore } from '@/lib/history'
 import { checkAndTriggerAlerts, requestNotificationPermission, getNotificationPermission, setWebhookUrl, getWebhookUrl } from '@/lib/alerts'
 import ActionableRecommendations, { type KEVAction } from '@/components/ActionableRecommendations'
 import ScoreBreakdown from '@/components/ScoreBreakdown'
 import ScoringMethodology from '@/components/ScoringMethodology'
 import KeyMetrics from '@/components/KeyMetrics'
+import SkeletonLoader from '@/components/SkeletonLoader'
+import ScoreTrend from '@/components/ScoreTrend'
 
 interface ThreatItem {
   id: string
@@ -20,6 +22,14 @@ interface ThreatItem {
   sourceType: 'government' | 'vendor' | 'energy'
   severity: 'critical' | 'high' | 'medium' | 'low' | 'unknown'
   isEnergyRelevant: boolean
+  // AI Analysis fields
+  aiSeverityScore?: number
+  aiThreatType?: 'apt' | 'ransomware' | 'vulnerability' | 'supply-chain' | 'other'
+  aiUrgency?: 'active' | 'imminent' | 'emerging' | 'historical'
+  aiAffectedVendors?: string[]
+  aiAffectedSystems?: string[]
+  aiAffectedProtocols?: string[]
+  aiRationale?: string
 }
 
 interface FactorItem {
@@ -78,6 +88,11 @@ interface ApiResponse {
   }
 }
 
+type ThreatFilter = 'all' | 'energy' | 'critical' | 'nation-state' | 'ics-ot'
+
+const NATION_STATE_KEYWORDS = ['volt typhoon', 'sandworm', 'xenotime', 'chernovite', 'kamacite', 'apt28', 'apt29', 'lazarus', 'kimsuky', 'china', 'russia', 'iran', 'north korea', 'dprk']
+const ICS_KEYWORDS = ['scada', 'ics', 'plc', 'hmi', 'rtu', 'dcs', 'modbus', 'dnp3', 'iec 61850', 'opc', 'industrial control', 'operational technology']
+
 export default function Dashboard() {
   const [data, setData] = useState<ApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -87,6 +102,7 @@ export default function Dashboard() {
   const [webhookUrl, setWebhookUrlState] = useState('')
   const [showAlertSettings, setShowAlertSettings] = useState(false)
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null)
+  const [activeFilter, setActiveFilter] = useState<ThreatFilter>('all')
 
   const fetchData = async () => {
     setLoading(true)
@@ -166,27 +182,98 @@ export default function Dashboard() {
            source === 'CISA Advisories'
   }
 
+  const getThreatTypeStyle = (type: string) => {
+    const styles: Record<string, string> = {
+      apt: 'bg-purple-600 text-white',
+      ransomware: 'bg-red-600 text-white',
+      vulnerability: 'bg-orange-500 text-white',
+      'supply-chain': 'bg-pink-600 text-white',
+      other: 'bg-gray-500 text-white',
+    }
+    return styles[type] || 'bg-gray-500 text-white'
+  }
+
+  const getThreatTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      apt: 'APT',
+      ransomware: 'Ransomware',
+      vulnerability: 'Vulnerability',
+      'supply-chain': 'Supply Chain',
+      other: 'Other',
+    }
+    return labels[type] || type
+  }
+
+  const getUrgencyStyle = (urgency: string) => {
+    const styles: Record<string, string> = {
+      active: 'bg-red-100 text-red-700 border border-red-300',
+      imminent: 'bg-amber-100 text-amber-700 border border-amber-300',
+      emerging: 'bg-blue-100 text-blue-700 border border-blue-300',
+      historical: 'bg-gray-100 text-gray-600 border border-gray-300',
+    }
+    return styles[urgency] || 'bg-gray-100 text-gray-600'
+  }
+
+  const getUrgencyLabel = (urgency: string) => {
+    const labels: Record<string, string> = {
+      active: 'Active',
+      imminent: 'Imminent',
+      emerging: 'Emerging',
+      historical: 'Historical',
+    }
+    return labels[urgency] || urgency
+  }
+
   const toggleFaq = (id: string) => {
     setExpandedFaq(expandedFaq === id ? null : id)
   }
 
+  // Filter threats based on active filter
+  const filterThreats = (items: ThreatItem[]): ThreatItem[] => {
+    if (!items) return []
+    switch (activeFilter) {
+      case 'energy':
+        return items.filter(item => item.isEnergyRelevant)
+      case 'critical':
+        return items.filter(item => item.severity === 'critical')
+      case 'nation-state':
+        return items.filter(item => {
+          const text = (item.title + ' ' + item.description).toLowerCase()
+          return NATION_STATE_KEYWORDS.some(kw => text.includes(kw)) || item.aiThreatType === 'apt'
+        })
+      case 'ics-ot':
+        return items.filter(item => {
+          const text = (item.title + ' ' + item.description).toLowerCase()
+          return ICS_KEYWORDS.some(kw => text.includes(kw))
+        })
+      default:
+        return items
+    }
+  }
+
+  // Get filter counts
+  const getFilterCounts = () => {
+    if (!data?.threats.all) return { all: 0, energy: 0, critical: 0, nationState: 0, icsOt: 0 }
+    const items = data.threats.all
+    return {
+      all: items.length,
+      energy: items.filter(item => item.isEnergyRelevant).length,
+      critical: items.filter(item => item.severity === 'critical').length,
+      nationState: items.filter(item => {
+        const text = (item.title + ' ' + item.description).toLowerCase()
+        return NATION_STATE_KEYWORDS.some(kw => text.includes(kw)) || item.aiThreatType === 'apt'
+      }).length,
+      icsOt: items.filter(item => {
+        const text = (item.title + ' ' + item.description).toLowerCase()
+        return ICS_KEYWORDS.some(kw => text.includes(kw))
+      }).length
+    }
+  }
+
+  const filterCounts = getFilterCounts()
+
   if (loading && !data) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Image
-            src="/cisa-logo.svg"
-            alt="CISA"
-            width={300}
-            height={60}
-            className="h-14 w-auto mx-auto mb-6"
-          />
-          <p className="text-2xl font-bold text-cisa-navy mb-2">CAPRI</p>
-          <p className="text-lg text-gray-600">Critical Infrastructure Alert Prioritization Index</p>
-          <RefreshCw className="h-8 w-8 animate-spin text-cisa-navy mx-auto mt-4" />
-        </div>
-      </div>
-    )
+    return <SkeletonLoader />
   }
 
   if (error && !data) {
@@ -236,7 +323,7 @@ export default function Dashboard() {
           {/* Score Display - Static colored square */}
           <div className="flex flex-col items-center gap-6 mb-12">
             <div
-              className="w-44 h-44 rounded-2xl flex items-center justify-center text-white text-6xl font-bold"
+              className="w-32 h-32 sm:w-44 sm:h-44 rounded-2xl flex items-center justify-center text-white text-5xl sm:text-6xl font-bold"
               style={{ backgroundColor: data?.score.color }}
             >
               {data?.score.score.toFixed(1)}
@@ -257,39 +344,39 @@ export default function Dashboard() {
           <div className="flex flex-wrap justify-center gap-4">
             <button
               onClick={() => notificationStatus === 'granted' ? setShowAlertSettings(!showAlertSettings) : handleEnableAlerts()}
-              className={`flex items-center gap-2 px-8 py-4 rounded-xl font-semibold text-lg transition-all shadow-md hover:shadow-lg ${
+              className={`flex items-center gap-2 px-6 sm:px-8 py-4 rounded-xl font-semibold text-base sm:text-lg transition-all shadow-md hover:shadow-lg min-h-[48px] ${
                 notificationStatus === 'granted'
                   ? 'bg-green-600 text-white hover:bg-green-700'
                   : 'bg-white text-cisa-navy border-2 border-cisa-navy hover:bg-cisa-light'
               }`}
             >
-              {notificationStatus === 'granted' ? <Bell className="h-6 w-6" /> : <BellOff className="h-6 w-6" />}
+              {notificationStatus === 'granted' ? <Bell className="h-5 w-5 sm:h-6 sm:w-6" /> : <BellOff className="h-5 w-5 sm:h-6 sm:w-6" />}
               {notificationStatus === 'granted' ? 'Alerts Enabled' : 'Enable Alerts'}
             </button>
             <button
               onClick={fetchData}
               disabled={loading}
-              className="flex items-center gap-2 px-8 py-4 bg-cisa-navy text-white rounded-xl font-semibold text-lg hover:bg-cisa-navy-dark transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+              className="flex items-center gap-2 px-6 sm:px-8 py-4 bg-cisa-navy text-white rounded-xl font-semibold text-base sm:text-lg hover:bg-cisa-navy-dark transition-all shadow-md hover:shadow-lg disabled:opacity-50 min-h-[48px]"
             >
-              <RefreshCw className={`h-6 w-6 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-5 w-5 sm:h-6 sm:w-6 ${loading ? 'animate-spin' : ''}`} />
               Refresh Data
             </button>
           </div>
 
           {/* Alert Settings Panel */}
           {showAlertSettings && (
-            <div className="max-w-lg mx-auto mt-8 p-6 bg-white rounded-2xl shadow-card-premium border border-gray-100">
+            <div className="max-w-lg mx-auto mt-8 p-4 sm:p-6 bg-white rounded-2xl shadow-card-premium border border-gray-100">
               <h4 className="font-semibold text-cisa-navy mb-2 text-lg">Alert Settings</h4>
               <p className="text-sm text-gray-600 mb-4">
                 Receive notifications when the score drops to Severe (≤2.0).
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="url"
                   placeholder="Optional: Webhook URL (Slack, etc.)"
                   value={webhookUrl}
                   onChange={(e) => setWebhookUrlState(e.target.value)}
-                  className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:border-cisa-navy focus:outline-none"
+                  className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:border-cisa-navy focus:outline-none min-h-[48px]"
                 />
                 <button
                   onClick={handleWebhookSave}
@@ -312,6 +399,9 @@ export default function Dashboard() {
           last24h={data.meta.last24h || { kev: 0, nationState: 0, ics: 0, total: 0 }}
         />
       )}
+
+      {/* Score Trend Chart */}
+      <ScoreTrend />
 
       {/* Score Breakdown - How It's Calculated */}
       {data && (
@@ -411,6 +501,34 @@ export default function Dashboard() {
       {/* Threat Feeds */}
       <section className="py-12 px-4 bg-white">
         <div className="max-w-6xl mx-auto">
+          {/* Filter Tabs */}
+          <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
+            {[
+              { id: 'all' as ThreatFilter, label: 'All', count: filterCounts.all },
+              { id: 'energy' as ThreatFilter, label: 'Energy', count: filterCounts.energy },
+              { id: 'critical' as ThreatFilter, label: 'Critical', count: filterCounts.critical },
+              { id: 'nation-state' as ThreatFilter, label: 'Nation-State', count: filterCounts.nationState },
+              { id: 'ics-ot' as ThreatFilter, label: 'ICS/OT', count: filterCounts.icsOt },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveFilter(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors min-h-[44px] ${
+                  activeFilter === tab.id
+                    ? 'bg-cisa-navy text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {tab.label}
+                <span className={`px-2 py-0.5 rounded-full text-xs ${
+                  activeFilter === tab.id ? 'bg-white/20' : 'bg-gray-200'
+                }`}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
           <div className="grid md:grid-cols-2 gap-8">
             {/* Energy-Relevant Threats */}
             <div className="card-premium-trump p-8">
@@ -419,19 +537,48 @@ export default function Dashboard() {
                   <AlertTriangle className="h-6 w-6 text-red-600" />
                 </div>
                 Energy Sector Alerts
-                <span className="text-sm font-normal text-gray-500 ml-auto">({data?.threats.energyRelevant.length || 0})</span>
+                <span className="text-sm font-normal text-gray-500 ml-auto">({filterThreats(data?.threats.energyRelevant || []).length})</span>
               </h3>
               <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-                {data?.threats.energyRelevant.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">No energy-specific threats detected</p>
+                {filterThreats(data?.threats.energyRelevant || []).length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No threats matching filter</p>
                 ) : (
-                  data?.threats.energyRelevant.map((item) => (
+                  filterThreats(data?.threats.energyRelevant || []).map((item) => (
                     <div key={item.id} className="p-4 border border-gray-100 rounded-xl hover:bg-cisa-light transition-colors">
                       <a href={item.link} target="_blank" rel="noopener noreferrer"
                         className="font-medium text-gray-900 hover:text-cisa-navy flex items-start gap-2 mb-2">
-                        <span>{item.title.substring(0, 100)}{item.title.length > 100 ? '...' : ''}</span>
+                        {item.aiSeverityScore && (
+                          <span title="AI Analyzed"><Sparkles className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" /></span>
+                        )}
+                        <span className="sm:line-clamp-none">{item.title}</span>
                         <ExternalLink className="h-4 w-4 flex-shrink-0 mt-1" />
                       </a>
+                      {/* AI Analysis Badges */}
+                      {item.aiThreatType && (
+                        <div className="flex items-center gap-2 flex-wrap mb-2">
+                          <span className={'text-xs px-2 py-0.5 rounded font-medium ' + getThreatTypeStyle(item.aiThreatType)}>
+                            {getThreatTypeLabel(item.aiThreatType)}
+                          </span>
+                          {item.aiUrgency && (
+                            <span className={'text-xs px-2 py-0.5 rounded font-medium ' + getUrgencyStyle(item.aiUrgency)}>
+                              {getUrgencyLabel(item.aiUrgency)}
+                            </span>
+                          )}
+                          {item.aiAffectedVendors?.slice(0, 3).map((vendor, i) => (
+                            <span key={i} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">{vendor}</span>
+                          ))}
+                          {item.aiAffectedSystems?.slice(0, 2).map((system, i) => (
+                            <span key={i} className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded">{system}</span>
+                          ))}
+                        </div>
+                      )}
+                      {/* AI Rationale */}
+                      {item.aiRationale && (
+                        <p className="text-xs text-gray-500 italic mb-2 flex items-start gap-1">
+                          <Info className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                          {item.aiRationale}
+                        </p>
+                      )}
                       <div className="flex items-center gap-2 flex-wrap">
                         {isCISASource(item.source) && (
                           <span className="px-1.5 py-0.5 text-xs font-semibold bg-blue-600 text-white rounded">CISA</span>
@@ -453,16 +600,37 @@ export default function Dashboard() {
                   <Shield className="h-6 w-6 text-cisa-navy" />
                 </div>
                 All Recent Threats
-                <span className="text-sm font-normal text-gray-500 ml-auto">({data?.threats.all.length || 0})</span>
+                <span className="text-sm font-normal text-gray-500 ml-auto">({filterThreats(data?.threats.all || []).length})</span>
               </h3>
               <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-                {data?.threats.all.slice(0, 15).map((item) => (
+                {filterThreats(data?.threats.all || []).length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No threats matching filter</p>
+                ) : filterThreats(data?.threats.all || []).slice(0, 15).map((item) => (
                   <div key={item.id} className="p-4 border border-gray-100 rounded-xl hover:bg-cisa-light transition-colors">
                     <a href={item.link} target="_blank" rel="noopener noreferrer"
                       className="font-medium text-gray-900 hover:text-cisa-navy flex items-start gap-2 mb-2">
-                      <span>{item.title.substring(0, 100)}{item.title.length > 100 ? '...' : ''}</span>
+                      {item.aiSeverityScore && (
+                        <span title="AI Analyzed"><Sparkles className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" /></span>
+                      )}
+                      <span className="sm:line-clamp-none">{item.title}</span>
                       <ExternalLink className="h-4 w-4 flex-shrink-0 mt-1" />
                     </a>
+                    {/* AI Analysis Badges */}
+                    {item.aiThreatType && (
+                      <div className="flex items-center gap-2 flex-wrap mb-2">
+                        <span className={'text-xs px-2 py-0.5 rounded font-medium ' + getThreatTypeStyle(item.aiThreatType)}>
+                          {getThreatTypeLabel(item.aiThreatType)}
+                        </span>
+                        {item.aiUrgency && (
+                          <span className={'text-xs px-2 py-0.5 rounded font-medium ' + getUrgencyStyle(item.aiUrgency)}>
+                            {getUrgencyLabel(item.aiUrgency)}
+                          </span>
+                        )}
+                        {item.aiAffectedVendors?.slice(0, 2).map((vendor, i) => (
+                          <span key={i} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">{vendor}</span>
+                        ))}
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 flex-wrap">
                       {isCISASource(item.source) && (
                         <span className="px-1.5 py-0.5 text-xs font-semibold bg-blue-600 text-white rounded">CISA</span>

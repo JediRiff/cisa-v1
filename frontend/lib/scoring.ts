@@ -96,6 +96,16 @@ const ICS_INDICATORS = [
   'industrial control', 'operational technology'
 ]
 
+// Temporal decay: newer threats weigh more than older ones
+function getTemporalDecay(pubDate: string): number {
+  const ageMs = Date.now() - new Date(pubDate).getTime()
+  const ageDays = ageMs / (1000 * 60 * 60 * 24)
+  if (ageDays <= 3) return 1.0    // 0-3 days: full weight
+  if (ageDays <= 7) return 0.75   // 4-7 days: 75%
+  if (ageDays <= 14) return 0.5   // 8-14 days: 50%
+  return 0.25                      // 15-30 days: 25%
+}
+
 export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
   let score = 5.0 // Start at Normal
   const factors: ScoreFactor[] = []
@@ -121,13 +131,17 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
     return matches
   })
   if (nationStateThreats.length > 0) {
-    const impact = Math.min(nationStateThreats.length * 0.4, 0.8)
+    // Apply temporal decay: newer threats weigh more
+    const decayedImpact = nationStateThreats.reduce((sum, item) => {
+      return sum + (0.4 * getTemporalDecay(item.pubDate))
+    }, 0)
+    const impact = Math.min(decayedImpact, 0.8)
     score -= impact
     factors.push({
       name: 'Nation-State Activity',
       impact: -impact,
       count: nationStateThreats.length,
-      description: 'Reports of nation-state actors (Volt Typhoon, Sandworm, etc.)',
+      description: 'Reports of nation-state actors (Volt Typhoon, Sandworm, etc.) — time-weighted',
       weight: SCORING_WEIGHTS.nationState.perItem,
       maxImpact: SCORING_WEIGHTS.nationState.maxImpact,
       items: nationStateThreats.slice(0, 10).map(item => ({
@@ -148,13 +162,17 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
     return matches
   })
   if (recentKEVs.length > 0) {
-    const impact = Math.min(recentKEVs.length * 0.3, 1.2)
+    // Apply temporal decay: newer KEVs weigh more
+    const decayedImpact = recentKEVs.reduce((sum, item) => {
+      return sum + (0.3 * getTemporalDecay(item.pubDate))
+    }, 0)
+    const impact = Math.min(decayedImpact, 1.2)
     score -= impact
     factors.push({
       name: 'Recent KEV Entries',
       impact: -impact,
       count: recentKEVs.length,
-      description: 'Actively exploited vulnerabilities added to CISA KEV in last 7 days',
+      description: 'Actively exploited vulnerabilities added to CISA KEV — time-weighted',
       weight: SCORING_WEIGHTS.kevEntry.perItem,
       maxImpact: SCORING_WEIGHTS.kevEntry.maxImpact,
       items: recentKEVs.slice(0, 10).map(item => ({
@@ -176,13 +194,17 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
     return matches
   })
   if (icsThreats.length > 0) {
-    const impact = Math.min(icsThreats.length * 0.3, 0.6)
+    // Apply temporal decay: newer ICS threats weigh more
+    const decayedImpact = icsThreats.reduce((sum, item) => {
+      return sum + (0.3 * getTemporalDecay(item.pubDate))
+    }, 0)
+    const impact = Math.min(decayedImpact, 0.6)
     score -= impact
     factors.push({
       name: 'ICS/SCADA Vulnerabilities',
       impact: -impact,
       count: icsThreats.length,
-      description: 'Industrial control system specific threats',
+      description: 'Industrial control system specific threats — time-weighted',
       weight: SCORING_WEIGHTS.icsScada.perItem,
       maxImpact: SCORING_WEIGHTS.icsScada.maxImpact,
       items: icsThreats.slice(0, 10).map(item => ({
@@ -205,15 +227,17 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
     return hasValidAIScore
   })
   if (aiAnalyzedThreats.length > 0) {
-    // Calculate graduated impact based on AI severity scores
+    // Calculate graduated impact based on AI severity scores with temporal decay
     let totalImpact = 0
     for (const item of aiAnalyzedThreats) {
       const aiScore = item.aiSeverityScore || 5
-      if (aiScore >= 9) totalImpact += 0.4       // Critical
-      else if (aiScore >= 7) totalImpact += 0.3 // Direct threat
-      else if (aiScore >= 5) totalImpact += 0.2 // Relevant
-      else if (aiScore >= 3) totalImpact += 0.1 // Tangential
-      // Score 1-2 = 0 (false positive, already filtered out)
+      const decay = getTemporalDecay(item.pubDate)
+      let baseImpact = 0
+      if (aiScore >= 9) baseImpact = 0.4       // Critical
+      else if (aiScore >= 7) baseImpact = 0.3 // Direct threat
+      else if (aiScore >= 5) baseImpact = 0.2 // Relevant
+      else if (aiScore >= 3) baseImpact = 0.1 // Tangential
+      totalImpact += baseImpact * decay
     }
     const impact = Math.min(totalImpact, 0.8)
     score -= impact
@@ -221,7 +245,7 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
       name: 'AI-Assessed Energy Threats',
       impact: -impact,
       count: aiAnalyzedThreats.length,
-      description: 'AI-analyzed threats with graduated severity scoring',
+      description: 'AI-analyzed threats with graduated severity scoring — time-weighted',
       weight: SCORING_WEIGHTS.energyThreat.perItem,
       maxImpact: SCORING_WEIGHTS.energyThreat.maxImpact,
       items: aiAnalyzedThreats.slice(0, 10).map(item => ({
@@ -243,13 +267,17 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
     return matches
   })
   if (keywordOnlyThreats.length > 0) {
-    const impact = Math.min(keywordOnlyThreats.length * 0.1, 0.3) // Lower impact for keyword-only
+    // Apply temporal decay
+    const decayedImpact = keywordOnlyThreats.reduce((sum, item) => {
+      return sum + (0.1 * getTemporalDecay(item.pubDate))
+    }, 0)
+    const impact = Math.min(decayedImpact, 0.3) // Lower impact for keyword-only
     score -= impact
     factors.push({
       name: 'Energy Sector Keywords (Pending AI)',
       impact: -impact,
       count: keywordOnlyThreats.length,
-      description: 'Keyword-matched items awaiting AI analysis',
+      description: 'Keyword-matched items awaiting AI analysis — time-weighted',
       weight: -0.1,
       maxImpact: -0.3,
       items: keywordOnlyThreats.slice(0, 10).map(item => ({
@@ -270,13 +298,17 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
     return matches
   })
   if (criticalVendorItems.length > 0) {
-    const impact = Math.min(criticalVendorItems.length * 0.15, 0.4)
+    // Apply temporal decay
+    const decayedImpact = criticalVendorItems.reduce((sum, item) => {
+      return sum + (0.15 * getTemporalDecay(item.pubDate))
+    }, 0)
+    const impact = Math.min(decayedImpact, 0.4)
     score -= impact
     factors.push({
       name: 'Vendor Critical Alerts',
       impact: -impact,
       count: criticalVendorItems.length,
-      description: 'Critical severity reports from security vendors',
+      description: 'Critical severity reports from security vendors — time-weighted',
       weight: SCORING_WEIGHTS.vendorCritical.perItem,
       maxImpact: SCORING_WEIGHTS.vendorCritical.maxImpact,
       items: criticalVendorItems.slice(0, 10).map(item => ({

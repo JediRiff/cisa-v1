@@ -6,6 +6,10 @@ import { analyzeThreatsWithAI, AIAnalysisResult } from '@/lib/ai-analysis'
 
 export const revalidate = 0 // No caching - always fetch fresh data
 
+// In-memory cache with 5-minute TTL
+let cachedResponse: { data: any; timestamp: number } | null = null
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
 // Extract first URL from KEV notes field
 function parseAdvisoryUrl(notes: string): string {
   const urlMatch = notes.match(/https?:\/\/[^\s;]+/)
@@ -13,6 +17,14 @@ function parseAdvisoryUrl(notes: string): string {
 }
 
 export async function GET() {
+  // Check cache first
+  if (cachedResponse && (Date.now() - cachedResponse.timestamp) < CACHE_TTL_MS) {
+    const cacheAge = Math.round((Date.now() - cachedResponse.timestamp) / 1000)
+    const response = NextResponse.json({ ...cachedResponse.data, meta: { ...cachedResponse.data.meta, cacheAge } })
+    response.headers.set('X-Cache', 'HIT')
+    return response
+  }
+
   try {
     // Fetch all threat intelligence feeds
     const feedResult = await fetchAllFeeds()
@@ -110,8 +122,8 @@ export async function GET() {
       ransomwareUse: kev.knownRansomwareCampaignUse === 'Known'
     }))
 
-    // Return combined data
-    return NextResponse.json({
+    // Build response data
+    const responseData = {
       success: true,
       score: scoreResult,
       threats: {
@@ -125,11 +137,20 @@ export async function GET() {
         sourcesOnline: feedResult.sourcesOnline,
         sourcesTotal: feedResult.sourcesTotal,
         totalItems: feedResult.items.length,
+        deduplicatedCount: feedResult.deduplicatedCount || 0,
         alertsThisWeek,
         last24h,
         errors: feedResult.errors,
+        cacheAge: 0,
       }
-    })
+    }
+
+    // Store in cache
+    cachedResponse = { data: responseData, timestamp: Date.now() }
+
+    const response = NextResponse.json(responseData)
+    response.headers.set('X-Cache', 'MISS')
+    return response
   } catch (error) {
     console.error('CAPRI-E API Error:', error)
     return NextResponse.json({

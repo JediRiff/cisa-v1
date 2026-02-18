@@ -40,6 +40,7 @@ export interface FeedResult {
   lastUpdated: string
   sourcesOnline: number
   sourcesTotal: number
+  deduplicatedCount: number
 }
 
 // Feed source configuration
@@ -197,14 +198,69 @@ export async function fetchAllFeeds(): Promise<FeedResult> {
   const results = await Promise.all(fetchPromises)
   results.forEach(result => items.push(...result))
 
-  items.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime())
+  // Deduplicate: same CVE across multiple sources → keep highest-tier source
+  const beforeCount = items.length
+  const deduped = deduplicateItems(items)
+
+  deduped.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime())
 
   return {
-    items,
+    items: deduped,
     kevItems,
     errors,
     lastUpdated: new Date().toISOString(),
     sourcesOnline,
-    sourcesTotal: FEED_SOURCES.length
+    sourcesTotal: FEED_SOURCES.length,
+    deduplicatedCount: beforeCount - deduped.length
   }
+}
+
+// Deduplicate items by CVE ID (prefer government sources) and fuzzy title match
+function deduplicateItems(items: ThreatItem[]): ThreatItem[] {
+  const SOURCE_PRIORITY: Record<string, number> = { government: 3, energy: 2, vendor: 1 }
+  const cveMap = new Map<string, ThreatItem>()
+  const titleMap = new Map<string, ThreatItem>()
+  const result: ThreatItem[] = []
+
+  for (const item of items) {
+    // Extract CVE IDs from title and description
+    const cveMatches = (item.title + ' ' + item.description).match(/CVE-\d{4}-\d+/gi)
+
+    if (cveMatches && cveMatches.length > 0) {
+      const cveId = cveMatches[0].toUpperCase()
+      const existing = cveMap.get(cveId)
+      if (existing) {
+        // Keep higher-priority source
+        const existingPriority = SOURCE_PRIORITY[existing.sourceType] || 0
+        const newPriority = SOURCE_PRIORITY[item.sourceType] || 0
+        if (newPriority > existingPriority) {
+          cveMap.set(cveId, item)
+        }
+      } else {
+        cveMap.set(cveId, item)
+      }
+    } else {
+      // No CVE — fuzzy match on normalized title (first 50 chars, lowercase, no punctuation)
+      const normalizedTitle = item.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').substring(0, 50).trim()
+      if (normalizedTitle.length < 10) {
+        result.push(item)
+        continue
+      }
+      const existing = titleMap.get(normalizedTitle)
+      if (existing) {
+        const existingPriority = SOURCE_PRIORITY[existing.sourceType] || 0
+        const newPriority = SOURCE_PRIORITY[item.sourceType] || 0
+        if (newPriority > existingPriority) {
+          titleMap.set(normalizedTitle, item)
+        }
+      } else {
+        titleMap.set(normalizedTitle, item)
+      }
+    }
+  }
+
+  // Combine all unique items
+  cveMap.forEach(item => result.push(item))
+  titleMap.forEach(item => result.push(item))
+  return result
 }

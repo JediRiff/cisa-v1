@@ -44,7 +44,7 @@ export default function KeyMetrics({ score, label, color, last24h }: KeyMetricsP
   return (
     <section className="py-8 px-4 bg-white">
       <div className="max-w-4xl mx-auto">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Current Score */}
           <div className="bg-cisa-navy rounded-xl p-6 text-center">
             <p className="text-blue-200 text-sm font-medium uppercase tracking-wider mb-2">Score</p>
