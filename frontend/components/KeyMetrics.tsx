@@ -47,7 +47,7 @@ export default function KeyMetrics({ score, label, color, last24h }: KeyMetricsP
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Current Score */}
           <div className="bg-cisa-navy rounded-xl p-6 text-center">
-            <p className="text-blue-200 text-sm font-medium uppercase tracking-wider mb-2">Score</p>
+            <p className="text-blue-100 text-sm font-medium uppercase tracking-wider mb-2">Score</p>
             <div className="flex items-center justify-center gap-2">
               <p className="text-white text-4xl font-bold">{score.toFixed(1)}</p>
               {trend && (
@@ -63,21 +63,21 @@ export default function KeyMetrics({ score, label, color, last24h }: KeyMetricsP
 
           {/* Last 24 Hours Summary */}
           <div className="bg-cisa-navy rounded-xl p-6 text-center">
-            <p className="text-blue-200 text-sm font-medium uppercase tracking-wider mb-2">Last 24 Hours</p>
+            <p className="text-blue-100 text-sm font-medium uppercase tracking-wider mb-2">Last 24 Hours</p>
             <p className="text-white text-2xl font-bold mb-2">{last24h.total} New</p>
-            <p className="text-blue-200 text-sm">
-              {last24h.kev > 0 && <span className="text-red-300">{last24h.kev} KEV</span>}
+            <p className="text-blue-100 text-sm">
+              {last24h.kev > 0 && <span className="text-red-200 font-medium">{last24h.kev} KEV</span>}
               {last24h.kev > 0 && (last24h.nationState > 0 || last24h.ics > 0) && <span> · </span>}
-              {last24h.nationState > 0 && <span className="text-orange-300">{last24h.nationState} Nation-State</span>}
+              {last24h.nationState > 0 && <span className="text-orange-200 font-medium">{last24h.nationState} Nation-State</span>}
               {last24h.nationState > 0 && last24h.ics > 0 && <span> · </span>}
-              {last24h.ics > 0 && <span className="text-yellow-300">{last24h.ics} ICS</span>}
+              {last24h.ics > 0 && <span className="text-yellow-200 font-medium">{last24h.ics} ICS</span>}
               {last24h.kev === 0 && last24h.nationState === 0 && last24h.ics === 0 && <span>No critical alerts</span>}
             </p>
           </div>
 
           {/* Last Week's Score */}
           <div className="bg-cisa-navy rounded-xl p-6 text-center">
-            <p className="text-blue-200 text-sm font-medium uppercase tracking-wider mb-2">Last Week</p>
+            <p className="text-blue-100 text-sm font-medium uppercase tracking-wider mb-2">Last Week</p>
             {lastWeek ? (
               <>
                 <p className="text-white text-4xl font-bold mb-1">{lastWeek.score.toFixed(1)}</p>
@@ -91,7 +91,7 @@ export default function KeyMetrics({ score, label, color, last24h }: KeyMetricsP
             ) : (
               <>
                 <p className="text-white text-4xl font-bold mb-1">--</p>
-                <p className="text-blue-200 text-lg">No Data</p>
+                <p className="text-blue-100 text-lg">No Data</p>
               </>
             )}
           </div>

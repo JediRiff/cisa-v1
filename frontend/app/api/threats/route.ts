@@ -34,9 +34,9 @@ function calculateWeeklyTrend(items: ThreatItem[]): { week: string; threats: num
   return weeks
 }
 
-// In-memory cache with 5-minute TTL
+// In-memory cache with 1-minute TTL
 let cachedResponse: { data: any; timestamp: number } | null = null
-const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+const CACHE_TTL_MS = 60 * 1000 // 1 minute
 
 // Extract first URL from KEV notes field
 function parseAdvisoryUrl(notes: string): string {

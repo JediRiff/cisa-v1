@@ -155,10 +155,17 @@ export async function fetchAllFeeds(): Promise<FeedResult> {
 
   const fetchPromises = FEED_SOURCES.map(async (source) => {
     try {
+      // 10-second timeout to prevent slow feeds from blocking
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
+
       const response = await fetch(source.url, {
         headers: { 'User-Agent': 'CAPRI/1.0' },
-        cache: 'no-store'
+        cache: 'no-store',
+        signal: controller.signal
       })
+
+      clearTimeout(timeoutId)
 
       if (!response.ok) throw new Error('HTTP ' + response.status)
 

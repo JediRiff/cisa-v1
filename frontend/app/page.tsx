@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Image from 'next/image'
-import { AlertTriangle, Shield, RefreshCw, ExternalLink, Clock, CheckCircle, XCircle, Bell, BellOff, ChevronDown, MessageSquare, Sparkles, Info } from 'lucide-react'
+import { AlertTriangle, Shield, RefreshCw, ExternalLink, Clock, CheckCircle, XCircle, Bell, BellOff, ChevronDown, MessageSquare, Sparkles, Info, ArrowUp, AlertCircle } from 'lucide-react'
 import { saveScore } from '@/lib/history'
 import { checkAndTriggerAlerts, requestNotificationPermission, getNotificationPermission, setWebhookUrl, getWebhookUrl } from '@/lib/alerts'
 import ActionableRecommendations, { type KEVAction } from '@/components/ActionableRecommendations'
@@ -111,6 +111,8 @@ export default function Dashboard() {
   const [showAlertSettings, setShowAlertSettings] = useState(false)
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<ThreatFilter>('all')
+  const [showScrollTop, setShowScrollTop] = useState(false)
+  const [cacheAge, setCacheAge] = useState<number>(0)
 
   const fetchData = async () => {
     setLoading(true)
@@ -141,15 +143,39 @@ export default function Dashboard() {
     return () => clearInterval(interval)
   }, [])
 
-  const handleEnableAlerts = async () => {
+  // Track cache age
+  useEffect(() => {
+    if (!lastRefresh) return
+    const updateCacheAge = () => {
+      setCacheAge(Math.floor((new Date().getTime() - lastRefresh.getTime()) / 1000))
+    }
+    updateCacheAge()
+    const interval = setInterval(updateCacheAge, 10000) // Update every 10 seconds
+    return () => clearInterval(interval)
+  }, [lastRefresh])
+
+  // Scroll-to-top button visibility
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 500)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
+
+  const handleEnableAlerts = useCallback(async () => {
     const granted = await requestNotificationPermission()
     setNotificationStatus(granted ? 'granted' : 'denied')
-  }
+  }, [])
 
-  const handleWebhookSave = () => {
+  const handleWebhookSave = useCallback(() => {
     setWebhookUrl(webhookUrl)
     setShowAlertSettings(false)
-  }
+  }, [webhookUrl])
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
@@ -232,12 +258,12 @@ export default function Dashboard() {
     return labels[urgency] || urgency
   }
 
-  const toggleFaq = (id: string) => {
-    setExpandedFaq(expandedFaq === id ? null : id)
-  }
+  const toggleFaq = useCallback((id: string) => {
+    setExpandedFaq(prev => prev === id ? null : id)
+  }, [])
 
-  // Filter threats based on active filter
-  const filterThreats = (items: ThreatItem[]): ThreatItem[] => {
+  // Filter threats based on active filter - memoized for performance
+  const filterThreats = useCallback((items: ThreatItem[]): ThreatItem[] => {
     if (!items) return []
     switch (activeFilter) {
       case 'energy':
@@ -257,10 +283,10 @@ export default function Dashboard() {
       default:
         return items
     }
-  }
+  }, [activeFilter])
 
-  // Get filter counts
-  const getFilterCounts = () => {
+  // Get filter counts - memoized to avoid recalculation on every render
+  const filterCounts = useMemo(() => {
     if (!data?.threats.all) return { all: 0, energy: 0, critical: 0, nationState: 0, icsOt: 0 }
     const items = data.threats.all
     return {
@@ -276,9 +302,18 @@ export default function Dashboard() {
         return ICS_KEYWORDS.some(kw => text.includes(kw))
       }).length
     }
-  }
+  }, [data?.threats.all])
 
-  const filterCounts = getFilterCounts()
+  // Memoize filtered threat lists to avoid recomputation on every render
+  const filteredEnergyThreats = useMemo(() =>
+    filterThreats(data?.threats.energyRelevant || []),
+    [filterThreats, data?.threats.energyRelevant]
+  )
+
+  const filteredAllThreats = useMemo(() =>
+    filterThreats(data?.threats.all || []),
+    [filterThreats, data?.threats.all]
+  )
 
   if (loading && !data) {
     return <SkeletonLoader />
@@ -286,13 +321,48 @@ export default function Dashboard() {
 
   if (error && !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <XCircle className="h-16 w-16 text-red-500 mx-auto mb-6" />
-          <p className="text-xl text-red-600 font-medium mb-4">{error}</p>
-          <button onClick={fetchData} className="px-6 py-3 bg-cisa-navy text-white rounded-xl hover:bg-cisa-navy-dark transition-colors">
-            Retry
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="max-w-md w-full text-center">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <XCircle className="h-10 w-10 text-red-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">
+            Unable to Load Threat Data
+          </h1>
+          <p className="text-gray-600 mb-2">
+            {error === 'Network error - please try again'
+              ? 'We could not connect to the threat intelligence server. Please check your internet connection and try again.'
+              : `Error: ${error}`}
+          </p>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-amber-800">
+              <strong>Troubleshooting tips:</strong>
+            </p>
+            <ul className="text-sm text-amber-700 mt-2 text-left list-disc list-inside">
+              <li>Verify your internet connection is active</li>
+              <li>Try refreshing in a few minutes</li>
+              <li>Clear your browser cache if issues persist</li>
+            </ul>
+          </div>
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-cisa-navy text-white rounded-xl font-semibold hover:bg-cisa-navy-dark transition-colors shadow-md hover:shadow-lg disabled:opacity-50"
+          >
+            <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Retrying...' : 'Try Again'}
           </button>
+          <p className="mt-6 text-sm text-gray-500">
+            If this problem persists, please{' '}
+            <a
+              href="https://github.com/JediRiff/cisa-v1/issues/new"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cisa-navy hover:underline"
+            >
+              report the issue
+            </a>.
+          </p>
         </div>
       </div>
     )
@@ -345,6 +415,14 @@ export default function Dashboard() {
                 <Clock className="h-4 w-4" />
                 Updated {lastRefresh ? getTimeSince(lastRefresh) : 'never'}
               </p>
+              {cacheAge > 120 && (
+                <div className="flex items-center justify-center gap-2 mt-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-full">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <span className="text-sm text-amber-700 font-medium">
+                    Data may be stale - consider refreshing
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -526,12 +604,12 @@ export default function Dashboard() {
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors min-h-[44px] ${
                   activeFilter === tab.id
                     ? 'bg-cisa-navy text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 {tab.label}
-                <span className={`px-2 py-0.5 rounded-full text-xs ${
-                  activeFilter === tab.id ? 'bg-white/20' : 'bg-gray-200'
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                  activeFilter === tab.id ? 'bg-white/30 text-white' : 'bg-gray-300 text-gray-700'
                 }`}>
                   {tab.count}
                 </span>
@@ -547,13 +625,13 @@ export default function Dashboard() {
                   <AlertTriangle className="h-6 w-6 text-red-600" />
                 </div>
                 Energy Sector Alerts
-                <span className="text-sm font-normal text-gray-500 ml-auto">({filterThreats(data?.threats.energyRelevant || []).length})</span>
+                <span className="text-sm font-normal text-gray-500 ml-auto">({filteredEnergyThreats.length})</span>
               </h3>
               <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-                {filterThreats(data?.threats.energyRelevant || []).length === 0 ? (
+                {filteredEnergyThreats.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">No threats matching filter</p>
                 ) : (
-                  filterThreats(data?.threats.energyRelevant || []).map((item) => (
+                  filteredEnergyThreats.map((item) => (
                     <div key={item.id} className="p-4 border border-gray-100 rounded-xl hover:bg-cisa-light transition-colors">
                       <a href={item.link} target="_blank" rel="noopener noreferrer"
                         className="font-medium text-gray-900 hover:text-cisa-navy flex items-start gap-2 mb-2">
@@ -610,12 +688,12 @@ export default function Dashboard() {
                   <Shield className="h-6 w-6 text-cisa-navy" />
                 </div>
                 All Recent Threats
-                <span className="text-sm font-normal text-gray-500 ml-auto">({filterThreats(data?.threats.all || []).length})</span>
+                <span className="text-sm font-normal text-gray-500 ml-auto">({filteredAllThreats.length})</span>
               </h3>
               <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-                {filterThreats(data?.threats.all || []).length === 0 ? (
+                {filteredAllThreats.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">No threats matching filter</p>
-                ) : filterThreats(data?.threats.all || []).slice(0, 15).map((item) => (
+                ) : filteredAllThreats.slice(0, 15).map((item) => (
                   <div key={item.id} className="p-4 border border-gray-100 rounded-xl hover:bg-cisa-light transition-colors">
                     <a href={item.link} target="_blank" rel="noopener noreferrer"
                       className="font-medium text-gray-900 hover:text-cisa-navy flex items-start gap-2 mb-2">
@@ -801,7 +879,7 @@ export default function Dashboard() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             {/* Social Icons */}
             <div className="flex items-center gap-4">
-              <span className="text-sm text-blue-200 mr-2">Follow CISA:</span>
+              <span className="text-sm text-blue-100 mr-2">Follow CISA:</span>
               <a href="https://www.facebook.com/CISA" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors">
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
               </a>
@@ -818,9 +896,9 @@ export default function Dashboard() {
 
             {/* Contact */}
             <div className="text-right hidden lg:block">
-              <p className="text-sm text-blue-200">CISA Central</p>
+              <p className="text-sm text-blue-100">CISA Central</p>
               <p className="font-semibold">1-844-Say-CISA</p>
-              <p className="text-sm text-blue-200">contact@cisa.dhs.gov</p>
+              <p className="text-sm text-blue-100">contact@cisa.dhs.gov</p>
             </div>
           </div>
         </div>
@@ -873,6 +951,17 @@ export default function Dashboard() {
           </div>
         </div>
       </footer>
+
+      {/* Scroll to Top Button */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 z-50 w-12 h-12 bg-cisa-navy text-white rounded-full shadow-lg hover:bg-cisa-navy-dark transition-all hover:shadow-xl flex items-center justify-center"
+          aria-label="Scroll to top"
+        >
+          <ArrowUp className="h-6 w-6" />
+        </button>
+      )}
     </div>
   )
 }
