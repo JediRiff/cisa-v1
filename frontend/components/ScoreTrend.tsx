@@ -2,11 +2,17 @@
 
 import { useEffect, useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
-import { getHistory, ScoreSnapshot } from '@/lib/history'
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react'
+
+interface ScoreSnapshot {
+  timestamp: string
+  score: number
+  label: string
+}
 
 interface ChartDataPoint {
   date: string
+  fullDate: string
   score: number
   label: string
 }
@@ -14,40 +20,87 @@ interface ChartDataPoint {
 export default function ScoreTrend() {
   const [data, setData] = useState<ChartDataPoint[]>([])
   const [trend, setTrend] = useState<'up' | 'down' | 'stable'>('stable')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const history = getHistory()
-    if (history.length < 2) {
-      setData([])
-      return
+    async function fetchHistory() {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/history')
+        const json = await response.json()
+
+        if (!json.success || !json.history || json.history.length < 2) {
+          setData([])
+          setLoading(false)
+          return
+        }
+
+        // Aggregate by day (take the last score of each day)
+        const byDay = new Map<string, ScoreSnapshot>()
+        json.history.forEach((snapshot: ScoreSnapshot) => {
+          const dayKey = new Date(snapshot.timestamp).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric'
+          })
+          byDay.set(dayKey, snapshot) // Later entries overwrite earlier ones
+        })
+
+        // Convert to chart data
+        const chartData: ChartDataPoint[] = Array.from(byDay.entries()).map(([dayKey, snapshot]) => ({
+          date: dayKey,
+          fullDate: new Date(snapshot.timestamp).toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          score: snapshot.score,
+          label: snapshot.label
+        }))
+
+        setData(chartData)
+
+        // Calculate trend (compare first half avg to second half avg)
+        if (chartData.length >= 4) {
+          const midpoint = Math.floor(chartData.length / 2)
+          const firstHalfAvg = chartData.slice(0, midpoint).reduce((sum, d) => sum + d.score, 0) / midpoint
+          const secondHalfAvg = chartData.slice(midpoint).reduce((sum, d) => sum + d.score, 0) / (chartData.length - midpoint)
+          const diff = secondHalfAvg - firstHalfAvg
+          if (diff > 0.2) setTrend('up')
+          else if (diff < -0.2) setTrend('down')
+          else setTrend('stable')
+        }
+      } catch (err) {
+        console.error('Failed to fetch history:', err)
+        setError('Failed to load history')
+      } finally {
+        setLoading(false)
+      }
     }
 
-    // Convert history to chart data
-    const chartData: ChartDataPoint[] = history.map((snapshot: ScoreSnapshot) => ({
-      date: new Date(snapshot.timestamp).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric'
-      }),
-      score: snapshot.score,
-      label: snapshot.label
-    }))
-
-    setData(chartData)
-
-    // Calculate trend (compare first half avg to second half avg)
-    if (chartData.length >= 4) {
-      const midpoint = Math.floor(chartData.length / 2)
-      const firstHalfAvg = chartData.slice(0, midpoint).reduce((sum, d) => sum + d.score, 0) / midpoint
-      const secondHalfAvg = chartData.slice(midpoint).reduce((sum, d) => sum + d.score, 0) / (chartData.length - midpoint)
-      const diff = secondHalfAvg - firstHalfAvg
-      if (diff > 0.2) setTrend('up')
-      else if (diff < -0.2) setTrend('down')
-      else setTrend('stable')
-    }
+    fetchHistory()
   }, [])
 
-  // Empty state
-  if (data.length < 2) {
+  // Loading state
+  if (loading) {
+    return (
+      <section className="py-8 px-4 bg-white">
+        <div className="max-w-4xl mx-auto">
+          <div className="card-premium-trump p-6">
+            <h3 className="text-xl font-bold text-cisa-navy mb-4">Score Trend</h3>
+            <div className="h-48 flex items-center justify-center bg-gray-50 rounded-xl">
+              <RefreshCw className="h-6 w-6 text-gray-400 animate-spin" />
+            </div>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  // Empty/error state
+  if (error || data.length < 2) {
     return (
       <section className="py-8 px-4 bg-white">
         <div className="max-w-4xl mx-auto">
@@ -55,7 +108,7 @@ export default function ScoreTrend() {
             <h3 className="text-xl font-bold text-cisa-navy mb-4">Score Trend</h3>
             <div className="h-48 flex items-center justify-center bg-gray-50 rounded-xl">
               <p className="text-gray-500 text-center">
-                Not enough data yet — check back in a few days
+                {error || 'Not enough data yet — scores are recorded every 30 minutes'}
               </p>
             </div>
           </div>
@@ -70,7 +123,7 @@ export default function ScoreTrend() {
       const d = payload[0].payload
       return (
         <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-          <p className="text-sm text-gray-600">{d.date}</p>
+          <p className="text-sm text-gray-600">{d.fullDate}</p>
           <p className="text-lg font-bold" style={{ color: getScoreColor(d.score) }}>
             {d.score.toFixed(1)} — {d.label}
           </p>

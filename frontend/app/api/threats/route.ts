@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { fetchAllFeeds } from '@/lib/feeds'
 import { calculateEnergyScore } from '@/lib/scoring'
 import { analyzeThreatsWithAI, AIAnalysisResult } from '@/lib/ai-analysis'
+import { saveScoreToHistory, shouldSaveNewEntry } from '@/lib/redis'
 
 export const revalidate = 0 // No caching - always fetch fresh data
 
@@ -67,6 +68,13 @@ export async function GET() {
 
     // Calculate energy sector score (now uses AI severity scores)
     const scoreResult = calculateEnergyScore(feedResult.items)
+
+    // Save score to server-side history (for trend chart)
+    // Only save if enough time has passed since last entry
+    if (await shouldSaveNewEntry()) {
+      await saveScoreToHistory(scoreResult.score, scoreResult.label)
+      console.log(`Saved score to history: ${scoreResult.score} (${scoreResult.label})`)
+    }
 
     // Count alerts from the past 7 days
     const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
