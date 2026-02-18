@@ -34,20 +34,11 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     siteName: 'CAPRI Dashboard',
-    images: [
-      {
-        url: '/og-image.png',
-        width: 1200,
-        height: 630,
-        alt: 'CAPRI Dashboard - Cyber Threat Intelligence for Energy Sector',
-      },
-    ],
   },
   twitter: {
-    card: 'summary_large_image',
+    card: 'summary',
     title: 'CAPRI - Cyber Alert Prioritization & Readiness Index',
     description: 'Real-time threat intelligence for US energy sector critical infrastructure',
-    images: ['/og-image.png'],
     creator: '@CISAgov',
     site: '@CISAgov',
   },

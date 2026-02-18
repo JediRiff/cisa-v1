@@ -101,48 +101,50 @@ const getUrgencyLabel = (urgency: string) => {
 
 export default function ThreatCard({ item, showExtendedDetails = false }: ThreatCardProps) {
   return (
-    <div className="p-4 border border-gray-100 rounded-xl hover:bg-cisa-light transition-colors">
+    <div className="p-3 sm:p-4 border border-gray-100 rounded-xl hover:bg-cisa-light transition-colors">
       <a href={item.link} target="_blank" rel="noopener noreferrer"
-        className="font-medium text-gray-900 hover:text-cisa-navy flex items-start gap-2 mb-2">
-        {item.aiSeverityScore && (
-          <span title="AI Analyzed"><Sparkles className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" /></span>
-        )}
-        <span className="sm:line-clamp-none">{item.title}</span>
-        <ExternalLink className="h-4 w-4 flex-shrink-0 mt-1" />
+        className="font-medium text-gray-900 hover:text-cisa-navy flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 mb-2">
+        <div className="flex items-start gap-2 min-w-0 flex-1">
+          {item.aiSeverityScore && (
+            <span title="AI Analyzed"><Sparkles className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" /></span>
+          )}
+          <span className="line-clamp-2 sm:line-clamp-none break-words">{item.title}</span>
+        </div>
+        <ExternalLink className="h-4 w-4 flex-shrink-0 mt-1 hidden sm:block" />
       </a>
       {/* AI Analysis Badges */}
       {item.aiThreatType && (
-        <div className="flex items-center gap-2 flex-wrap mb-2">
-          <span className={'text-xs px-2 py-0.5 rounded font-medium ' + getThreatTypeStyle(item.aiThreatType)}>
+        <div className="flex items-start gap-1.5 sm:gap-2 flex-wrap mb-2">
+          <span className={'text-xs px-2 py-0.5 rounded font-medium whitespace-nowrap ' + getThreatTypeStyle(item.aiThreatType)}>
             {getThreatTypeLabel(item.aiThreatType)}
           </span>
           {item.aiUrgency && (
-            <span className={'text-xs px-2 py-0.5 rounded font-medium ' + getUrgencyStyle(item.aiUrgency)}>
+            <span className={'text-xs px-2 py-0.5 rounded font-medium whitespace-nowrap ' + getUrgencyStyle(item.aiUrgency)}>
               {getUrgencyLabel(item.aiUrgency)}
             </span>
           )}
           {item.aiAffectedVendors?.slice(0, showExtendedDetails ? 3 : 2).map((vendor, i) => (
-            <span key={i} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">{vendor}</span>
+            <span key={i} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded truncate max-w-[120px] sm:max-w-none">{vendor}</span>
           ))}
           {showExtendedDetails && item.aiAffectedSystems?.slice(0, 2).map((system, i) => (
-            <span key={i} className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded">{system}</span>
+            <span key={i} className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded truncate max-w-[120px] sm:max-w-none">{system}</span>
           ))}
         </div>
       )}
       {/* AI Rationale - only shown for extended details */}
       {showExtendedDetails && item.aiRationale && (
-        <p className="text-xs text-gray-500 italic mb-2 flex items-start gap-1">
+        <p className="text-xs text-gray-500 italic mb-2 flex items-start gap-1 line-clamp-2 sm:line-clamp-none">
           <Info className="h-3 w-3 flex-shrink-0 mt-0.5" />
-          {item.aiRationale}
+          <span className="break-words">{item.aiRationale}</span>
         </p>
       )}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
         {isCISASource(item.source) && (
-          <span className="px-1.5 py-0.5 text-xs font-semibold bg-blue-600 text-white rounded">CISA</span>
+          <span className="px-1.5 py-0.5 text-xs font-semibold bg-blue-600 text-white rounded whitespace-nowrap">CISA</span>
         )}
-        <span className={'text-xs px-2.5 py-1 rounded-full font-medium ' + getSourceStyle(item.sourceType)}>{item.source}</span>
-        <span className={'text-xs px-2.5 py-1 rounded-full border font-medium ' + getSeverityStyle(item.severity)}>{item.severity}</span>
-        <span className="text-xs text-gray-500">{formatDate(item.pubDate)}</span>
+        <span className={'text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full font-medium truncate max-w-[100px] sm:max-w-none ' + getSourceStyle(item.sourceType)}>{item.source}</span>
+        <span className={'text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border font-medium whitespace-nowrap ' + getSeverityStyle(item.severity)}>{item.severity}</span>
+        <span className="text-xs text-gray-500 whitespace-nowrap">{formatDate(item.pubDate)}</span>
       </div>
     </div>
   )

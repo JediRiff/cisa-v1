@@ -85,6 +85,7 @@ const ICS_KEYWORDS = ['scada', 'ics', 'plc', 'hmi', 'rtu', 'dcs', 'modbus', 'dnp
 export default function Dashboard() {
   const [data, setData] = useState<ApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
   const [notificationStatus, setNotificationStatus] = useState<NotificationPermission | 'unsupported'>('default')
@@ -95,8 +96,13 @@ export default function Dashboard() {
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [cacheAge, setCacheAge] = useState<number>(0)
 
-  const fetchData = async () => {
-    setLoading(true)
+  const fetchData = useCallback(async (isInitialLoad = false) => {
+    // If not initial load and we have data, this is a refresh
+    if (!isInitialLoad) {
+      setIsRefreshing(true)
+    } else {
+      setLoading(true)
+    }
     setError(null)
     try {
       const response = await fetch('/api/threats')
@@ -113,16 +119,17 @@ export default function Dashboard() {
       setError('Network error - please try again')
     } finally {
       setLoading(false)
+      setIsRefreshing(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     setNotificationStatus(getNotificationPermission())
     setWebhookUrlState(getWebhookUrl())
-    fetchData()
-    const interval = setInterval(fetchData, 10 * 60 * 1000)
+    fetchData(true) // Initial load
+    const interval = setInterval(() => fetchData(false), 10 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchData])
 
   // Track cache age
   useEffect(() => {
@@ -142,7 +149,7 @@ export default function Dashboard() {
         const secondsSinceLastFetch = Math.floor((new Date().getTime() - lastRefresh.getTime()) / 1000)
         // Refresh if data is more than 60 seconds old
         if (secondsSinceLastFetch > 60) {
-          fetchData()
+          fetchData(false) // Not initial load
         }
       }
     }
@@ -269,7 +276,7 @@ export default function Dashboard() {
             </ul>
           </div>
           <button
-            onClick={fetchData}
+            onClick={() => fetchData(true)}
             disabled={loading}
             className="inline-flex items-center gap-2 px-6 py-3 bg-cisa-navy text-white rounded-xl font-semibold hover:bg-cisa-navy-dark transition-colors shadow-md hover:shadow-lg disabled:opacity-50"
           >
@@ -322,22 +329,30 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Score Display - Static colored square */}
+          {/* Score Display - Static colored square with smooth transitions */}
           <div className="flex flex-col items-center gap-6 mb-12">
             <div
-              className="w-32 h-32 sm:w-44 sm:h-44 rounded-2xl flex items-center justify-center text-white text-5xl sm:text-6xl font-bold"
+              className="w-32 h-32 sm:w-44 sm:h-44 rounded-2xl flex items-center justify-center text-white text-5xl sm:text-6xl font-bold transition-all duration-500 ease-in-out"
               style={{ backgroundColor: data?.score.color }}
             >
-              {data?.score.score.toFixed(1)}
+              <span className="transition-all duration-300 ease-in-out">
+                {data?.score.score.toFixed(1)}
+              </span>
             </div>
             <div className="text-center">
               <h2 className="text-3xl font-bold text-gray-900 mb-2">Current Threat Level</h2>
-              <p className="text-2xl font-semibold" style={{ color: data?.score.color }}>
+              <p className="text-2xl font-semibold transition-colors duration-500 ease-in-out" style={{ color: data?.score.color }}>
                 {data?.score.label}
               </p>
               <p className="text-sm text-gray-500 flex items-center justify-center gap-2 mt-3">
                 <Clock className="h-4 w-4" />
                 Updated {lastRefresh ? getTimeSince(lastRefresh) : 'never'}
+                {isRefreshing && (
+                  <span className="inline-flex items-center gap-1.5 ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium animate-pulse">
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                    Refreshing...
+                  </span>
+                )}
               </p>
               {cacheAge > 120 && (
                 <div className="flex items-center justify-center gap-2 mt-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-full">
@@ -364,12 +379,12 @@ export default function Dashboard() {
               {notificationStatus === 'granted' ? 'Alerts Enabled' : 'Enable Alerts'}
             </button>
             <button
-              onClick={fetchData}
-              disabled={loading}
-              className="flex items-center gap-2 px-6 sm:px-8 py-4 bg-cisa-navy text-white rounded-xl font-semibold text-base sm:text-lg hover:bg-cisa-navy-dark transition-all shadow-md hover:shadow-lg disabled:opacity-50 min-h-[48px]"
+              onClick={() => fetchData(false)}
+              disabled={loading || isRefreshing}
+              className="flex items-center gap-2 px-6 sm:px-8 py-4 bg-cisa-navy text-white rounded-xl font-semibold text-base sm:text-lg hover:bg-cisa-navy-dark transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px]"
             >
-              <RefreshCw className={`h-5 w-5 sm:h-6 sm:w-6 ${loading ? 'animate-spin' : ''}`} />
-              Refresh Data
+              <RefreshCw className={`h-5 w-5 sm:h-6 sm:w-6 ${(loading || isRefreshing) ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
             </button>
           </div>
 
@@ -402,27 +417,33 @@ export default function Dashboard() {
 
       {/* Key Metrics - 3 Navy Boxes */}
       {data && (
-        <KeyMetrics
-          score={data.score.score}
-          label={data.score.label}
-          color={data.score.color}
-          last24h={data.meta.last24h || { kev: 0, nationState: 0, ics: 0, total: 0 }}
-        />
+        <div className={`transition-opacity duration-300 ease-in-out ${isRefreshing ? 'opacity-70' : 'opacity-100'}`}>
+          <KeyMetrics
+            score={data.score.score}
+            label={data.score.label}
+            color={data.score.color}
+            last24h={data.meta.last24h || { kev: 0, nationState: 0, ics: 0, total: 0 }}
+          />
+        </div>
       )}
 
       {/* Score Trend Chart */}
       {data && (
-        <ScoreTrend trend={data.trend || []} currentScore={data.score.score} />
+        <div className={`transition-opacity duration-300 ease-in-out ${isRefreshing ? 'opacity-70' : 'opacity-100'}`}>
+          <ScoreTrend trend={data.trend || []} currentScore={data.score.score} />
+        </div>
       )}
 
       {/* Score Breakdown - How It's Calculated */}
       {data && (
-        <ScoreBreakdown
-          score={data.score.score}
-          label={data.score.label}
-          color={data.score.color}
-          factors={data.score.factors}
-        />
+        <div className={`transition-opacity duration-300 ease-in-out ${isRefreshing ? 'opacity-70' : 'opacity-100'}`}>
+          <ScoreBreakdown
+            score={data.score.score}
+            label={data.score.label}
+            color={data.score.color}
+            factors={data.score.factors}
+          />
+        </div>
       )}
 
       {/* Scoring Methodology - Expandable Explanation */}
@@ -430,7 +451,9 @@ export default function Dashboard() {
 
       {/* Actionable Recommendations */}
       {data && (
-        <ActionableRecommendations kevItems={data.kev} />
+        <div className={`transition-opacity duration-300 ease-in-out ${isRefreshing ? 'opacity-70' : 'opacity-100'}`}>
+          <ActionableRecommendations kevItems={data.kev} />
+        </div>
       )}
 
       {/* Decorative Divider */}
@@ -784,13 +807,15 @@ export default function Dashboard() {
                 <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Current Threat Level</p>
                 <div className="flex items-center gap-3">
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg"
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg transition-all duration-500 ease-in-out"
                     style={{ backgroundColor: data?.score.color }}
                   >
-                    {data?.score.score.toFixed(1)}
+                    <span className="transition-all duration-300 ease-in-out">
+                      {data?.score.score.toFixed(1)}
+                    </span>
                   </div>
                   <div>
-                    <p className="font-semibold" style={{ color: data?.score.color }}>{data?.score.label}</p>
+                    <p className="font-semibold transition-colors duration-500 ease-in-out" style={{ color: data?.score.color }}>{data?.score.label}</p>
                     <p className="text-xs text-gray-500">{data?.meta.sourcesOnline}/{data?.meta.sourcesTotal} sources</p>
                   </div>
                 </div>
