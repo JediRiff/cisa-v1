@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Image from 'next/image'
-import { AlertTriangle, Shield, RefreshCw, Clock, CheckCircle, XCircle, Bell, BellOff, ChevronDown, MessageSquare, ArrowUp, AlertCircle } from 'lucide-react'
+import { AlertTriangle, Shield, RefreshCw, Clock, CheckCircle, XCircle, Bell, BellOff, ChevronDown, MessageSquare, ArrowUp, AlertCircle, Settings } from 'lucide-react'
 import { saveScore } from '@/lib/history'
 import { checkAndTriggerAlerts, requestNotificationPermission, getNotificationPermission, setWebhookUrl, getWebhookUrl } from '@/lib/alerts'
 import ActionableRecommendations, { type KEVAction } from '@/components/ActionableRecommendations'
@@ -12,6 +12,7 @@ import KeyMetrics from '@/components/KeyMetrics'
 import SkeletonLoader from '@/components/SkeletonLoader'
 import ScoreTrend from '@/components/ScoreTrend'
 import ThreatCard, { type ThreatItem } from '@/components/ThreatCard'
+import AlertSettings, { isWebhookConfigured } from '@/components/AlertSettings'
 
 interface FactorItem {
   id: string
@@ -91,6 +92,8 @@ export default function Dashboard() {
   const [notificationStatus, setNotificationStatus] = useState<NotificationPermission | 'unsupported'>('default')
   const [webhookUrl, setWebhookUrlState] = useState('')
   const [showAlertSettings, setShowAlertSettings] = useState(false)
+  const [showAlertSettingsPanel, setShowAlertSettingsPanel] = useState(false)
+  const [webhookConfigured, setWebhookConfigured] = useState(false)
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<ThreatFilter>('all')
   const [showScrollTop, setShowScrollTop] = useState(false)
@@ -126,6 +129,7 @@ export default function Dashboard() {
   useEffect(() => {
     setNotificationStatus(getNotificationPermission())
     setWebhookUrlState(getWebhookUrl())
+    setWebhookConfigured(isWebhookConfigured())
     fetchData(true) // Initial load
     const interval = setInterval(() => fetchData(false), 10 * 60 * 1000)
     return () => clearInterval(interval)
@@ -252,24 +256,24 @@ export default function Dashboard() {
 
   if (error && !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900 px-4">
         <div className="max-w-md w-full text-center">
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <XCircle className="h-10 w-10 text-red-600" />
+          <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+            <XCircle className="h-10 w-10 text-red-600 dark:text-red-400" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-3">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
             Unable to Load Threat Data
           </h1>
-          <p className="text-gray-600 mb-2">
+          <p className="text-gray-600 dark:text-gray-400 mb-2">
             {error === 'Network error - please try again'
               ? 'We could not connect to the threat intelligence server. Please check your internet connection and try again.'
               : `Error: ${error}`}
           </p>
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-            <p className="text-sm text-amber-800">
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-4 mb-6">
+            <p className="text-sm text-amber-800 dark:text-amber-300">
               <strong>Troubleshooting tips:</strong>
             </p>
-            <ul className="text-sm text-amber-700 mt-2 text-left list-disc list-inside">
+            <ul className="text-sm text-amber-700 dark:text-amber-400 mt-2 text-left list-disc list-inside">
               <li>Verify your internet connection is active</li>
               <li>Try refreshing in a few minutes</li>
               <li>Clear your browser cache if issues persist</li>
@@ -278,18 +282,18 @@ export default function Dashboard() {
           <button
             onClick={() => fetchData(true)}
             disabled={loading}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-cisa-navy text-white rounded-xl font-semibold hover:bg-cisa-navy-dark transition-colors shadow-md hover:shadow-lg disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-cisa-navy dark:bg-blue-600 text-white rounded-xl font-semibold hover:bg-cisa-navy-dark dark:hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg disabled:opacity-50"
           >
             <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
             {loading ? 'Retrying...' : 'Try Again'}
           </button>
-          <p className="mt-6 text-sm text-gray-500">
+          <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">
             If this problem persists, please{' '}
             <a
               href="https://github.com/JediRiff/cisa-v1/issues/new"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-cisa-navy hover:underline"
+              className="text-cisa-navy dark:text-blue-400 hover:underline"
             >
               report the issue
             </a>.
@@ -318,14 +322,14 @@ export default function Dashboard() {
 
           {/* Big Bold Hero Heading */}
           <div className="text-center mb-10">
-            <h1 className="hero-heading text-6xl md:text-7xl lg:text-8xl text-cisa-navy mb-6">
+            <h1 className="hero-heading text-6xl md:text-7xl lg:text-8xl text-cisa-navy dark:text-blue-400 mb-6">
               CAPRI
             </h1>
             <div className="inline-block">
-              <p className="text-lg md:text-xl text-cisa-navy font-semibold tracking-wide uppercase">
+              <p className="text-lg md:text-xl text-cisa-navy dark:text-blue-300 font-semibold tracking-wide uppercase">
                 Cyber Alert Prioritization & Readiness Index
               </p>
-              <div className="h-1 bg-gradient-to-r from-cisa-red via-white to-cisa-navy mt-3 rounded-full"></div>
+              <div className="h-1 bg-gradient-to-r from-cisa-red via-white to-cisa-navy dark:from-red-500 dark:via-slate-700 dark:to-blue-500 mt-3 rounded-full"></div>
             </div>
           </div>
 
@@ -340,24 +344,24 @@ export default function Dashboard() {
               </span>
             </div>
             <div className="text-center">
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Current Threat Level</h2>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Current Threat Level</h2>
               <p className="text-2xl font-semibold transition-colors duration-500 ease-in-out" style={{ color: data?.score.color }}>
                 {data?.score.label}
               </p>
-              <p className="text-sm text-gray-500 flex items-center justify-center gap-2 mt-3">
+              <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center gap-2 mt-3">
                 <Clock className="h-4 w-4" />
                 Updated {lastRefresh ? getTimeSince(lastRefresh) : 'never'}
                 {isRefreshing && (
-                  <span className="inline-flex items-center gap-1.5 ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium animate-pulse">
+                  <span className="inline-flex items-center gap-1.5 ml-2 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium animate-pulse">
                     <RefreshCw className="h-3 w-3 animate-spin" />
                     Refreshing...
                   </span>
                 )}
               </p>
               {cacheAge > 120 && (
-                <div className="flex items-center justify-center gap-2 mt-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-full">
-                  <AlertCircle className="h-4 w-4 text-amber-600" />
-                  <span className="text-sm text-amber-700 font-medium">
+                <div className="flex items-center justify-center gap-2 mt-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-full">
+                  <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <span className="text-sm text-amber-700 dark:text-amber-300 font-medium">
                     Data may be stale - consider refreshing
                   </span>
                 </div>
@@ -372,7 +376,7 @@ export default function Dashboard() {
               className={`flex items-center gap-2 px-6 sm:px-8 py-4 rounded-xl font-semibold text-base sm:text-lg transition-all shadow-md hover:shadow-lg min-h-[48px] ${
                 notificationStatus === 'granted'
                   ? 'bg-green-600 text-white hover:bg-green-700'
-                  : 'bg-white text-cisa-navy border-2 border-cisa-navy hover:bg-cisa-light'
+                  : 'bg-white dark:bg-slate-800 text-cisa-navy dark:text-blue-400 border-2 border-cisa-navy dark:border-blue-500 hover:bg-cisa-light dark:hover:bg-slate-700'
               }`}
             >
               {notificationStatus === 'granted' ? <Bell className="h-5 w-5 sm:h-6 sm:w-6" /> : <BellOff className="h-5 w-5 sm:h-6 sm:w-6" />}
@@ -381,18 +385,30 @@ export default function Dashboard() {
             <button
               onClick={() => fetchData(false)}
               disabled={loading || isRefreshing}
-              className="flex items-center gap-2 px-6 sm:px-8 py-4 bg-cisa-navy text-white rounded-xl font-semibold text-base sm:text-lg hover:bg-cisa-navy-dark transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px]"
+              className="flex items-center gap-2 px-6 sm:px-8 py-4 bg-cisa-navy dark:bg-blue-600 text-white rounded-xl font-semibold text-base sm:text-lg hover:bg-cisa-navy-dark dark:hover:bg-blue-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px]"
             >
               <RefreshCw className={`h-5 w-5 sm:h-6 sm:w-6 ${(loading || isRefreshing) ? 'animate-spin' : ''}`} />
               {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
+            </button>
+            <button
+              onClick={() => setShowAlertSettingsPanel(true)}
+              className={`flex items-center gap-2 px-6 sm:px-8 py-4 rounded-xl font-semibold text-base sm:text-lg transition-all shadow-md hover:shadow-lg min-h-[48px] ${
+                webhookConfigured
+                  ? 'bg-purple-600 text-white hover:bg-purple-700'
+                  : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600'
+              }`}
+              title={webhookConfigured ? 'Webhook configured' : 'Configure webhook alerts'}
+            >
+              <Settings className="h-5 w-5 sm:h-6 sm:w-6" />
+              Configure Alerts
             </button>
           </div>
 
           {/* Alert Settings Panel */}
           {showAlertSettings && (
-            <div className="max-w-lg mx-auto mt-8 p-4 sm:p-6 bg-white rounded-2xl shadow-card-premium border border-gray-100">
-              <h4 className="font-semibold text-cisa-navy mb-2 text-lg">Alert Settings</h4>
-              <p className="text-sm text-gray-600 mb-4">
+            <div className="max-w-lg mx-auto mt-8 p-4 sm:p-6 bg-white dark:bg-slate-800 rounded-2xl shadow-card-premium border border-gray-100 dark:border-slate-700">
+              <h4 className="font-semibold text-cisa-navy dark:text-blue-400 mb-2 text-lg">Alert Settings</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 Receive notifications when the score drops to Severe (≤2.0).
               </p>
               <div className="flex flex-col sm:flex-row gap-2">
@@ -401,11 +417,11 @@ export default function Dashboard() {
                   placeholder="Optional: Webhook URL (Slack, etc.)"
                   value={webhookUrl}
                   onChange={(e) => setWebhookUrlState(e.target.value)}
-                  className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:border-cisa-navy focus:outline-none min-h-[48px]"
+                  className="flex-1 px-4 py-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl text-sm focus:border-cisa-navy dark:focus:border-blue-500 focus:outline-none min-h-[48px] bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
                 />
                 <button
                   onClick={handleWebhookSave}
-                  className="px-6 py-3 bg-cisa-navy text-white rounded-xl font-medium hover:bg-cisa-navy-dark"
+                  className="px-6 py-3 bg-cisa-navy dark:bg-blue-600 text-white rounded-xl font-medium hover:bg-cisa-navy-dark dark:hover:bg-blue-700"
                 >
                   Save
                 </button>
@@ -510,21 +526,21 @@ export default function Dashboard() {
       <div className="govt-top-border"></div>
 
       {/* Live Feed Sources */}
-      <section className="py-8 px-4 bg-cisa-light">
+      <section className="py-8 px-4 bg-cisa-light dark:bg-slate-800/50">
         <div className="max-w-6xl mx-auto">
           <div className="card-premium-trump p-6 flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                <CheckCircle className="h-7 w-7 text-green-600" />
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
+                <CheckCircle className="h-7 w-7 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <span className="text-3xl font-bold text-cisa-navy">{data?.meta.sourcesOnline}/{data?.meta.sourcesTotal}</span>
-                <span className="text-gray-600 ml-2 text-lg">Sources Online</span>
+                <span className="text-3xl font-bold text-cisa-navy dark:text-blue-400">{data?.meta.sourcesOnline}/{data?.meta.sourcesTotal}</span>
+                <span className="text-gray-600 dark:text-gray-400 ml-2 text-lg">Sources Online</span>
               </div>
             </div>
-            <div className="text-gray-600 text-lg font-medium">{data?.meta.totalItems} threat items aggregated</div>
+            <div className="text-gray-600 dark:text-gray-400 text-lg font-medium">{data?.meta.totalItems} threat items aggregated</div>
             {data?.meta.errors && data.meta.errors.length > 0 && (
-              <details className="text-sm text-red-600">
+              <details className="text-sm text-red-600 dark:text-red-400">
                 <summary className="cursor-pointer font-medium">{data.meta.errors.length} feed error(s)</summary>
                 <ul className="mt-2 text-xs">{data.meta.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
               </details>
@@ -534,7 +550,7 @@ export default function Dashboard() {
       </section>
 
       {/* Threat Feeds */}
-      <section className="py-12 px-4 bg-white">
+      <section className="py-12 px-4 bg-white dark:bg-slate-900">
         <div className="max-w-6xl mx-auto">
           {/* Filter Tabs */}
           <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
@@ -550,13 +566,13 @@ export default function Dashboard() {
                 onClick={() => setActiveFilter(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors min-h-[44px] ${
                   activeFilter === tab.id
-                    ? 'bg-cisa-navy text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-cisa-navy dark:bg-blue-600 text-white'
+                    : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
                 }`}
               >
                 {tab.label}
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                  activeFilter === tab.id ? 'bg-white/30 text-white' : 'bg-gray-300 text-gray-700'
+                  activeFilter === tab.id ? 'bg-white/30 text-white' : 'bg-gray-300 dark:bg-slate-600 text-gray-700 dark:text-gray-300'
                 }`}>
                   {tab.count}
                 </span>
@@ -567,16 +583,16 @@ export default function Dashboard() {
           <div className="grid md:grid-cols-2 gap-8">
             {/* Energy-Relevant Threats */}
             <div className="card-premium-trump p-8">
-              <h3 className="text-2xl font-bold text-cisa-navy mb-6 flex items-center gap-3">
-                <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-                  <AlertTriangle className="h-6 w-6 text-red-600" />
+              <h3 className="text-2xl font-bold text-cisa-navy dark:text-blue-400 mb-6 flex items-center gap-3">
+                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center">
+                  <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
                 </div>
                 Energy Sector Alerts
-                <span className="text-sm font-normal text-gray-500 ml-auto">({filteredEnergyThreats.length})</span>
+                <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-auto">({filteredEnergyThreats.length})</span>
               </h3>
               <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
                 {filteredEnergyThreats.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">No threats matching filter</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-center py-8">No threats matching filter</p>
                 ) : (
                   filteredEnergyThreats.map((item) => (
                     <ThreatCard key={item.id} item={item} showExtendedDetails={true} />
@@ -587,16 +603,16 @@ export default function Dashboard() {
 
             {/* All Recent Threats */}
             <div className="card-premium-trump p-8">
-              <h3 className="text-2xl font-bold text-cisa-navy mb-6 flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <Shield className="h-6 w-6 text-cisa-navy" />
+              <h3 className="text-2xl font-bold text-cisa-navy dark:text-blue-400 mb-6 flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                  <Shield className="h-6 w-6 text-cisa-navy dark:text-blue-400" />
                 </div>
                 All Recent Threats
-                <span className="text-sm font-normal text-gray-500 ml-auto">({filteredAllThreats.length})</span>
+                <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-auto">({filteredAllThreats.length})</span>
               </h3>
               <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
                 {filteredAllThreats.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">No threats matching filter</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-center py-8">No threats matching filter</p>
                 ) : filteredAllThreats.slice(0, 15).map((item) => (
                   <ThreatCard key={item.id} item={item} showExtendedDetails={false} />
                 ))}
@@ -691,17 +707,17 @@ export default function Dashboard() {
       </section>
 
       {/* General Feedback Banner */}
-      <section className="py-8 px-4 bg-white">
+      <section className="py-8 px-4 bg-white dark:bg-slate-900">
         <div className="max-w-6xl mx-auto">
-          <div className="p-6 bg-blue-50 border border-blue-200 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-blue-800 font-medium text-center sm:text-left">
+          <div className="p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-blue-800 dark:text-blue-200 font-medium text-center sm:text-left">
               Have any feedback? Want to change something?
             </p>
             <a
               href="https://github.com/JediRiff/cisa-v1/issues/new"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-6 py-3 bg-cisa-navy text-white rounded-lg font-medium hover:bg-cisa-navy-dark transition-colors flex items-center gap-2 whitespace-nowrap"
+              className="px-6 py-3 bg-cisa-navy dark:bg-blue-600 text-white rounded-lg font-medium hover:bg-cisa-navy-dark dark:hover:bg-blue-700 transition-colors flex items-center gap-2 whitespace-nowrap"
             >
               <MessageSquare className="h-5 w-5" />
               Submit feedback here
@@ -711,33 +727,33 @@ export default function Dashboard() {
       </section>
 
       {/* Score Scale Legend */}
-      <section className="py-12 px-4 bg-cisa-light">
+      <section className="py-12 px-4 bg-cisa-light dark:bg-slate-800/50">
         <div className="max-w-6xl mx-auto">
-          <h3 className="text-2xl font-bold text-cisa-navy mb-8 text-center">CAPRI Score Scale</h3>
+          <h3 className="text-2xl font-bold text-cisa-navy dark:text-blue-400 mb-8 text-center">CAPRI Score Scale</h3>
           <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-xl p-6 border-l-4 border-severity-severe shadow-sm">
+            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border-l-4 border-severity-severe shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-full bg-severity-severe"></div>
                 <span className="text-xl font-bold text-severity-severe">1.0 - 2.0</span>
               </div>
-              <h4 className="font-semibold text-gray-900 mb-1">Severe</h4>
-              <p className="text-gray-600 text-sm">High threat activity. Immediate attention recommended.</p>
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Severe</h4>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">High threat activity. Immediate attention recommended.</p>
             </div>
-            <div className="bg-white rounded-xl p-6 border-l-4 border-severity-elevated shadow-sm">
+            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border-l-4 border-severity-elevated shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-full bg-severity-elevated"></div>
                 <span className="text-xl font-bold text-severity-elevated">2.1 - 3.0</span>
               </div>
-              <h4 className="font-semibold text-gray-900 mb-1">Elevated</h4>
-              <p className="text-gray-600 text-sm">Increased threat activity. Enhanced monitoring advised.</p>
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Elevated</h4>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">Increased threat activity. Enhanced monitoring advised.</p>
             </div>
-            <div className="bg-white rounded-xl p-6 border-l-4 border-severity-normal shadow-sm">
+            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border-l-4 border-severity-normal shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-full bg-severity-normal"></div>
                 <span className="text-xl font-bold text-severity-normal">3.1 - 5.0</span>
               </div>
-              <h4 className="font-semibold text-gray-900 mb-1">Normal</h4>
-              <p className="text-gray-600 text-sm">Baseline threat levels. Standard security posture.</p>
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Normal</h4>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">Baseline threat levels. Standard security posture.</p>
             </div>
           </div>
         </div>
@@ -745,7 +761,7 @@ export default function Dashboard() {
 
       {/* Footer - CISA.gov Style Two-Tier */}
       {/* Top Tier - Navy */}
-      <footer className="bg-cisa-navy text-white">
+      <footer className="bg-cisa-navy dark:bg-slate-800 text-white">
         <div className="max-w-7xl mx-auto px-6 py-10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             {/* Social Icons */}
@@ -775,7 +791,7 @@ export default function Dashboard() {
         </div>
 
         {/* Bottom Tier - Light Gray */}
-        <div className="bg-slate-200 text-gray-700">
+        <div className="bg-slate-200 dark:bg-slate-900 text-gray-700 dark:text-gray-300">
           <div className="max-w-7xl mx-auto px-6 py-8">
             <div className="flex flex-col lg:flex-row items-start justify-between gap-8">
               {/* Government Logos */}
@@ -803,8 +819,8 @@ export default function Dashboard() {
               </div>
 
               {/* CAPRI-E Status Widget */}
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 min-w-[200px]">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Current Threat Level</p>
+              <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-slate-700 min-w-[200px]">
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Current Threat Level</p>
                 <div className="flex items-center gap-3">
                   <div
                     className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg transition-all duration-500 ease-in-out"
@@ -816,7 +832,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <p className="font-semibold transition-colors duration-500 ease-in-out" style={{ color: data?.score.color }}>{data?.score.label}</p>
-                    <p className="text-xs text-gray-500">{data?.meta.sourcesOnline}/{data?.meta.sourcesTotal} sources</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{data?.meta.sourcesOnline}/{data?.meta.sourcesTotal} sources</p>
                   </div>
                 </div>
               </div>
@@ -829,12 +845,23 @@ export default function Dashboard() {
       {showScrollTop && (
         <button
           onClick={scrollToTop}
-          className="fixed bottom-6 right-6 z-50 w-12 h-12 bg-cisa-navy text-white rounded-full shadow-lg hover:bg-cisa-navy-dark transition-all hover:shadow-xl flex items-center justify-center"
+          className="fixed bottom-6 right-6 z-50 w-12 h-12 bg-cisa-navy dark:bg-blue-600 text-white rounded-full shadow-lg hover:bg-cisa-navy-dark dark:hover:bg-blue-700 transition-all hover:shadow-xl flex items-center justify-center"
           aria-label="Scroll to top"
         >
           <ArrowUp className="h-6 w-6" />
         </button>
       )}
+
+      {/* Alert Settings Panel */}
+      <AlertSettings
+        isOpen={showAlertSettingsPanel}
+        onClose={() => {
+          setShowAlertSettingsPanel(false)
+          setWebhookConfigured(isWebhookConfigured())
+        }}
+        currentScore={data?.score.score}
+        currentLabel={data?.score.label}
+      />
     </div>
   )
 }

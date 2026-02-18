@@ -82,7 +82,7 @@ export default function CoolToolsTown() {
 
   const getRetroLabel = (label: string) => {
     if (label === 'Severe') return "WE'RE ALL GONNA DIE"
-    if (label === 'Elevated') return 'KINDA SKETCHY NGL'
+    if (label === 'Elevated') return 'KINDA SKETCHY'
     return "VIBIN'"
   }
 
@@ -289,7 +289,7 @@ export default function CoolToolsTown() {
                         }}>
                           <thead>
                             <tr style={{ background: '#333366' }}>
-                              <th style={{ border: '1px solid #666699', padding: '4px', color: '#ffff00', textAlign: 'left' }}>The Scary Stuff</th>
+                              <th style={{ border: '1px solid #666699', padding: '4px', color: '#ffff00', textAlign: 'left' }}>Danger, Danger</th>
                               <th style={{ border: '1px solid #666699', padding: '4px', color: '#ffff00', textAlign: 'center' }}>Damage</th>
                               <th style={{ border: '1px solid #666699', padding: '4px', color: '#ffff00', textAlign: 'center' }}>Count</th>
                             </tr>
@@ -340,7 +340,7 @@ export default function CoolToolsTown() {
                     }}>
                       <li>Cool Tools Town has a <span style={{ color: '#ff0000', fontWeight: 'bold' }}>new design</span>!</li>
                       <li>Now tracking {data?.meta?.sourcesOnline ?? '??'} spy networks</li>
-                      <li>AI-powered threat brain installed</li>
+                      <li>AI Overlord installed</li>
                       <li>Y2K bug: still patching</li>
                     </ul>
                   </div>
@@ -440,7 +440,7 @@ export default function CoolToolsTown() {
                 &#128680; CISA MASTER PRIORITIES &#128680;
               </h2>
               <p style={{ textAlign: 'center', color: '#808080', fontSize: '11px', fontFamily: 'Arial, sans-serif' }}>
-                (a.k.a. stuff you REALLY need to patch like... yesterday)
+                (stuff you should stop procrastinating on and patch)
               </p>
 
               <table style={{
@@ -555,7 +555,7 @@ export default function CoolToolsTown() {
                   <li>&#128027; Known exploited vulns = medium yikes (-0.3 each)</li>
                   <li>&#9889; ICS/SCADA problems = uh oh (-0.3 each)</li>
                   <li>&#129302; AI says it&apos;s bad = variable yikes (-0.1 to -0.4)</li>
-                  <li>&#128226; Vendor alerts = smol yikes (-0.15 each)</li>
+                  <li>&#128226; Vendor alerts = tiny yikes (-0.15 each)</li>
                 </ul>
                 <p style={{ fontSize: '10px', color: '#808080', marginTop: '4px' }}>
                   *This methodology has been peer-reviewed by exactly zero academics

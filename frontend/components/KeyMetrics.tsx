@@ -42,11 +42,11 @@ export default function KeyMetrics({ score, label, color, last24h }: KeyMetricsP
   const trend = getTrend()
 
   return (
-    <section className="py-8 px-4 bg-white">
+    <section className="py-8 px-4 bg-white dark:bg-slate-900">
       <div className="max-w-4xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Current Score */}
-          <div className="bg-cisa-navy rounded-xl p-6 text-center">
+          <div className="bg-cisa-navy dark:bg-slate-800 rounded-xl p-6 text-center">
             <p className="text-blue-100 text-sm font-medium uppercase tracking-wider mb-2">Score</p>
             <div className="flex items-center justify-center gap-2">
               <p className="text-white text-4xl font-bold">{score.toFixed(1)}</p>
@@ -62,7 +62,7 @@ export default function KeyMetrics({ score, label, color, last24h }: KeyMetricsP
           </div>
 
           {/* Last 24 Hours Summary */}
-          <div className="bg-cisa-navy rounded-xl p-6 text-center">
+          <div className="bg-cisa-navy dark:bg-slate-800 rounded-xl p-6 text-center">
             <p className="text-blue-100 text-sm font-medium uppercase tracking-wider mb-2">Last 24 Hours</p>
             <p className="text-white text-2xl font-bold mb-2">{last24h.total} New</p>
             <p className="text-blue-100 text-sm">
@@ -76,7 +76,7 @@ export default function KeyMetrics({ score, label, color, last24h }: KeyMetricsP
           </div>
 
           {/* Last Week's Score */}
-          <div className="bg-cisa-navy rounded-xl p-6 text-center">
+          <div className="bg-cisa-navy dark:bg-slate-800 rounded-xl p-6 text-center">
             <p className="text-blue-100 text-sm font-medium uppercase tracking-wider mb-2">Last Week</p>
             {lastWeek ? (
               <>

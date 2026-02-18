@@ -51,9 +51,9 @@ export default function ScoreBreakdown({ score, label, color, factors }: ScoreBr
   }
 
   return (
-    <section className="py-8 px-4 bg-white">
+    <section className="py-8 px-4 bg-white dark:bg-slate-900">
       <div className="max-w-4xl mx-auto">
-        <h2 className="text-2xl font-bold text-cisa-navy mb-6">
+        <h2 className="text-2xl font-bold text-cisa-navy dark:text-blue-400 mb-6">
           Score Breakdown
         </h2>
 
@@ -74,7 +74,7 @@ export default function ScoreBreakdown({ score, label, color, factors }: ScoreBr
           </div>
 
           {/* Scale labels */}
-          <div className="flex justify-between mt-2 text-xs font-medium text-gray-500">
+          <div className="flex justify-between mt-2 text-xs font-medium text-gray-500 dark:text-gray-400">
             <span>5.0 Normal</span>
             <span>3.0 Elevated</span>
             <span>1.0 Severe</span>
@@ -82,21 +82,21 @@ export default function ScoreBreakdown({ score, label, color, factors }: ScoreBr
         </div>
 
         {/* Score Calculation Breakdown */}
-        <div className="bg-cisa-light rounded-xl p-4">
+        <div className="bg-cisa-light dark:bg-slate-800 rounded-xl p-4">
           {/* Starting score */}
-          <div className="flex items-center justify-between py-2 border-b border-gray-200">
-            <span className="text-sm text-gray-600">Starting Score</span>
+          <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-slate-700">
+            <span className="text-sm text-gray-600 dark:text-gray-400">Starting Score</span>
             <span className="text-lg font-bold text-severity-normal">5.0</span>
           </div>
 
           {/* Active factors - Expandable */}
           {activeFactors.length > 0 ? (
             activeFactors.map((factor) => (
-              <div key={factor.name} className="border-b border-gray-200">
+              <div key={factor.name} className="border-b border-gray-200 dark:border-slate-700">
                 {/* Factor Header - Clickable */}
                 <button
                   onClick={() => toggleFactor(factor.name)}
-                  className="w-full flex items-center justify-between py-2 hover:bg-white/50 transition-colors rounded"
+                  className="w-full flex items-center justify-between py-2 hover:bg-white/50 dark:hover:bg-slate-700/50 transition-colors rounded"
                 >
                   <div className="flex items-center gap-2">
                     <ChevronDown
@@ -104,11 +104,11 @@ export default function ScoreBreakdown({ score, label, color, factors }: ScoreBr
                         expandedFactor === factor.name ? 'rotate-180' : ''
                       }`}
                     />
-                    <span className="text-red-500 font-bold">−</span>
-                    <span className="text-sm text-gray-800">{factor.name}</span>
-                    <span className="text-xs text-gray-500">({factor.count} items)</span>
+                    <span className="text-red-500 dark:text-red-400 font-bold">-</span>
+                    <span className="text-sm text-gray-800 dark:text-gray-200">{factor.name}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">({factor.count} items)</span>
                   </div>
-                  <span className="text-sm font-bold text-red-600">{Math.abs(factor.impact).toFixed(1)}</span>
+                  <span className="text-sm font-bold text-red-600 dark:text-red-400">{Math.abs(factor.impact).toFixed(1)}</span>
                 </button>
 
                 {/* Expanded Items */}
@@ -120,22 +120,22 @@ export default function ScoreBreakdown({ score, label, color, factors }: ScoreBr
                         href={item.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-xs text-gray-600 hover:text-cisa-navy py-1"
+                        className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 hover:text-cisa-navy dark:hover:text-blue-400 py-1"
                       >
-                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full flex-shrink-0" />
+                        <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full flex-shrink-0" />
                         <span className="truncate flex-1">{item.title.substring(0, 60)}{item.title.length > 60 ? '...' : ''}</span>
                         {isCISASource(item.source) && (
                           <span className="px-1 py-0.5 text-[10px] font-semibold bg-blue-600 text-white rounded flex-shrink-0">CISA</span>
                         )}
-                        <span className="text-gray-400 flex-shrink-0">
+                        <span className="text-gray-400 dark:text-gray-500 flex-shrink-0">
                           {item.source}
-                          {item.pubDate && item.source === 'CISA KEV' && ` · Added ${formatDate(item.pubDate)}`}
+                          {item.pubDate && item.source === 'CISA KEV' && ` - Added ${formatDate(item.pubDate)}`}
                         </span>
                         <ExternalLink className="h-3 w-3 flex-shrink-0" />
                       </a>
                     ))}
                     {factor.count > 5 && (
-                      <p className="text-xs text-gray-400 pl-3">
+                      <p className="text-xs text-gray-400 dark:text-gray-500 pl-3">
                         and {factor.count - 5} more...
                       </p>
                     )}
@@ -144,14 +144,14 @@ export default function ScoreBreakdown({ score, label, color, factors }: ScoreBr
               </div>
             ))
           ) : (
-            <div className="py-2 text-center text-sm text-gray-500">
+            <div className="py-2 text-center text-sm text-gray-500 dark:text-gray-400">
               No active threat factors detected
             </div>
           )}
 
           {/* Final score */}
           <div className="flex items-center justify-between pt-3 mt-1">
-            <span className="text-sm font-semibold text-gray-900">Current Score</span>
+            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Current Score</span>
             <div className="flex items-center gap-2">
               <span className="text-xl font-bold" style={{ color }}>
                 {score.toFixed(1)}

@@ -43,12 +43,12 @@ export default function ScoreTrend({ trend, currentScore }: ScoreTrendProps) {
     if (active && payload && payload.length) {
       const d = payload[0].payload
       return (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-          <p className="text-sm font-semibold text-gray-800">Week of {d.week}</p>
-          <p className="text-sm text-gray-600">{d.threats} total threats</p>
-          <p className="text-sm text-red-600">{d.energyThreats} energy-related</p>
+        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-3">
+          <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Week of {d.week}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">{d.threats} total threats</p>
+          <p className="text-sm text-red-600 dark:text-red-400">{d.energyThreats} energy-related</p>
           {d.kevCount > 0 && (
-            <p className="text-sm text-purple-600">{d.kevCount} KEV entries</p>
+            <p className="text-sm text-purple-600 dark:text-purple-400">{d.kevCount} KEV entries</p>
           )}
         </div>
       )
@@ -59,12 +59,12 @@ export default function ScoreTrend({ trend, currentScore }: ScoreTrendProps) {
   // Empty state
   if (!trend || trend.length === 0) {
     return (
-      <section className="py-8 px-4 bg-white">
+      <section className="py-8 px-4 bg-white dark:bg-slate-900">
         <div className="max-w-4xl mx-auto">
           <div className="card-premium-trump p-6">
-            <h3 className="text-xl font-bold text-cisa-navy mb-4">Threat Activity Trend</h3>
-            <div className="h-48 flex items-center justify-center bg-gray-50 rounded-xl">
-              <p className="text-gray-500 text-center">
+            <h3 className="text-xl font-bold text-cisa-navy dark:text-blue-400 mb-4">Threat Activity Trend</h3>
+            <div className="h-48 flex items-center justify-center bg-gray-50 dark:bg-slate-800 rounded-xl">
+              <p className="text-gray-500 dark:text-gray-400 text-center">
                 Not enough data to show trend
               </p>
             </div>
@@ -75,11 +75,11 @@ export default function ScoreTrend({ trend, currentScore }: ScoreTrendProps) {
   }
 
   return (
-    <section className="py-8 px-4 bg-white">
+    <section className="py-8 px-4 bg-white dark:bg-slate-900">
       <div className="max-w-4xl mx-auto">
         <div className="card-premium-trump p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-cisa-navy">Threat Activity (Last 4 Weeks)</h3>
+            <h3 className="text-xl font-bold text-cisa-navy dark:text-blue-400">Threat Activity (Last 4 Weeks)</h3>
             <div className={`flex items-center gap-2 ${trendColor}`}>
               <TrendIcon className="h-5 w-5" />
               <span className="text-sm font-medium">{trendText}</span>
@@ -111,7 +111,7 @@ export default function ScoreTrend({ trend, currentScore }: ScoreTrendProps) {
           </div>
 
           {/* Legend */}
-          <div className="flex items-center justify-center gap-6 mt-4 text-xs text-gray-500">
+          <div className="flex items-center justify-center gap-6 mt-4 text-xs text-gray-500 dark:text-gray-400">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded bg-severity-normal" />
               <span>&lt;5 threats</span>
@@ -126,7 +126,7 @@ export default function ScoreTrend({ trend, currentScore }: ScoreTrendProps) {
             </div>
           </div>
 
-          <p className="text-xs text-gray-400 text-center mt-3">
+          <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-3">
             Shows energy-relevant threats per week. Current score: {currentScore.toFixed(1)}
           </p>
         </div>

@@ -4,6 +4,82 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   CSS VARIABLES FOR LIGHT/DARK THEME
+   ============================================ */
+
+:root {
+  /* Background colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fbfe;
+  --bg-tertiary: #f0f7ff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fbfe;
+
+  /* Text colors */
+  --text-primary: #111827;
+  --text-secondary: #374151;
+  --text-tertiary: #6b7280;
+  --text-muted: #9ca3af;
+
+  /* Border colors */
+  --border-primary: #e5e7eb;
+  --border-secondary: #d1d5db;
+  --border-card: rgba(0, 82, 136, 0.05);
+
+  /* Accent colors */
+  --accent-navy: #005288;
+  --accent-navy-light: #0066a8;
+  --accent-red: #d92525;
+  --accent-gold: #d4af37;
+
+  /* Card shadows */
+  --shadow-card: 0 4px 30px rgba(0, 82, 136, 0.08);
+  --shadow-card-hover: 0 12px 50px rgba(0, 82, 136, 0.15);
+
+  /* Chart/UI specific */
+  --chart-grid: #e5e7eb;
+  --chart-text: #6b7280;
+  --tooltip-bg: #ffffff;
+  --tooltip-border: #e5e7eb;
+}
+
+.dark {
+  /* Background colors - navy/slate tones */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  --bg-card: #1e293b;
+  --bg-card-hover: #334155;
+
+  /* Text colors - light grays */
+  --text-primary: #f1f5f9;
+  --text-secondary: #e2e8f0;
+  --text-tertiary: #94a3b8;
+  --text-muted: #64748b;
+
+  /* Border colors */
+  --border-primary: #334155;
+  --border-secondary: #475569;
+  --border-card: rgba(148, 163, 184, 0.1);
+
+  /* Accent colors - slightly brighter for dark mode */
+  --accent-navy: #3b82f6;
+  --accent-navy-light: #60a5fa;
+  --accent-red: #ef4444;
+  --accent-gold: #fbbf24;
+
+  /* Card shadows - darker, more subtle */
+  --shadow-card: 0 4px 30px rgba(0, 0, 0, 0.3);
+  --shadow-card-hover: 0 12px 50px rgba(0, 0, 0, 0.5);
+
+  /* Chart/UI specific */
+  --chart-grid: #334155;
+  --chart-text: #94a3b8;
+  --tooltip-bg: #1e293b;
+  --tooltip-border: #334155;
+}
+
 /* Focus states for accessibility */
 button:focus-visible,
 a:focus-visible,
@@ -21,8 +97,10 @@ textarea:focus-visible {
 
 body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #ffffff;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Government-style top border - red, white, blue */
@@ -51,10 +129,17 @@ body {
 
 /* Hero background pattern */
 .hero-bg-pattern {
-  background-color: #f8fbfe;
+  background-color: var(--bg-secondary);
   background-image:
     radial-gradient(circle at 20% 50%, rgba(0, 82, 136, 0.03) 0%, transparent 50%),
     radial-gradient(circle at 80% 50%, rgba(212, 175, 55, 0.03) 0%, transparent 50%);
+}
+
+.dark .hero-bg-pattern {
+  background-color: var(--bg-secondary);
+  background-image:
+    radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 50%, rgba(251, 191, 36, 0.08) 0%, transparent 50%);
 }
 
 /* Navy feature boxes - like TrumpCard's gold boxes but in navy */
@@ -83,7 +168,8 @@ body {
 
 /* Premium card hover effects */
 .card-premium {
-  @apply bg-white rounded-2xl shadow-card transition-all duration-300;
+  @apply rounded-2xl shadow-card transition-all duration-300;
+  background: var(--bg-card);
 }
 
 .card-premium:hover {
@@ -93,38 +179,44 @@ body {
 
 /* Enhanced premium card - TrumpCard style */
 .card-premium-trump {
-  @apply bg-white rounded-2xl transition-all duration-300;
-  box-shadow: 0 4px 30px rgba(0, 82, 136, 0.08);
-  border: 1px solid rgba(0, 82, 136, 0.05);
+  @apply rounded-2xl transition-all duration-300;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border-card);
 }
 
 .card-premium-trump:hover {
-  box-shadow: 0 12px 50px rgba(0, 82, 136, 0.15);
+  box-shadow: var(--shadow-card-hover);
   transform: translateY(-4px);
 }
 
 /* TrumpCard-style accordion */
 .accordion-trump {
-  @apply bg-white overflow-hidden;
-  border: 1px solid #e5e7eb;
+  @apply overflow-hidden;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
   border-radius: 12px;
 }
 
 .accordion-trigger-trump {
   @apply flex items-center justify-between w-full p-6 text-left;
-  @apply font-semibold text-lg hover:bg-cisa-light transition-all duration-200;
-  color: #005288;
+  @apply font-semibold text-lg transition-all duration-200;
+  color: var(--accent-navy);
+}
+
+.accordion-trigger-trump:hover {
+  background: var(--bg-tertiary);
 }
 
 .accordion-trigger-trump .arrow-icon {
   @apply w-6 h-6 transition-transform duration-300;
-  color: #005288;
+  color: var(--accent-navy);
 }
 
 .accordion-content-trump {
   @apply px-6 pb-6 leading-relaxed;
-  color: #374151;
-  border-top: 1px solid #e5e7eb;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border-primary);
 }
 
 /* Legacy accordion styles */
