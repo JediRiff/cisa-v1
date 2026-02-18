@@ -3,8 +3,58 @@ import { Metadata } from 'next'
 import Image from 'next/image'
 
 export const metadata: Metadata = {
-  title: 'CAPRI | Cyber Alert Prioritization & Readiness Index',
-  description: 'CISA Cyber Alert Prioritization and Readiness Index',
+  title: 'CAPRI - Cyber Alert Prioritization & Readiness Index | CISA',
+  description: 'Real-time threat intelligence dashboard for US energy sector critical infrastructure. Monitor cyber threats, ICS vulnerabilities, and security alerts with CISA Shields Up integration.',
+  keywords: [
+    'cybersecurity',
+    'threat intelligence',
+    'energy sector',
+    'CISA',
+    'ICS security',
+    'critical infrastructure',
+    'SCADA security',
+    'OT security',
+    'cyber alerts',
+    'vulnerability management',
+    'Shields Up',
+    'industrial control systems',
+  ],
+  authors: [{ name: 'CISA - Cybersecurity and Infrastructure Security Agency' }],
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
+  openGraph: {
+    title: 'CAPRI - Cyber Alert Prioritization & Readiness Index',
+    description: 'Real-time threat intelligence dashboard for US energy sector critical infrastructure. Monitor cyber threats and security alerts.',
+    type: 'website',
+    locale: 'en_US',
+    siteName: 'CAPRI Dashboard',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'CAPRI Dashboard - Cyber Threat Intelligence for Energy Sector',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'CAPRI - Cyber Alert Prioritization & Readiness Index',
+    description: 'Real-time threat intelligence for US energy sector critical infrastructure',
+    images: ['/og-image.png'],
+    creator: '@CISAgov',
+    site: '@CISAgov',
+  },
+  metadataBase: new URL('https://capri.cisa.gov'),
+  alternates: {
+    canonical: '/',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
