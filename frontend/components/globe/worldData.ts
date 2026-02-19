@@ -101,11 +101,13 @@ export function calculateFacilityRisk(
   kevScore += Math.min(ransomwareKevCount * 0.3, 0.5) // Ransomware association
   kevScore = Math.min(kevScore, 3)
 
-  // Raw score (0-10)
+  // Raw threat intensity (0-10)
   const rawScore = actorScore + cveScore + kevScore
 
-  // Normalize to 1-10 with floor of 1 (no facility is truly zero risk)
-  const score = Math.max(Math.min(Math.round(rawScore * 10) / 10, 10), 1)
+  // Invert to 1-5 scale matching CAPRI convention: 1 = Severe, 5 = Normal
+  // Higher raw threat = lower score number
+  const inverted = 5 - (rawScore / 10) * 4
+  const score = Math.max(Math.min(Math.round(inverted * 10) / 10, 5), 1)
 
   // Build human-readable risk factors
   const factors: string[] = []
@@ -128,19 +130,19 @@ export function calculateFacilityRisk(
     factors.push('No specific sector threats detected in current intelligence')
   }
 
-  // Label and color based on score
+  // Label and color based on score (1 = worst, 5 = best, matching CAPRI scale)
   let label: string
   let color: string
-  if (score >= 8) {
-    label = 'Critical'
+  if (score <= 1.5) {
+    label = 'Severe'
     color = '#ef4444'
-  } else if (score >= 6) {
+  } else if (score <= 2.5) {
     label = 'High'
     color = '#f97316'
-  } else if (score >= 4) {
+  } else if (score <= 3.5) {
     label = 'Elevated'
     color = '#eab308'
-  } else if (score >= 2) {
+  } else if (score <= 4.5) {
     label = 'Guarded'
     color = '#3b82f6'
   } else {

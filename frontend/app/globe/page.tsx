@@ -504,18 +504,18 @@ function FacilityDetailPanel({
               <h4 className="text-[10px] font-bold text-white uppercase tracking-wider">Facility Risk Assessment</h4>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-bold font-mono" style={{ color: risk.color }}>
-                  {risk.score.toFixed(1)}
+                  {risk.score.toFixed(1)}/5
                 </span>
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ color: risk.color, background: `${risk.color}20` }}>
                   {risk.label}
                 </span>
               </div>
             </div>
-            {/* Risk bar */}
+            {/* Risk bar — inverted: score 1 = full bar (severe), score 5 = minimal bar (low) */}
             <div className="w-full h-1.5 bg-white/10 rounded-full mb-2">
               <div
                 className="h-full rounded-full transition-all"
-                style={{ width: `${risk.score * 10}%`, background: risk.color }}
+                style={{ width: `${((5 - risk.score) / 4) * 100}%`, background: risk.color }}
               />
             </div>
             {/* Risk factors */}
