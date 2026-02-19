@@ -548,6 +548,32 @@ function FacilityDetailPanel({
                 </p>
               </div>
             </div>
+            {/* Methodology */}
+            <details className="mt-2 pt-2 border-t border-white/5">
+              <summary className="text-[10px] text-gray-500 cursor-pointer hover:text-gray-300 transition-colors">
+                How is this score calculated?
+              </summary>
+              <div className="mt-2 space-y-1.5 text-[10px] text-gray-500 leading-relaxed">
+                <p>
+                  Score uses the CAPRI scale: <strong className="text-white">1 = Severe</strong>, <strong className="text-white">5 = Normal</strong>. Three weighted factors are combined:
+                </p>
+                <div className="pl-2 space-y-1">
+                  <p>
+                    <span className="text-gray-400">Threat Actors (0-4 pts):</span> Each nation-state APT group targeting this sector adds 0.5 pts. {risk.actorCount} actor{risk.actorCount !== 1 ? 's' : ''} = {Math.min(risk.actorCount * 0.5, 4).toFixed(1)} pts
+                  </p>
+                  <p>
+                    <span className="text-gray-400">CVE Exposure (0-3 pts):</span> Each sector-relevant CVE in the live feed adds 0.15 pts. {risk.relevantCveCount} CVE{risk.relevantCveCount !== 1 ? 's' : ''} = {Math.min(risk.relevantCveCount * 0.15, 3).toFixed(1)} pts
+                  </p>
+                  <p>
+                    <span className="text-gray-400">KEV Urgency (0-3 pts):</span> Active KEVs (0.4 ea), overdue KEVs (+0.5 ea), ransomware-linked KEVs (+0.3 ea).{' '}
+                    {risk.relevantKevCount} KEV{risk.relevantKevCount !== 1 ? 's' : ''}, {risk.overdueKevCount} overdue, {risk.ransomwareKevCount} ransomware
+                  </p>
+                </div>
+                <p>
+                  Raw threat intensity is inverted to the 1-5 CAPRI scale. Higher threat = lower score.
+                </p>
+              </div>
+            </details>
           </div>
         )}
 
