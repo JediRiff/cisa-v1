@@ -23,11 +23,14 @@ import {
   EnergyFacility,
   ThreatActor,
   Sector,
+  FacilityRisk,
+  MitreTTP,
   sectorColors,
   sectorLabels,
   sectorKeywords,
   threatActors as allThreatActors,
   energyFacilities,
+  calculateFacilityRisk,
 } from '@/components/globe/worldData'
 
 // Dynamic import for Three.js (no SSR)
@@ -164,6 +167,16 @@ export default function GlobePage() {
     )
   }, [selectedFacility])
 
+  // Risk score for selected facility
+  const facilityRisk = useMemo(() => {
+    if (!selectedFacility || !data) return null
+    return calculateFacilityRisk(
+      selectedFacility,
+      data.threats.all || [],
+      data.kev || [],
+    )
+  }, [selectedFacility, data])
+
   // Facilities targeted by selected actor
   const actorTargetFacilities = useMemo(() => {
     if (!selectedActor) return []
@@ -282,6 +295,7 @@ export default function GlobePage() {
               facility={selectedFacility}
               threats={sectorThreats}
               actors={targetingActors}
+              risk={facilityRisk}
               onClose={() => setSelectedFacility(null)}
             />
           )}
@@ -435,11 +449,13 @@ function FacilityDetailPanel({
   facility,
   threats,
   actors,
+  risk,
   onClose,
 }: {
   facility: EnergyFacility
   threats: any[]
   actors: ThreatActor[]
+  risk: FacilityRisk | null
   onClose: () => void
 }) {
   const SectorIcon = getSectorIcon(facility.sector)
@@ -481,6 +497,60 @@ function FacilityDetailPanel({
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
+        {/* Risk Score */}
+        {risk && (
+          <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-[10px] font-bold text-white uppercase tracking-wider">Facility Risk Assessment</h4>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold font-mono" style={{ color: risk.color }}>
+                  {risk.score.toFixed(1)}
+                </span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ color: risk.color, background: `${risk.color}20` }}>
+                  {risk.label}
+                </span>
+              </div>
+            </div>
+            {/* Risk bar */}
+            <div className="w-full h-1.5 bg-white/10 rounded-full mb-2">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{ width: `${risk.score * 10}%`, background: risk.color }}
+              />
+            </div>
+            {/* Risk factors */}
+            <div className="space-y-1">
+              {risk.factors.map((factor, i) => (
+                <div key={i} className="flex items-start gap-1.5">
+                  <span className="text-[10px] mt-0.5" style={{ color: risk.color }}>&#x25cf;</span>
+                  <span className="text-[10px] text-gray-400 leading-tight">{factor}</span>
+                </div>
+              ))}
+            </div>
+            {/* Breakdown */}
+            <div className="mt-2 pt-2 border-t border-white/5 grid grid-cols-4 gap-2 text-center">
+              <div>
+                <p className="text-[10px] text-gray-500">Actors</p>
+                <p className="text-xs font-bold text-white">{risk.actorCount}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-500">CVEs</p>
+                <p className="text-xs font-bold text-white">{risk.relevantCveCount}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-500">KEVs</p>
+                <p className="text-xs font-bold text-white">{risk.relevantKevCount}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-500">Overdue</p>
+                <p className="text-xs font-bold" style={{ color: risk.overdueKevCount > 0 ? '#ef4444' : '#22c55e' }}>
+                  {risk.overdueKevCount}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Threat Actors Targeting This Sector */}
         <div>
           <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2">
@@ -615,6 +685,40 @@ function ActorDetailPanel({
             ))}
           </div>
         </div>
+
+        {/* MITRE ATT&CK TTPs */}
+        {actor.ttps && actor.ttps.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-[10px] font-bold text-white uppercase tracking-wider">MITRE ATT&CK TTPs</h4>
+              {actor.mitrePage && (
+                <a
+                  href={actor.mitrePage}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                >
+                  {actor.mitreId} <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              )}
+            </div>
+            <div className="space-y-1">
+              {actor.ttps.map((ttp) => (
+                <a
+                  key={ttp.id}
+                  href={`https://attack.mitre.org/techniques/${ttp.id.replace('.', '/')}/`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 bg-white/[0.03] hover:bg-white/[0.06] rounded px-2 py-1.5 transition-colors group"
+                >
+                  <span className="text-[10px] font-mono text-red-400 flex-shrink-0 w-16">{ttp.id}</span>
+                  <span className="text-[10px] text-gray-300 group-hover:text-white flex-1 truncate">{ttp.name}</span>
+                  <span className="text-[9px] text-gray-600 flex-shrink-0">{ttp.tactic}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Targeted Facilities */}
         <div>

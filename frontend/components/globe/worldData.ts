@@ -20,15 +20,146 @@ export interface EnergyFacility {
   status?: 'active' | 'construction' | 'planned' | 'decommissioned'
 }
 
+export interface MitreTTP {
+  id: string        // e.g., 'T1190' or 'T1059.001'
+  name: string      // e.g., 'Exploit Public-Facing Application'
+  tactic: string    // e.g., 'Initial Access'
+}
+
 export interface ThreatActor {
   name: string
   aliases?: string[]
+  mitreId?: string           // e.g., 'G0007'
+  mitrePage?: string         // URL to MITRE ATT&CK group page
+  ttps?: MitreTTP[]
   origin: GeoPoint
   country: string
   type: string
   color: string
   targetSectors: Sector[]
   description: string
+}
+
+export interface FacilityRisk {
+  score: number              // 1-10 scale
+  label: string              // 'Critical' | 'High' | 'Elevated' | 'Guarded' | 'Low'
+  color: string              // CSS color for display
+  actorCount: number         // Threat actors targeting this sector
+  actorNames: string[]       // Names of targeting actors
+  relevantCveCount: number   // CVEs matching this sector
+  relevantKevCount: number   // KEVs matching this sector
+  overdueKevCount: number    // Overdue KEVs
+  ransomwareKevCount: number // KEVs with known ransomware use
+  factors: string[]          // Human-readable risk factors
+}
+
+// Calculate risk score for a single facility based on real threat data
+export function calculateFacilityRisk(
+  facility: EnergyFacility,
+  threatItems: any[],
+  kevItems: any[],
+): FacilityRisk {
+  const sector = facility.sector
+  const keywords = sectorKeywords[sector]
+
+  // 1. Threat actor assessment (0-4 points)
+  // Each targeting actor adds weight; more actors = higher risk
+  const targetingActors = threatActors.filter((a) =>
+    a.targetSectors.includes(sector)
+  )
+  const actorCount = targetingActors.length
+  // Weighted: nation-state APTs with ICS focus are more dangerous
+  const actorScore = Math.min(actorCount * 0.5, 4)
+
+  // 2. CVE exposure (0-3 points)
+  // Sector-relevant CVEs from the threat feed
+  const relevantCves = threatItems.filter((item) => {
+    const text = `${item.title || ''} ${item.description || ''} ${item.shortDescription || ''}`.toLowerCase()
+    return keywords.some((kw) => text.includes(kw.toLowerCase()))
+  })
+  const relevantCveCount = relevantCves.length
+  // More CVEs = higher exposure, diminishing returns
+  const cveScore = Math.min(relevantCveCount * 0.15, 3)
+
+  // 3. KEV urgency (0-3 points)
+  // Known Exploited Vulnerabilities are actively weaponized
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const relevantKevs = kevItems.filter((kev) => {
+    const text = `${kev.vendorProject || ''} ${kev.product || ''} ${kev.shortDescription || ''}`.toLowerCase()
+    return keywords.some((kw) => text.includes(kw.toLowerCase()))
+  })
+  const relevantKevCount = relevantKevs.length
+  const overdueKevs = relevantKevs.filter((kev) => new Date(kev.dueDate) < today)
+  const overdueKevCount = overdueKevs.length
+  const ransomwareKevs = relevantKevs.filter((kev) => kev.knownRansomwareCampaignUse === 'Known')
+  const ransomwareKevCount = ransomwareKevs.length
+
+  let kevScore = Math.min(relevantKevCount * 0.4, 1.5)
+  kevScore += Math.min(overdueKevCount * 0.5, 1.0)  // Overdue KEVs are urgent
+  kevScore += Math.min(ransomwareKevCount * 0.3, 0.5) // Ransomware association
+  kevScore = Math.min(kevScore, 3)
+
+  // Raw score (0-10)
+  const rawScore = actorScore + cveScore + kevScore
+
+  // Normalize to 1-10 with floor of 1 (no facility is truly zero risk)
+  const score = Math.max(Math.min(Math.round(rawScore * 10) / 10, 10), 1)
+
+  // Build human-readable risk factors
+  const factors: string[] = []
+  if (actorCount > 0) {
+    factors.push(`${actorCount} nation-state threat actor${actorCount > 1 ? 's' : ''} target${actorCount === 1 ? 's' : ''} this sector`)
+  }
+  if (relevantCveCount > 0) {
+    factors.push(`${relevantCveCount} sector-relevant CVE${relevantCveCount > 1 ? 's' : ''} in current feed`)
+  }
+  if (overdueKevCount > 0) {
+    factors.push(`${overdueKevCount} overdue KEV${overdueKevCount > 1 ? 's' : ''} requiring immediate remediation`)
+  }
+  if (ransomwareKevCount > 0) {
+    factors.push(`${ransomwareKevCount} KEV${ransomwareKevCount > 1 ? 's' : ''} with known ransomware exploitation`)
+  }
+  if (relevantKevCount > 0 && overdueKevCount === 0) {
+    factors.push(`${relevantKevCount} active KEV${relevantKevCount > 1 ? 's' : ''} under remediation deadline`)
+  }
+  if (factors.length === 0) {
+    factors.push('No specific sector threats detected in current intelligence')
+  }
+
+  // Label and color based on score
+  let label: string
+  let color: string
+  if (score >= 8) {
+    label = 'Critical'
+    color = '#ef4444'
+  } else if (score >= 6) {
+    label = 'High'
+    color = '#f97316'
+  } else if (score >= 4) {
+    label = 'Elevated'
+    color = '#eab308'
+  } else if (score >= 2) {
+    label = 'Guarded'
+    color = '#3b82f6'
+  } else {
+    label = 'Low'
+    color = '#22c55e'
+  }
+
+  return {
+    score,
+    label,
+    color,
+    actorCount,
+    actorNames: targetingActors.map((a) => a.name),
+    relevantCveCount,
+    relevantKevCount,
+    overdueKevCount,
+    ransomwareKevCount,
+    factors,
+  }
 }
 
 // Convert lat/lng to Three.js Vector3 on a sphere
@@ -86,11 +217,26 @@ export const sectorKeywords: Record<Sector, string[]> = {
   water: ['water treatment', 'water utility', 'wastewater', 'drinking water', 'chlorination', 'water system', 'water infrastructure', 'water plant', 'sewage', 'water purification', 'Unitronics', 'Vision PLC'],
 }
 
-// Known threat actor origins with targeting data
+// Known threat actor origins with targeting data and MITRE ATT&CK TTPs
+// TTPs sourced from attack.mitre.org group pages unless otherwise noted
 export const threatActors: ThreatActor[] = [
   {
     name: 'Volt Typhoon',
     aliases: ['BRONZE SILHOUETTE', 'Vanguard Panda', 'DEV-0391', 'Insidious Taurus', 'UNC3236'],
+    mitreId: 'G1017',
+    mitrePage: 'https://attack.mitre.org/groups/G1017/',
+    ttps: [
+      { id: 'T1190', name: 'Exploit Public-Facing Application', tactic: 'Initial Access' },
+      { id: 'T1059.001', name: 'PowerShell', tactic: 'Execution' },
+      { id: 'T1078.002', name: 'Valid Accounts: Domain Accounts', tactic: 'Persistence' },
+      { id: 'T1003.001', name: 'OS Credential Dumping: LSASS Memory', tactic: 'Credential Access' },
+      { id: 'T1003.003', name: 'OS Credential Dumping: NTDS', tactic: 'Credential Access' },
+      { id: 'T1505.003', name: 'Web Shell', tactic: 'Persistence' },
+      { id: 'T1090.001', name: 'Proxy: Internal Proxy', tactic: 'Command and Control' },
+      { id: 'T1562.001', name: 'Impair Defenses: Disable or Modify Tools', tactic: 'Defense Evasion' },
+      { id: 'T1047', name: 'Windows Management Instrumentation', tactic: 'Execution' },
+      { id: 'T1071.001', name: 'Application Layer Protocol: Web Protocols', tactic: 'Command and Control' },
+    ],
     origin: { lat: 39.9, lng: 116.4, name: 'Beijing' },
     country: 'China',
     type: 'APT',
@@ -101,6 +247,20 @@ export const threatActors: ThreatActor[] = [
   {
     name: 'APT41',
     aliases: ['Winnti', 'BARIUM', 'Wicked Panda', 'Brass Typhoon', 'Double Dragon'],
+    mitreId: 'G0096',
+    mitrePage: 'https://attack.mitre.org/groups/G0096/',
+    ttps: [
+      { id: 'T1190', name: 'Exploit Public-Facing Application', tactic: 'Initial Access' },
+      { id: 'T1195.002', name: 'Supply Chain Compromise: Software Supply Chain', tactic: 'Initial Access' },
+      { id: 'T1059.001', name: 'PowerShell', tactic: 'Execution' },
+      { id: 'T1574.001', name: 'DLL Search Order Hijacking', tactic: 'Persistence' },
+      { id: 'T1003.001', name: 'OS Credential Dumping: LSASS Memory', tactic: 'Credential Access' },
+      { id: 'T1505.003', name: 'Web Shell', tactic: 'Persistence' },
+      { id: 'T1055', name: 'Process Injection', tactic: 'Defense Evasion' },
+      { id: 'T1486', name: 'Data Encrypted for Impact', tactic: 'Impact' },
+      { id: 'T1553.002', name: 'Subvert Trust Controls: Code Signing', tactic: 'Defense Evasion' },
+      { id: 'T1003.003', name: 'OS Credential Dumping: NTDS', tactic: 'Credential Access' },
+    ],
     origin: { lat: 30.57, lng: 104.07, name: 'Chengdu' },
     country: 'China',
     type: 'APT',
@@ -111,6 +271,20 @@ export const threatActors: ThreatActor[] = [
   {
     name: 'Sandworm',
     aliases: ['Voodoo Bear', 'IRIDIUM', 'Seashell Blizzard', 'ELECTRUM', 'Telebots'],
+    mitreId: 'G0034',
+    mitrePage: 'https://attack.mitre.org/groups/G0034/',
+    ttps: [
+      { id: 'T1190', name: 'Exploit Public-Facing Application', tactic: 'Initial Access' },
+      { id: 'T1566.001', name: 'Spearphishing Attachment', tactic: 'Initial Access' },
+      { id: 'T1059.001', name: 'PowerShell', tactic: 'Execution' },
+      { id: 'T1485', name: 'Data Destruction', tactic: 'Impact' },
+      { id: 'T1561.002', name: 'Disk Wipe: Disk Structure Wipe', tactic: 'Impact' },
+      { id: 'T1489', name: 'Service Stop', tactic: 'Impact' },
+      { id: 'T1490', name: 'Inhibit System Recovery', tactic: 'Impact' },
+      { id: 'T1505.003', name: 'Web Shell', tactic: 'Persistence' },
+      { id: 'T1195.002', name: 'Supply Chain Compromise: Software Supply Chain', tactic: 'Initial Access' },
+      { id: 'T1484.001', name: 'Group Policy Modification', tactic: 'Defense Evasion' },
+    ],
     origin: { lat: 55.8, lng: 37.6, name: 'Moscow' },
     country: 'Russia',
     type: 'APT (GRU Unit 74455)',
@@ -121,6 +295,20 @@ export const threatActors: ThreatActor[] = [
   {
     name: 'APT28',
     aliases: ['Fancy Bear', 'STRONTIUM', 'Forest Blizzard', 'Sofacy', 'Pawn Storm'],
+    mitreId: 'G0007',
+    mitrePage: 'https://attack.mitre.org/groups/G0007/',
+    ttps: [
+      { id: 'T1566.001', name: 'Spearphishing Attachment', tactic: 'Initial Access' },
+      { id: 'T1190', name: 'Exploit Public-Facing Application', tactic: 'Initial Access' },
+      { id: 'T1203', name: 'Exploitation for Client Execution', tactic: 'Execution' },
+      { id: 'T1059.001', name: 'PowerShell', tactic: 'Execution' },
+      { id: 'T1003.001', name: 'OS Credential Dumping: LSASS Memory', tactic: 'Credential Access' },
+      { id: 'T1110.003', name: 'Brute Force: Password Spraying', tactic: 'Credential Access' },
+      { id: 'T1068', name: 'Exploitation for Privilege Escalation', tactic: 'Privilege Escalation' },
+      { id: 'T1114.002', name: 'Remote Email Collection', tactic: 'Collection' },
+      { id: 'T1090.002', name: 'Proxy: External Proxy', tactic: 'Command and Control' },
+      { id: 'T1048.002', name: 'Exfiltration Over Asymmetric Encrypted Non-C2', tactic: 'Exfiltration' },
+    ],
     origin: { lat: 55.8, lng: 37.6, name: 'Moscow' },
     country: 'Russia',
     type: 'APT (GRU Unit 26165)',
@@ -131,6 +319,20 @@ export const threatActors: ThreatActor[] = [
   {
     name: 'APT29',
     aliases: ['Cozy Bear', 'NOBELIUM', 'Midnight Blizzard', 'The Dukes', 'Dark Halo'],
+    mitreId: 'G0016',
+    mitrePage: 'https://attack.mitre.org/groups/G0016/',
+    ttps: [
+      { id: 'T1195.002', name: 'Supply Chain Compromise: Software Supply Chain', tactic: 'Initial Access' },
+      { id: 'T1566.001', name: 'Spearphishing Attachment', tactic: 'Initial Access' },
+      { id: 'T1059.001', name: 'PowerShell', tactic: 'Execution' },
+      { id: 'T1606.002', name: 'Forge Web Credentials: SAML Tokens', tactic: 'Credential Access' },
+      { id: 'T1098.001', name: 'Account Manipulation: Additional Cloud Credentials', tactic: 'Persistence' },
+      { id: 'T1484.002', name: 'Domain Policy Modification: Trust Modification', tactic: 'Defense Evasion' },
+      { id: 'T1003.006', name: 'OS Credential Dumping: DCSync', tactic: 'Credential Access' },
+      { id: 'T1090.004', name: 'Proxy: Domain Fronting', tactic: 'Command and Control' },
+      { id: 'T1027.006', name: 'HTML Smuggling', tactic: 'Defense Evasion' },
+      { id: 'T1621', name: 'Multi-Factor Authentication Request Generation', tactic: 'Credential Access' },
+    ],
     origin: { lat: 55.8, lng: 37.6, name: 'Moscow' },
     country: 'Russia',
     type: 'APT (SVR)',
@@ -141,6 +343,20 @@ export const threatActors: ThreatActor[] = [
   {
     name: 'Lazarus',
     aliases: ['HIDDEN COBRA', 'Zinc', 'Diamond Sleet', 'Labyrinth Chollima', 'APT38'],
+    mitreId: 'G0032',
+    mitrePage: 'https://attack.mitre.org/groups/G0032/',
+    ttps: [
+      { id: 'T1566.001', name: 'Spearphishing Attachment', tactic: 'Initial Access' },
+      { id: 'T1566.003', name: 'Spearphishing via Service', tactic: 'Initial Access' },
+      { id: 'T1189', name: 'Drive-by Compromise', tactic: 'Initial Access' },
+      { id: 'T1203', name: 'Exploitation for Client Execution', tactic: 'Execution' },
+      { id: 'T1059.001', name: 'PowerShell', tactic: 'Execution' },
+      { id: 'T1485', name: 'Data Destruction', tactic: 'Impact' },
+      { id: 'T1561.002', name: 'Disk Wipe: Disk Structure Wipe', tactic: 'Impact' },
+      { id: 'T1218.011', name: 'Rundll32', tactic: 'Defense Evasion' },
+      { id: 'T1055.001', name: 'DLL Injection', tactic: 'Defense Evasion' },
+      { id: 'T1574.001', name: 'DLL Search Order Hijacking', tactic: 'Persistence' },
+    ],
     origin: { lat: 39.0, lng: 125.8, name: 'Pyongyang' },
     country: 'North Korea',
     type: 'APT',
@@ -151,6 +367,20 @@ export const threatActors: ThreatActor[] = [
   {
     name: 'APT33',
     aliases: ['Elfin', 'Refined Kitten', 'MAGNALLIUM', 'Peach Sandstorm', 'HOLMIUM'],
+    mitreId: 'G0064',
+    mitrePage: 'https://attack.mitre.org/groups/G0064/',
+    ttps: [
+      { id: 'T1566.001', name: 'Spearphishing Attachment', tactic: 'Initial Access' },
+      { id: 'T1566.002', name: 'Spearphishing Link', tactic: 'Initial Access' },
+      { id: 'T1059.001', name: 'PowerShell', tactic: 'Execution' },
+      { id: 'T1110.003', name: 'Brute Force: Password Spraying', tactic: 'Credential Access' },
+      { id: 'T1003.001', name: 'OS Credential Dumping: LSASS Memory', tactic: 'Credential Access' },
+      { id: 'T1068', name: 'Exploitation for Privilege Escalation', tactic: 'Privilege Escalation' },
+      { id: 'T1053.005', name: 'Scheduled Task', tactic: 'Persistence' },
+      { id: 'T1078', name: 'Valid Accounts', tactic: 'Persistence' },
+      { id: 'T1071.001', name: 'Application Layer Protocol: Web Protocols', tactic: 'Command and Control' },
+      { id: 'T1204.002', name: 'User Execution: Malicious File', tactic: 'Execution' },
+    ],
     origin: { lat: 35.7, lng: 51.4, name: 'Tehran' },
     country: 'Iran',
     type: 'APT',
@@ -160,17 +390,45 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'APT35',
-    aliases: ['Charming Kitten', 'PHOSPHORUS', 'Mint Sandstorm', 'NewsBeef', 'TA453'],
+    aliases: ['Charming Kitten', 'PHOSPHORUS', 'Mint Sandstorm', 'Magic Hound', 'TA453'],
+    mitreId: 'G0059',
+    mitrePage: 'https://attack.mitre.org/groups/G0059/',
+    ttps: [
+      { id: 'T1566.002', name: 'Spearphishing Link', tactic: 'Initial Access' },
+      { id: 'T1190', name: 'Exploit Public-Facing Application', tactic: 'Initial Access' },
+      { id: 'T1059.001', name: 'PowerShell', tactic: 'Execution' },
+      { id: 'T1505.003', name: 'Web Shell', tactic: 'Persistence' },
+      { id: 'T1003.001', name: 'OS Credential Dumping: LSASS Memory', tactic: 'Credential Access' },
+      { id: 'T1486', name: 'Data Encrypted for Impact', tactic: 'Impact' },
+      { id: 'T1105', name: 'Ingress Tool Transfer', tactic: 'Command and Control' },
+      { id: 'T1078.002', name: 'Valid Accounts: Domain Accounts', tactic: 'Persistence' },
+      { id: 'T1562.001', name: 'Impair Defenses: Disable or Modify Tools', tactic: 'Defense Evasion' },
+      { id: 'T1021.001', name: 'Remote Desktop Protocol', tactic: 'Lateral Movement' },
+    ],
     origin: { lat: 35.7, lng: 51.4, name: 'Tehran' },
     country: 'Iran',
     type: 'APT',
     color: '#ff6600',
     targetSectors: ['nuclear', 'oil'],
-    description: 'Iranian state-sponsored group (Charming Kitten) conducting espionage against nuclear energy and oil sectors. Uses social engineering and credential harvesting for initial access.',
+    description: 'Iranian state-sponsored group (Charming Kitten/Magic Hound) conducting espionage against nuclear energy and oil sectors. Uses social engineering and credential harvesting for initial access.',
   },
   {
     name: 'Turla',
     aliases: ['Snake', 'Uroburos', 'Venomous Bear', 'KRYPTON', 'Secret Blizzard', 'Waterbug'],
+    mitreId: 'G0010',
+    mitrePage: 'https://attack.mitre.org/groups/G0010/',
+    ttps: [
+      { id: 'T1189', name: 'Drive-by Compromise', tactic: 'Initial Access' },
+      { id: 'T1566.002', name: 'Spearphishing Link', tactic: 'Initial Access' },
+      { id: 'T1059.001', name: 'PowerShell', tactic: 'Execution' },
+      { id: 'T1055.001', name: 'DLL Injection', tactic: 'Defense Evasion' },
+      { id: 'T1071.001', name: 'Application Layer Protocol: Web Protocols', tactic: 'Command and Control' },
+      { id: 'T1071.003', name: 'Application Layer Protocol: Mail Protocols', tactic: 'Command and Control' },
+      { id: 'T1005', name: 'Data from Local System', tactic: 'Collection' },
+      { id: 'T1068', name: 'Exploitation for Privilege Escalation', tactic: 'Privilege Escalation' },
+      { id: 'T1102.002', name: 'Web Service: Bidirectional Communication', tactic: 'Command and Control' },
+      { id: 'T1027.011', name: 'Fileless Storage', tactic: 'Defense Evasion' },
+    ],
     origin: { lat: 54.63, lng: 39.69, name: 'Ryazan' },
     country: 'Russia',
     type: 'APT (FSB Center 16)',
@@ -180,7 +438,21 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'Kimsuky',
-    aliases: ['Velvet Chollima', 'THALLIUM', 'Emerald Sleet', 'Black Banshee', 'SharpTongue'],
+    aliases: ['Velvet Chollima', 'THALLIUM', 'Emerald Sleet', 'Black Banshee', 'APT43'],
+    mitreId: 'G0094',
+    mitrePage: 'https://attack.mitre.org/groups/G0094/',
+    ttps: [
+      { id: 'T1566.001', name: 'Spearphishing Attachment', tactic: 'Initial Access' },
+      { id: 'T1566.002', name: 'Spearphishing Link', tactic: 'Initial Access' },
+      { id: 'T1059.001', name: 'PowerShell', tactic: 'Execution' },
+      { id: 'T1059.007', name: 'JavaScript', tactic: 'Execution' },
+      { id: 'T1056.001', name: 'Keylogging', tactic: 'Collection' },
+      { id: 'T1176.001', name: 'Browser Extensions', tactic: 'Persistence' },
+      { id: 'T1114.003', name: 'Email Forwarding Rule', tactic: 'Collection' },
+      { id: 'T1218.005', name: 'Mshta', tactic: 'Defense Evasion' },
+      { id: 'T1598.003', name: 'Phishing for Information: Spearphishing Link', tactic: 'Reconnaissance' },
+      { id: 'T1555.003', name: 'Credentials from Web Browsers', tactic: 'Credential Access' },
+    ],
     origin: { lat: 39.0, lng: 125.8, name: 'Pyongyang' },
     country: 'North Korea',
     type: 'APT',
@@ -191,6 +463,20 @@ export const threatActors: ThreatActor[] = [
   {
     name: 'Dragonfly',
     aliases: ['Energetic Bear', 'Berserk Bear', 'Crouching Yeti', 'IRON LIBERTY', 'Ghost Blizzard', 'DYMALLOY'],
+    mitreId: 'G0035',
+    mitrePage: 'https://attack.mitre.org/groups/G0035/',
+    ttps: [
+      { id: 'T1189', name: 'Drive-by Compromise', tactic: 'Initial Access' },
+      { id: 'T1190', name: 'Exploit Public-Facing Application', tactic: 'Initial Access' },
+      { id: 'T1195.002', name: 'Supply Chain Compromise: Software Supply Chain', tactic: 'Initial Access' },
+      { id: 'T1566.001', name: 'Spearphishing Attachment', tactic: 'Initial Access' },
+      { id: 'T1187', name: 'Forced Authentication', tactic: 'Credential Access' },
+      { id: 'T1003.003', name: 'OS Credential Dumping: NTDS', tactic: 'Credential Access' },
+      { id: 'T1505.003', name: 'Web Shell', tactic: 'Persistence' },
+      { id: 'T1210', name: 'Exploitation of Remote Services', tactic: 'Lateral Movement' },
+      { id: 'T1059.001', name: 'PowerShell', tactic: 'Execution' },
+      { id: 'T1133', name: 'External Remote Services', tactic: 'Persistence' },
+    ],
     origin: { lat: 55.75, lng: 37.62, name: 'Moscow' },
     country: 'Russia',
     type: 'APT (FSB Center 16)',
@@ -201,6 +487,20 @@ export const threatActors: ThreatActor[] = [
   {
     name: 'APT34',
     aliases: ['OilRig', 'Helix Kitten', 'COBALT GYPSY', 'Hazel Sandstorm', 'Crambus', 'Earth Simnavaz'],
+    mitreId: 'G0049',
+    mitrePage: 'https://attack.mitre.org/groups/G0049/',
+    ttps: [
+      { id: 'T1566.001', name: 'Spearphishing Attachment', tactic: 'Initial Access' },
+      { id: 'T1566.002', name: 'Spearphishing Link', tactic: 'Initial Access' },
+      { id: 'T1059.001', name: 'PowerShell', tactic: 'Execution' },
+      { id: 'T1071.004', name: 'Application Layer Protocol: DNS', tactic: 'Command and Control' },
+      { id: 'T1505.003', name: 'Web Shell', tactic: 'Persistence' },
+      { id: 'T1003.001', name: 'OS Credential Dumping: LSASS Memory', tactic: 'Credential Access' },
+      { id: 'T1053.005', name: 'Scheduled Task', tactic: 'Persistence' },
+      { id: 'T1068', name: 'Exploitation for Privilege Escalation', tactic: 'Privilege Escalation' },
+      { id: 'T1056.001', name: 'Keylogging', tactic: 'Collection' },
+      { id: 'T1572', name: 'Protocol Tunneling', tactic: 'Command and Control' },
+    ],
     origin: { lat: 35.70, lng: 51.42, name: 'Tehran' },
     country: 'Iran',
     type: 'APT (MOIS)',
@@ -210,7 +510,21 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'CyberAv3ngers',
-    aliases: ['Cyber Av3ngers'],
+    aliases: ['Cyber Av3ngers', 'Soldiers of Solomon'],
+    mitreId: 'G1027',
+    mitrePage: 'https://attack.mitre.org/groups/G1027/',
+    ttps: [
+      // ICS-domain techniques from MITRE ATT&CK G1027
+      { id: 'T0812', name: 'Default Credentials', tactic: 'Initial Access (ICS)' },
+      { id: 'T0883', name: 'Internet Accessible Device', tactic: 'Initial Access (ICS)' },
+      { id: 'T0814', name: 'Denial of Service', tactic: 'Impact (ICS)' },
+      { id: 'T0826', name: 'Loss of Availability', tactic: 'Impact (ICS)' },
+      { id: 'T0829', name: 'Loss of View', tactic: 'Impact (ICS)' },
+      // Enterprise-domain techniques from CISA AA23-335A
+      { id: 'T1078.001', name: 'Default Accounts', tactic: 'Initial Access' },
+      { id: 'T1110', name: 'Brute Force', tactic: 'Credential Access' },
+      { id: 'T1491.001', name: 'Internal Defacement', tactic: 'Impact' },
+    ],
     origin: { lat: 35.70, lng: 51.42, name: 'Tehran' },
     country: 'Iran',
     type: 'APT (IRGC)',
@@ -221,6 +535,20 @@ export const threatActors: ThreatActor[] = [
   {
     name: 'MuddyWater',
     aliases: ['MERCURY', 'Static Kitten', 'Seedworm', 'Mango Sandstorm', 'TA450', 'Earth Vetala'],
+    mitreId: 'G0069',
+    mitrePage: 'https://attack.mitre.org/groups/G0069/',
+    ttps: [
+      { id: 'T1566.001', name: 'Spearphishing Attachment', tactic: 'Initial Access' },
+      { id: 'T1566.002', name: 'Spearphishing Link', tactic: 'Initial Access' },
+      { id: 'T1059.001', name: 'PowerShell', tactic: 'Execution' },
+      { id: 'T1059.005', name: 'Visual Basic', tactic: 'Execution' },
+      { id: 'T1204.002', name: 'User Execution: Malicious File', tactic: 'Execution' },
+      { id: 'T1027.010', name: 'Command Obfuscation', tactic: 'Defense Evasion' },
+      { id: 'T1218.005', name: 'Mshta', tactic: 'Defense Evasion' },
+      { id: 'T1003.001', name: 'OS Credential Dumping: LSASS Memory', tactic: 'Credential Access' },
+      { id: 'T1105', name: 'Ingress Tool Transfer', tactic: 'Command and Control' },
+      { id: 'T1219', name: 'Remote Access Tools', tactic: 'Command and Control' },
+    ],
     origin: { lat: 35.70, lng: 51.42, name: 'Tehran' },
     country: 'Iran',
     type: 'APT (MOIS)',
@@ -230,7 +558,21 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'Salt Typhoon',
-    aliases: ['GhostEmperor', 'FamousSparrow', 'Earth Estries', 'UNC2286'],
+    aliases: ['Earth Estries', 'UNC2286'],
+    mitreId: 'G1045',
+    mitrePage: 'https://attack.mitre.org/groups/G1045/',
+    ttps: [
+      { id: 'T1190', name: 'Exploit Public-Facing Application', tactic: 'Initial Access' },
+      { id: 'T1098.004', name: 'Account Manipulation: SSH Authorized Keys', tactic: 'Persistence' },
+      { id: 'T1136', name: 'Create Account', tactic: 'Persistence' },
+      { id: 'T1562.004', name: 'Disable or Modify System Firewall', tactic: 'Defense Evasion' },
+      { id: 'T1070.002', name: 'Clear Linux or Mac System Logs', tactic: 'Defense Evasion' },
+      { id: 'T1110.002', name: 'Brute Force: Password Cracking', tactic: 'Credential Access' },
+      { id: 'T1040', name: 'Network Sniffing', tactic: 'Discovery' },
+      { id: 'T1602.002', name: 'Network Device Configuration Dump', tactic: 'Collection' },
+      { id: 'T1572', name: 'Protocol Tunneling', tactic: 'Command and Control' },
+      { id: 'T1048.003', name: 'Exfiltration Over Unencrypted Non-C2 Protocol', tactic: 'Exfiltration' },
+    ],
     origin: { lat: 39.9, lng: 116.4, name: 'Beijing' },
     country: 'China',
     type: 'APT (MSS)',
@@ -241,6 +583,17 @@ export const threatActors: ThreatActor[] = [
   {
     name: 'Flax Typhoon',
     aliases: ['Ethereal Panda', 'Storm-0919'],
+    // No formal MITRE ATT&CK group page; TTPs sourced from Microsoft threat intelligence (Aug 2023)
+    ttps: [
+      { id: 'T1190', name: 'Exploit Public-Facing Application', tactic: 'Initial Access' },
+      { id: 'T1505.003', name: 'Web Shell', tactic: 'Persistence' },
+      { id: 'T1068', name: 'Exploitation for Privilege Escalation', tactic: 'Privilege Escalation' },
+      { id: 'T1546.008', name: 'Accessibility Features', tactic: 'Persistence' },
+      { id: 'T1003.001', name: 'OS Credential Dumping: LSASS Memory', tactic: 'Credential Access' },
+      { id: 'T1550.002', name: 'Pass the Hash', tactic: 'Lateral Movement' },
+      { id: 'T1021.006', name: 'Windows Remote Management', tactic: 'Lateral Movement' },
+      { id: 'T1047', name: 'Windows Management Instrumentation', tactic: 'Execution' },
+    ],
     origin: { lat: 39.9, lng: 116.4, name: 'Beijing' },
     country: 'China',
     type: 'APT',
@@ -250,7 +603,21 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'Andariel',
-    aliases: ['Onyx Sleet', 'Silent Chollima', 'Stonefly', 'PLUTONIUM', 'DarkSeoul'],
+    aliases: ['Onyx Sleet', 'Silent Chollima', 'Stonefly', 'PLUTONIUM'],
+    mitreId: 'G0138',
+    mitrePage: 'https://attack.mitre.org/groups/G0138/',
+    ttps: [
+      { id: 'T1189', name: 'Drive-by Compromise', tactic: 'Initial Access' },
+      { id: 'T1566.001', name: 'Spearphishing Attachment', tactic: 'Initial Access' },
+      { id: 'T1190', name: 'Exploit Public-Facing Application', tactic: 'Initial Access' },
+      { id: 'T1203', name: 'Exploitation for Client Execution', tactic: 'Execution' },
+      { id: 'T1204.002', name: 'User Execution: Malicious File', tactic: 'Execution' },
+      { id: 'T1027.003', name: 'Steganography', tactic: 'Defense Evasion' },
+      { id: 'T1105', name: 'Ingress Tool Transfer', tactic: 'Command and Control' },
+      { id: 'T1005', name: 'Data from Local System', tactic: 'Collection' },
+      { id: 'T1059', name: 'Command and Scripting Interpreter', tactic: 'Execution' },
+      { id: 'T1003', name: 'OS Credential Dumping', tactic: 'Credential Access' },
+    ],
     origin: { lat: 39.03, lng: 125.75, name: 'Pyongyang' },
     country: 'North Korea',
     type: 'APT (RGB 3rd Bureau)',
