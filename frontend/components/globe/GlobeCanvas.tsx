@@ -324,13 +324,48 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
     })
     globeGroup.add(new THREE.Points(dotGeo, dotMat))
 
+    // Declutter overlapping facility positions
+    // Detect facilities within MIN_DIST degrees and spread them in a ring
+    const MIN_DIST = 0.35 // ~25 miles at US latitudes
+    const declutteredCoords: Map<string, { lat: number; lng: number }> = new Map()
+
+    // Group facilities that are too close together
+    const processed = new Set<string>()
+    energyFacilities.forEach((f) => {
+      if (processed.has(f.id)) return
+      const cluster = energyFacilities.filter(
+        (other) =>
+          !processed.has(other.id) &&
+          Math.abs(f.lat - other.lat) < MIN_DIST &&
+          Math.abs(f.lng - other.lng) < MIN_DIST
+      )
+      if (cluster.length <= 1) {
+        declutteredCoords.set(f.id, { lat: f.lat, lng: f.lng })
+        processed.add(f.id)
+        return
+      }
+      // Spread cluster members in a small ring around their centroid
+      const cLat = cluster.reduce((s, c) => s + c.lat, 0) / cluster.length
+      const cLng = cluster.reduce((s, c) => s + c.lng, 0) / cluster.length
+      const spreadRadius = 0.25 + cluster.length * 0.06
+      cluster.forEach((member, i) => {
+        const angle = (i / cluster.length) * Math.PI * 2
+        declutteredCoords.set(member.id, {
+          lat: cLat + Math.sin(angle) * spreadRadius,
+          lng: cLng + Math.cos(angle) * spreadRadius,
+        })
+        processed.add(member.id)
+      })
+    })
+
     // Energy facility markers - sector-colored, clickable
     const facilityMarkers: FacilityMarkerRef[] = []
     const facilityMeshGroup = new THREE.Group()
     globeGroup.add(facilityMeshGroup)
 
     energyFacilities.forEach((facility) => {
-      const pos = latLngToVector3(facility.lat, facility.lng, 1.012)
+      const coords = declutteredCoords.get(facility.id) || { lat: facility.lat, lng: facility.lng }
+      const pos = latLngToVector3(coords.lat, coords.lng, 1.012)
       const color = sectorColors[facility.sector]
 
       // Solid marker sphere
