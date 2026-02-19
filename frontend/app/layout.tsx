@@ -1,6 +1,7 @@
 import './globals.css'
 import { Metadata } from 'next'
 import Image from 'next/image'
+import Link from 'next/link'
 import { ThemeProvider, ThemeToggle } from '@/components/ThemeProvider'
 
 export const metadata: Metadata = {
@@ -97,6 +98,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </div>
               </div>
               <div className="flex items-center gap-4">
+                {/* Navigation Tabs */}
+                <nav className="hidden sm:flex items-center gap-1 mr-2">
+                  <Link href="/" className="px-3 py-1.5 text-sm rounded-lg text-blue-200 hover:text-white hover:bg-white/10 transition-colors">
+                    Dashboard
+                  </Link>
+                  <Link href="/globe" className="px-3 py-1.5 text-sm rounded-lg text-blue-200 hover:text-white hover:bg-white/10 transition-colors">
+                    Threat Map
+                  </Link>
+                </nav>
                 {/* Theme Toggle Button */}
                 <ThemeToggle />
                 <div className="text-right hidden md:block">
