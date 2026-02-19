@@ -76,12 +76,12 @@ export const sectorLabels: Record<Sector, string> = {
 
 // Keywords used to match CVEs/KEVs/alerts to sectors
 export const sectorKeywords: Record<Sector, string[]> = {
-  nuclear: ['nuclear', 'NRC', 'reactor', 'radiation', 'fuel rod', 'containment', 'IAEA', 'enrichment', 'centrifuge', 'Stuxnet', 'nuclear plant', 'nuclear power'],
-  hydro: ['hydroelectric', 'dam', 'reservoir', 'spillway', 'hydropower', 'water turbine', 'FERC', 'flood control', 'penstock', 'hydro plant'],
-  grid: ['power grid', 'SCADA', 'ICS', 'substation', 'transformer', 'transmission', 'NERC', 'CIP', 'EMS', 'DCS', 'RTU', 'PLC', 'HMI', 'smart grid', 'AMI', 'DERMS', 'Modbus', 'DNP3', 'IEC 61850', 'OT', 'industrial control', 'Industroyer', 'BlackEnergy', 'energy grid', 'electric grid', 'power system', 'SCADA', 'operational technology'],
-  natural_gas: ['natural gas', 'LNG', 'pipeline', 'compressor station', 'gas turbine', 'methane', 'PHMSA', 'gas distribution', 'gas pipeline', 'liquefied natural gas'],
+  nuclear: ['nuclear', 'NRC', 'reactor', 'radiation', 'fuel rod', 'containment', 'IAEA', 'enrichment', 'centrifuge', 'Stuxnet', 'nuclear plant', 'nuclear power', 'uranium', 'spent fuel', 'BWR', 'PWR', 'fission'],
+  hydro: ['hydroelectric', 'dam', 'reservoir', 'spillway', 'hydropower', 'water turbine', 'FERC', 'flood control', 'penstock', 'hydro plant', 'pumped storage'],
+  grid: ['power grid', 'SCADA', 'ICS', 'substation', 'transformer', 'transmission', 'NERC', 'CIP', 'EMS', 'DCS', 'RTU', 'PLC', 'HMI', 'smart grid', 'AMI', 'DERMS', 'Modbus', 'DNP3', 'IEC 61850', 'OT', 'industrial control', 'Industroyer', 'BlackEnergy', 'energy grid', 'electric grid', 'power system', 'operational technology', 'OPC UA', 'OPC', 'BACnet', 'IEC 104', 'IEC 60870', 'Profinet', 'EtherNet/IP', 'Siemens', 'Schneider Electric', 'ABB', 'Honeywell', 'Emerson', 'Rockwell', 'GE Vernova', 'Yokogawa', 'Hitachi Energy', 'CrashOverride', 'Industroyer2', 'Havex', 'Pipedream', 'Incontroller', 'FrostyGoop', 'CosmicEnergy', 'Triton'],
+  natural_gas: ['natural gas', 'LNG', 'pipeline', 'compressor station', 'gas turbine', 'methane', 'PHMSA', 'gas distribution', 'gas pipeline', 'liquefied natural gas', 'regasification', 'liquefaction', 'Colonial Pipeline'],
   oil: ['oil', 'petroleum', 'refinery', 'crude', 'strategic petroleum', 'SPR', 'petrochemical', 'distillation', 'oil pipeline', 'oil refinery', 'Shamoon', 'Triton', 'TRISIS'],
-  water: ['water treatment', 'water utility', 'wastewater', 'drinking water', 'chlorination', 'water system', 'water infrastructure', 'water plant', 'sewage', 'water purification'],
+  water: ['water treatment', 'water utility', 'wastewater', 'drinking water', 'chlorination', 'water system', 'water infrastructure', 'water plant', 'sewage', 'water purification', 'Unitronics', 'Vision PLC'],
 }
 
 // Known threat actor origins with targeting data
@@ -97,12 +97,12 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'APT41',
-    origin: { lat: 31.2, lng: 121.5, name: 'Shanghai' },
+    origin: { lat: 30.57, lng: 104.07, name: 'Chengdu' },
     country: 'China',
     type: 'APT',
     color: '#ff3333',
     targetSectors: ['grid', 'oil', 'natural_gas'],
-    description: 'Chinese state-sponsored dual espionage and financially motivated group. Targets energy, telecommunications, and technology sectors with supply chain compromises.',
+    description: 'Chinese state-sponsored dual espionage and financially motivated group based in Chengdu (Chengdu 404 Network Technology). Targets energy, telecommunications, and technology sectors with supply chain compromises.',
   },
   {
     name: 'Sandworm',
@@ -137,8 +137,8 @@ export const threatActors: ThreatActor[] = [
     country: 'North Korea',
     type: 'APT',
     color: '#ff2222',
-    targetSectors: ['grid', 'nuclear'],
-    description: 'North Korean state-sponsored group conducting espionage and financially motivated attacks. Targets energy and defense sectors with destructive malware capabilities.',
+    targetSectors: ['grid', 'nuclear', 'oil'],
+    description: 'North Korean state-sponsored group conducting espionage and financially motivated attacks. Targets energy and defense sectors with destructive malware capabilities. Documented campaigns against energy providers including oil/gas (2022).',
   },
   {
     name: 'APT33',
@@ -160,12 +160,12 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'Turla',
-    origin: { lat: 55.8, lng: 37.6, name: 'Moscow' },
+    origin: { lat: 54.63, lng: 39.69, name: 'Ryazan' },
     country: 'Russia',
-    type: 'APT (FSB)',
+    type: 'APT (FSB Center 16)',
     color: '#ff5533',
-    targetSectors: ['grid', 'nuclear', 'water'],
-    description: 'Russian FSB-linked group with highly sophisticated espionage capabilities. Targets government and critical infrastructure networks using satellite-based C2 and custom implants.',
+    targetSectors: ['grid', 'nuclear'],
+    description: 'Russian FSB Center 16 group operating from Ryazan. Highly sophisticated espionage capabilities targeting government and critical infrastructure networks using satellite-based C2 and custom implants (Snake/Uroburos).',
   },
   {
     name: 'Kimsuky',
@@ -176,13 +176,40 @@ export const threatActors: ThreatActor[] = [
     targetSectors: ['nuclear', 'grid'],
     description: 'North Korean intelligence group targeting nuclear energy research and grid operations. Conducts espionage through spearphishing and watering hole attacks against energy sector personnel.',
   },
+  {
+    name: 'Dragonfly',
+    origin: { lat: 55.75, lng: 37.62, name: 'Moscow' },
+    country: 'Russia',
+    type: 'APT (FSB Center 16)',
+    color: '#ff4444',
+    targetSectors: ['grid', 'oil', 'natural_gas', 'nuclear'],
+    description: 'Russian FSB-linked group (Energetic Bear/Berserk Bear) with primary focus on energy sector since 2013. Deployed Havex malware against US/European energy utilities. CISA AA20-296A documents compromises of US government and energy networks.',
+  },
+  {
+    name: 'APT34',
+    origin: { lat: 35.70, lng: 51.42, name: 'Tehran' },
+    country: 'Iran',
+    type: 'APT (MOIS)',
+    color: '#ff6600',
+    targetSectors: ['oil', 'natural_gas', 'grid'],
+    description: 'Iranian MOIS-affiliated group (OilRig/Helix Kitten) conducting sustained campaigns against energy companies globally. Active 2024-2025 campaigns targeting energy and defense sectors using compromised credentials and supply chain access.',
+  },
+  {
+    name: 'CyberAv3ngers',
+    origin: { lat: 35.70, lng: 51.42, name: 'Tehran' },
+    country: 'Iran',
+    type: 'APT (IRGC)',
+    color: '#ff7700',
+    targetSectors: ['water', 'grid'],
+    description: 'IRGC-affiliated group that compromised 75+ Unitronics PLCs in US water/wastewater systems (Nov 2023-Jan 2024). US Treasury sanctioned 6 IRGC officials in Feb 2024. Targets industrial control systems in water infrastructure.',
+  },
 ]
 
 // US Energy Infrastructure Facilities
 export const energyFacilities: EnergyFacility[] = [
   // ===== NUCLEAR POWER PLANTS =====
   { id: 'nuc-palo-verde', lat: 33.39, lng: -112.86, name: 'Palo Verde Nuclear Generating Station', sector: 'nuclear', operator: 'Arizona Public Service', capacity: '3,937 MW' },
-  { id: 'nuc-vogtle', lat: 33.14, lng: -81.76, name: 'Vogtle Electric Generating Plant', sector: 'nuclear', operator: 'Southern Nuclear', capacity: '4,600 MW' },
+  { id: 'nuc-vogtle', lat: 33.14, lng: -81.76, name: 'Vogtle Electric Generating Plant', sector: 'nuclear', operator: 'Southern Nuclear', capacity: '4,800 MW' },
   { id: 'nuc-south-texas', lat: 28.80, lng: -96.05, name: 'South Texas Project', sector: 'nuclear', operator: 'STP Nuclear Operating', capacity: '2,710 MW' },
   { id: 'nuc-browns-ferry', lat: 34.70, lng: -87.12, name: 'Browns Ferry Nuclear Plant', sector: 'nuclear', operator: 'Tennessee Valley Authority', capacity: '3,309 MW' },
   { id: 'nuc-peach-bottom', lat: 39.76, lng: -76.27, name: 'Peach Bottom Atomic Power Station', sector: 'nuclear', operator: 'Exelon Generation', capacity: '2,770 MW' },
@@ -210,6 +237,7 @@ export const energyFacilities: EnergyFacility[] = [
   { id: 'hyd-oroville', lat: 39.54, lng: -121.48, name: 'Oroville Dam', sector: 'hydro', operator: 'CA Dept of Water Resources', capacity: '819 MW' },
   { id: 'hyd-fort-peck', lat: 48.00, lng: -106.41, name: 'Fort Peck Dam', sector: 'hydro', operator: 'US Army Corps of Engineers', capacity: '185 MW' },
   { id: 'hyd-garrison', lat: 47.50, lng: -101.43, name: 'Garrison Dam', sector: 'hydro', operator: 'US Army Corps of Engineers', capacity: '583 MW' },
+  { id: 'hyd-bath-county', lat: 38.22, lng: -79.80, name: 'Bath County Pumped Storage Station', sector: 'hydro', operator: 'Dominion Energy', capacity: '3,003 MW' },
 
   // ===== GRID OPERATIONS / ISOs & RTOs =====
   { id: 'grd-pjm', lat: 40.09, lng: -75.47, name: 'PJM Interconnection', sector: 'grid', operator: 'PJM', capacity: '180 GW peak' },
@@ -235,7 +263,7 @@ export const energyFacilities: EnergyFacility[] = [
   // ===== OIL & PETROLEUM =====
   { id: 'oil-spr-bryan', lat: 29.05, lng: -95.44, name: 'Strategic Petroleum Reserve (Bryan Mound)', sector: 'oil', operator: 'US Dept of Energy', capacity: '247M barrels capacity' },
   { id: 'oil-cushing', lat: 35.98, lng: -96.77, name: 'Cushing Oil Hub', sector: 'oil', operator: 'Multiple operators', capacity: 'US pricing benchmark' },
-  { id: 'oil-port-arthur', lat: 29.90, lng: -93.93, name: 'Motiva Port Arthur Refinery', sector: 'oil', operator: 'Saudi Aramco / Motiva', capacity: '636,500 bbl/day' },
+  { id: 'oil-port-arthur', lat: 29.90, lng: -93.93, name: 'Motiva Port Arthur Refinery', sector: 'oil', operator: 'Saudi Aramco / Motiva', capacity: '654,000 bbl/day' },
   { id: 'oil-baytown', lat: 29.75, lng: -95.01, name: 'ExxonMobil Baytown Refinery', sector: 'oil', operator: 'ExxonMobil', capacity: '584,000 bbl/day' },
   { id: 'oil-garyville', lat: 30.06, lng: -90.62, name: 'Marathon Garyville Refinery', sector: 'oil', operator: 'Marathon Petroleum', capacity: '578,000 bbl/day' },
   { id: 'oil-whiting', lat: 41.68, lng: -87.50, name: 'BP Whiting Refinery', sector: 'oil', operator: 'BP', capacity: '440,000 bbl/day' },

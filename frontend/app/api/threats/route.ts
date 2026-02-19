@@ -111,14 +111,23 @@ export async function GET() {
     })
 
     const NATION_STATE_INDICATORS = [
-      'volt typhoon', 'sandworm', 'xenotime', 'chernovite', 'kamacite',
-      'apt28', 'apt29', 'lazarus', 'kimsuky', 'temp.veles',
+      'volt typhoon', 'salt typhoon', 'flax typhoon',
+      'sandworm', 'dragonfly', 'energetic bear', 'turla', 'fancy bear', 'cozy bear',
+      'xenotime', 'chernovite', 'kamacite',
+      'apt28', 'apt29', 'apt33', 'apt34', 'apt35', 'apt41',
+      'lazarus', 'kimsuky', 'andariel',
+      'cyberav3ngers', 'muddywater', 'oilrig', 'charming kitten',
+      'temp.veles', 'mango sandstorm', 'hazel sandstorm',
       'china', 'russia', 'iran', 'north korea', 'dprk'
     ]
     const ICS_INDICATORS = [
       'scada', 'ics', 'plc', 'hmi', 'rtu', 'dcs',
-      'modbus', 'dnp3', 'iec 61850', 'opc',
-      'industrial control', 'operational technology'
+      'modbus', 'dnp3', 'iec 61850', 'iec 104', 'iec 60870', 'opc', 'opc ua',
+      'bacnet', 'profinet', 'ethernet/ip',
+      'industrial control', 'operational technology',
+      'siemens', 'schneider electric', 'rockwell', 'honeywell', 'unitronics',
+      'industroyer', 'crashoverride', 'havex', 'pipedream', 'incontroller',
+      'frostygoop', 'cosmicenergy', 'triton', 'trisis'
     ]
 
     const last24h = {
