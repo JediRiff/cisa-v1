@@ -49,6 +49,8 @@ export interface GlobeCanvasProps {
   onFacilityClick?: (facility: EnergyFacility) => void
   onThreatActorClick?: (actor: ThreatActor) => void
   onEmptyClick?: () => void
+  selectedFacilityId?: string | null
+  selectedActorName?: string | null
 }
 
 // Generate a circular glow texture via canvas
@@ -149,9 +151,13 @@ function loadCountryBorders(globeGroup: THREE.Group, radius: number) {
     })
 }
 
-export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmptyClick }: GlobeCanvasProps) {
+export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmptyClick, selectedFacilityId, selectedActorName }: GlobeCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const callbacksRef = useRef({ onFacilityClick, onThreatActorClick, onEmptyClick })
+  const selectionRef = useRef({ selectedFacilityId, selectedActorName })
+  const facilityMarkersRef = useRef<FacilityMarkerRef[]>([])
+  const actorMarkersRef = useRef<ActorMarkerRef[]>([])
+  const selectionRingRef = useRef<THREE.Mesh | null>(null)
   const sceneDataRef = useRef<{
     scene: THREE.Scene
     camera: THREE.PerspectiveCamera
@@ -168,6 +174,46 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
   useEffect(() => {
     callbacksRef.current = { onFacilityClick, onThreatActorClick, onEmptyClick }
   })
+
+  // Keep selection ref up to date and update selection ring
+  useEffect(() => {
+    selectionRef.current = { selectedFacilityId, selectedActorName }
+    updateSelectionRing()
+  }, [selectedFacilityId, selectedActorName])
+
+  function updateSelectionRing() {
+    const ring = selectionRingRef.current
+    if (!ring) return
+
+    const { selectedFacilityId: fId, selectedActorName: aName } = selectionRef.current
+
+    // Find the target position
+    let targetPos: THREE.Vector3 | null = null
+    let ringColor = '#ffffff'
+
+    if (fId) {
+      const fm = facilityMarkersRef.current.find((m) => m.facility.id === fId)
+      if (fm) {
+        targetPos = fm.mesh.position.clone()
+        ringColor = sectorColors[fm.facility.sector]
+      }
+    } else if (aName) {
+      const am = actorMarkersRef.current.find((m) => m.actor.name === aName)
+      if (am) {
+        targetPos = am.mesh.position.clone()
+        ringColor = am.actor.color
+      }
+    }
+
+    if (targetPos) {
+      ring.position.copy(targetPos)
+      ring.lookAt(0, 0, 0) // Face away from globe center
+      ;(ring.material as THREE.MeshBasicMaterial).color.set(ringColor)
+      ring.visible = true
+    } else {
+      ring.visible = false
+    }
+  }
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -313,6 +359,20 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
 
       facilityMarkers.push({ mesh: marker, facility, glowSprite: glow })
     })
+    facilityMarkersRef.current = facilityMarkers
+
+    // Selection ring (torus around selected marker)
+    const ringGeo = new THREE.RingGeometry(0.025, 0.032, 32)
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.9,
+      side: THREE.DoubleSide,
+    })
+    const selectionRing = new THREE.Mesh(ringGeo, ringMat)
+    selectionRing.visible = false
+    globeGroup.add(selectionRing)
+    selectionRingRef.current = selectionRing
 
     // Threat origin pulse markers
     const markers: PulseMarker[] = []
@@ -336,6 +396,7 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       markers.push({ mesh: sprite, phase: Math.random() * Math.PI * 2, baseScale: 0.07 })
       actorMarkerRefs.push({ mesh: sprite, actor })
     })
+    actorMarkersRef.current = actorMarkerRefs
 
     // Lights
     const ambientLight = new THREE.AmbientLight(0x335577, 0.6)
@@ -505,6 +566,13 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
         const glowScale = 0.05 + Math.sin(elapsed * 1.5 + i * 0.5) * 0.008
         fm.glowSprite.scale.set(glowScale, glowScale, 1)
       })
+
+      // Pulse selection ring
+      if (selectionRing.visible) {
+        const ringScale = 1 + Math.sin(elapsed * 3) * 0.15
+        selectionRing.scale.set(ringScale, ringScale, 1)
+        ringMat.opacity = 0.6 + Math.sin(elapsed * 3) * 0.3
+      }
 
       // Spawn new arcs periodically
       arcSpawnTimer += delta

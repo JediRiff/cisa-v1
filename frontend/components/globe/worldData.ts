@@ -17,10 +17,12 @@ export interface EnergyFacility {
   sector: Sector
   operator: string
   capacity?: string
+  status?: 'active' | 'construction' | 'planned' | 'decommissioned'
 }
 
 export interface ThreatActor {
   name: string
+  aliases?: string[]
   origin: GeoPoint
   country: string
   type: string
@@ -88,6 +90,7 @@ export const sectorKeywords: Record<Sector, string[]> = {
 export const threatActors: ThreatActor[] = [
   {
     name: 'Volt Typhoon',
+    aliases: ['BRONZE SILHOUETTE', 'Vanguard Panda', 'DEV-0391', 'Insidious Taurus', 'UNC3236'],
     origin: { lat: 39.9, lng: 116.4, name: 'Beijing' },
     country: 'China',
     type: 'APT',
@@ -97,6 +100,7 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'APT41',
+    aliases: ['Winnti', 'BARIUM', 'Wicked Panda', 'Brass Typhoon', 'Double Dragon'],
     origin: { lat: 30.57, lng: 104.07, name: 'Chengdu' },
     country: 'China',
     type: 'APT',
@@ -106,15 +110,17 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'Sandworm',
+    aliases: ['Voodoo Bear', 'IRIDIUM', 'Seashell Blizzard', 'ELECTRUM', 'Telebots'],
     origin: { lat: 55.8, lng: 37.6, name: 'Moscow' },
     country: 'Russia',
     type: 'APT (GRU Unit 74455)',
     color: '#ff4444',
-    targetSectors: ['grid', 'nuclear'],
-    description: 'Russian GRU-linked group responsible for BlackEnergy and Industroyer attacks on Ukrainian power grid. Capable of destructive attacks against energy infrastructure and industrial control systems.',
+    targetSectors: ['grid', 'nuclear', 'oil', 'natural_gas'],
+    description: 'Russian GRU-linked group responsible for BlackEnergy and Industroyer attacks on Ukrainian power grid. Capable of destructive attacks against energy infrastructure including oil/gas and industrial control systems.',
   },
   {
     name: 'APT28',
+    aliases: ['Fancy Bear', 'STRONTIUM', 'Forest Blizzard', 'Sofacy', 'Pawn Storm'],
     origin: { lat: 55.8, lng: 37.6, name: 'Moscow' },
     country: 'Russia',
     type: 'APT (GRU Unit 26165)',
@@ -124,6 +130,7 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'APT29',
+    aliases: ['Cozy Bear', 'NOBELIUM', 'Midnight Blizzard', 'The Dukes', 'Dark Halo'],
     origin: { lat: 55.8, lng: 37.6, name: 'Moscow' },
     country: 'Russia',
     type: 'APT (SVR)',
@@ -133,6 +140,7 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'Lazarus',
+    aliases: ['HIDDEN COBRA', 'Zinc', 'Diamond Sleet', 'Labyrinth Chollima', 'APT38'],
     origin: { lat: 39.0, lng: 125.8, name: 'Pyongyang' },
     country: 'North Korea',
     type: 'APT',
@@ -142,6 +150,7 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'APT33',
+    aliases: ['Elfin', 'Refined Kitten', 'MAGNALLIUM', 'Peach Sandstorm', 'HOLMIUM'],
     origin: { lat: 35.7, lng: 51.4, name: 'Tehran' },
     country: 'Iran',
     type: 'APT',
@@ -151,6 +160,7 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'APT35',
+    aliases: ['Charming Kitten', 'PHOSPHORUS', 'Mint Sandstorm', 'NewsBeef', 'TA453'],
     origin: { lat: 35.7, lng: 51.4, name: 'Tehran' },
     country: 'Iran',
     type: 'APT',
@@ -160,6 +170,7 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'Turla',
+    aliases: ['Snake', 'Uroburos', 'Venomous Bear', 'KRYPTON', 'Secret Blizzard', 'Waterbug'],
     origin: { lat: 54.63, lng: 39.69, name: 'Ryazan' },
     country: 'Russia',
     type: 'APT (FSB Center 16)',
@@ -169,6 +180,7 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'Kimsuky',
+    aliases: ['Velvet Chollima', 'THALLIUM', 'Emerald Sleet', 'Black Banshee', 'SharpTongue'],
     origin: { lat: 39.0, lng: 125.8, name: 'Pyongyang' },
     country: 'North Korea',
     type: 'APT',
@@ -178,6 +190,7 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'Dragonfly',
+    aliases: ['Energetic Bear', 'Berserk Bear', 'Crouching Yeti', 'IRON LIBERTY', 'Ghost Blizzard', 'DYMALLOY'],
     origin: { lat: 55.75, lng: 37.62, name: 'Moscow' },
     country: 'Russia',
     type: 'APT (FSB Center 16)',
@@ -187,6 +200,7 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'APT34',
+    aliases: ['OilRig', 'Helix Kitten', 'COBALT GYPSY', 'Hazel Sandstorm', 'Crambus', 'Earth Simnavaz'],
     origin: { lat: 35.70, lng: 51.42, name: 'Tehran' },
     country: 'Iran',
     type: 'APT (MOIS)',
@@ -196,12 +210,53 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'CyberAv3ngers',
+    aliases: ['Cyber Av3ngers'],
     origin: { lat: 35.70, lng: 51.42, name: 'Tehran' },
     country: 'Iran',
     type: 'APT (IRGC)',
     color: '#ff7700',
     targetSectors: ['water', 'grid'],
     description: 'IRGC-affiliated group that compromised 75+ Unitronics PLCs in US water/wastewater systems (Nov 2023-Jan 2024). US Treasury sanctioned 6 IRGC officials in Feb 2024. Targets industrial control systems in water infrastructure.',
+  },
+  {
+    name: 'MuddyWater',
+    aliases: ['MERCURY', 'Static Kitten', 'Seedworm', 'Mango Sandstorm', 'TA450', 'Earth Vetala'],
+    origin: { lat: 35.70, lng: 51.42, name: 'Tehran' },
+    country: 'Iran',
+    type: 'APT (MOIS)',
+    color: '#ff6600',
+    targetSectors: ['oil', 'natural_gas', 'grid'],
+    description: 'Iranian MOIS-affiliated group targeting energy entities in MENA and globally. Confirmed targeting of 100+ organizations including energy sector per CISA AA22-055A. Uses spearphishing, supply chain access, and custom backdoors.',
+  },
+  {
+    name: 'Salt Typhoon',
+    aliases: ['GhostEmperor', 'FamousSparrow', 'Earth Estries', 'UNC2286'],
+    origin: { lat: 39.9, lng: 116.4, name: 'Beijing' },
+    country: 'China',
+    type: 'APT (MSS)',
+    color: '#ff3333',
+    targetSectors: ['grid', 'natural_gas'],
+    description: 'Chinese MSS-affiliated group that compromised 200+ telecom companies across 80 countries. US Treasury sanctioned in Jan 2025. Targets critical infrastructure including energy and communications for intelligence collection.',
+  },
+  {
+    name: 'Flax Typhoon',
+    aliases: ['Ethereal Panda', 'Storm-0919'],
+    origin: { lat: 39.9, lng: 116.4, name: 'Beijing' },
+    country: 'China',
+    type: 'APT',
+    color: '#ff3333',
+    targetSectors: ['grid'],
+    description: 'Chinese intelligence contractor group (Integrity Technology Group) that operated a 200,000+ device IoT botnet disrupted by FBI in Sep 2024. Targets critical infrastructure including energy sector through compromised IoT devices.',
+  },
+  {
+    name: 'Andariel',
+    aliases: ['Onyx Sleet', 'Silent Chollima', 'Stonefly', 'PLUTONIUM', 'DarkSeoul'],
+    origin: { lat: 39.03, lng: 125.75, name: 'Pyongyang' },
+    country: 'North Korea',
+    type: 'APT (RGB 3rd Bureau)',
+    color: '#ff2222',
+    targetSectors: ['nuclear', 'grid'],
+    description: 'North Korean RGB 3rd Bureau group targeting nuclear, defense, aerospace, and energy sectors. CISA AA24-207A (July 2024) documents campaigns against US critical infrastructure. Conducts espionage and ransomware operations.',
   },
 ]
 
@@ -223,6 +278,16 @@ export const energyFacilities: EnergyFacility[] = [
   { id: 'nuc-columbia', lat: 46.47, lng: -119.33, name: 'Columbia Generating Station', sector: 'nuclear', operator: 'Energy Northwest', capacity: '1,190 MW' },
   { id: 'nuc-grand-gulf', lat: 32.01, lng: -91.05, name: 'Grand Gulf Nuclear Station', sector: 'nuclear', operator: 'Entergy', capacity: '1,443 MW' },
   { id: 'nuc-byron', lat: 42.08, lng: -89.28, name: 'Byron Nuclear Generating Station', sector: 'nuclear', operator: 'Exelon Generation', capacity: '2,347 MW' },
+  { id: 'nuc-sequoyah', lat: 35.23, lng: -85.09, name: 'Sequoyah Nuclear Plant', sector: 'nuclear', operator: 'Tennessee Valley Authority', capacity: '2,326 MW' },
+  { id: 'nuc-catawba', lat: 35.05, lng: -81.07, name: 'Catawba Nuclear Station', sector: 'nuclear', operator: 'Duke Energy', capacity: '2,258 MW' },
+  { id: 'nuc-mcguire', lat: 35.43, lng: -80.95, name: 'McGuire Nuclear Station', sector: 'nuclear', operator: 'Duke Energy', capacity: '2,258 MW' },
+  { id: 'nuc-limerick', lat: 40.22, lng: -75.59, name: 'Limerick Generating Station', sector: 'nuclear', operator: 'Constellation Energy', capacity: '2,264 MW' },
+  { id: 'nuc-salem', lat: 39.46, lng: -75.54, name: 'Salem Nuclear Power Plant', sector: 'nuclear', operator: 'PSEG Nuclear', capacity: '2,275 MW' },
+  { id: 'nuc-hope-creek', lat: 39.47, lng: -75.54, name: 'Hope Creek Nuclear Generating Station', sector: 'nuclear', operator: 'PSEG Nuclear', capacity: '1,237 MW' },
+  { id: 'nuc-north-anna', lat: 38.06, lng: -77.79, name: 'North Anna Power Station', sector: 'nuclear', operator: 'Dominion Energy', capacity: '1,892 MW' },
+  { id: 'nuc-turkey-point', lat: 25.43, lng: -80.33, name: 'Turkey Point Nuclear Generating Station', sector: 'nuclear', operator: 'NextEra Energy / FPL', capacity: '1,760 MW' },
+  { id: 'nuc-nine-mile', lat: 43.52, lng: -76.41, name: 'Nine Mile Point Nuclear Station', sector: 'nuclear', operator: 'Constellation Energy', capacity: '1,937 MW' },
+  { id: 'nuc-susquehanna', lat: 41.09, lng: -76.15, name: 'Susquehanna Steam Electric Station', sector: 'nuclear', operator: 'Talen Energy', capacity: '2,520 MW' },
 
   // ===== HYDROELECTRIC DAMS =====
   { id: 'hyd-grand-coulee', lat: 47.96, lng: -118.98, name: 'Grand Coulee Dam', sector: 'hydro', operator: 'US Bureau of Reclamation', capacity: '6,809 MW' },
@@ -238,6 +303,8 @@ export const energyFacilities: EnergyFacility[] = [
   { id: 'hyd-fort-peck', lat: 48.00, lng: -106.41, name: 'Fort Peck Dam', sector: 'hydro', operator: 'US Army Corps of Engineers', capacity: '185 MW' },
   { id: 'hyd-garrison', lat: 47.50, lng: -101.43, name: 'Garrison Dam', sector: 'hydro', operator: 'US Army Corps of Engineers', capacity: '583 MW' },
   { id: 'hyd-bath-county', lat: 38.22, lng: -79.80, name: 'Bath County Pumped Storage Station', sector: 'hydro', operator: 'Dominion Energy', capacity: '3,003 MW' },
+  { id: 'hyd-ludington', lat: 43.89, lng: -86.45, name: 'Ludington Pumped Storage Plant', sector: 'hydro', operator: 'Consumers Energy', capacity: '1,872 MW' },
+  { id: 'hyd-raccoon-mt', lat: 35.06, lng: -85.38, name: 'Raccoon Mountain Pumped Storage', sector: 'hydro', operator: 'Tennessee Valley Authority', capacity: '1,616 MW' },
 
   // ===== GRID OPERATIONS / ISOs & RTOs =====
   { id: 'grd-pjm', lat: 40.09, lng: -75.47, name: 'PJM Interconnection', sector: 'grid', operator: 'PJM', capacity: '180 GW peak' },
@@ -258,7 +325,7 @@ export const energyFacilities: EnergyFacility[] = [
   { id: 'gas-cove-point', lat: 38.40, lng: -76.39, name: 'Cove Point LNG Terminal', sector: 'natural_gas', operator: 'Dominion Energy', capacity: '5.25 MTPA' },
   { id: 'gas-elba', lat: 32.09, lng: -81.05, name: 'Elba Island LNG Terminal', sector: 'natural_gas', operator: 'Southern LNG', capacity: '2.5 MTPA' },
   { id: 'gas-corpus', lat: 27.83, lng: -97.20, name: 'Corpus Christi LNG Terminal', sector: 'natural_gas', operator: 'Cheniere Energy', capacity: '25 MTPA' },
-  { id: 'gas-golden-pass', lat: 29.75, lng: -93.87, name: 'Golden Pass LNG Terminal', sector: 'natural_gas', operator: 'ExxonMobil / QatarEnergy', capacity: '18 MTPA' },
+  { id: 'gas-golden-pass', lat: 29.75, lng: -93.87, name: 'Golden Pass LNG Terminal', sector: 'natural_gas', operator: 'ExxonMobil / QatarEnergy', capacity: '18 MTPA', status: 'construction' },
 
   // ===== OIL & PETROLEUM =====
   { id: 'oil-spr-bryan', lat: 29.05, lng: -95.44, name: 'Strategic Petroleum Reserve (Bryan Mound)', sector: 'oil', operator: 'US Dept of Energy', capacity: '247M barrels capacity' },
@@ -269,6 +336,10 @@ export const energyFacilities: EnergyFacility[] = [
   { id: 'oil-whiting', lat: 41.68, lng: -87.50, name: 'BP Whiting Refinery', sector: 'oil', operator: 'BP', capacity: '440,000 bbl/day' },
   { id: 'oil-baton-rouge', lat: 30.50, lng: -91.19, name: 'ExxonMobil Baton Rouge Refinery', sector: 'oil', operator: 'ExxonMobil', capacity: '502,500 bbl/day' },
   { id: 'oil-el-segundo', lat: 33.91, lng: -118.41, name: 'Chevron El Segundo Refinery', sector: 'oil', operator: 'Chevron', capacity: '290,000 bbl/day' },
+  { id: 'oil-beaumont', lat: 30.05, lng: -94.13, name: 'ExxonMobil Beaumont Refinery', sector: 'oil', operator: 'ExxonMobil', capacity: '609,024 bbl/day' },
+  { id: 'oil-galveston', lat: 29.38, lng: -94.91, name: 'Marathon Galveston Bay Refinery', sector: 'oil', operator: 'Marathon Petroleum', capacity: '585,000 bbl/day' },
+  { id: 'oil-lake-charles', lat: 30.24, lng: -93.28, name: 'Citgo Lake Charles Refinery', sector: 'oil', operator: 'Citgo', capacity: '455,000 bbl/day' },
+  { id: 'oil-valero-pa', lat: 29.87, lng: -93.95, name: 'Valero Port Arthur Refinery', sector: 'oil', operator: 'Valero', capacity: '360,000 bbl/day' },
 
   // ===== WATER SYSTEMS =====
   { id: 'wtr-jardine', lat: 41.90, lng: -87.61, name: 'Jardine Water Purification Plant', sector: 'water', operator: 'City of Chicago DWM', capacity: '1.4B gallons/day' },

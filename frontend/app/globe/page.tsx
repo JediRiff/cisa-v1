@@ -257,6 +257,8 @@ export default function GlobePage() {
             onFacilityClick={handleFacilityClick}
             onThreatActorClick={handleActorClick}
             onEmptyClick={handleEmptyClick}
+            selectedFacilityId={selectedFacility?.id || null}
+            selectedActorName={selectedActor?.name || null}
           />
 
           {/* Overlay: Score Badge */}
@@ -569,6 +571,11 @@ function ActorDetailPanel({
               <div className="w-3 h-3 rounded-full animate-pulse" style={{ background: actor.color }} />
               <h3 className="text-sm font-bold text-white">{actor.name}</h3>
             </div>
+            {actor.aliases && actor.aliases.length > 0 && (
+              <p className="text-[10px] text-gray-500 mb-1">
+                aka {actor.aliases.join(', ')}
+              </p>
+            )}
             <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
               <div>
                 <span className="text-gray-500">Origin: </span>
