@@ -41,7 +41,7 @@ export interface ThreatActor {
 }
 
 export interface FacilityRisk {
-  score: number              // 1-10 scale
+  score: number              // 1-5 scale (1=severe, 5=normal, matching CAPRI convention)
   label: string              // 'Critical' | 'High' | 'Elevated' | 'Guarded' | 'Low'
   color: string              // CSS color for display
   actorCount: number         // Threat actors targeting this sector
@@ -243,7 +243,7 @@ export const threatActors: ThreatActor[] = [
     country: 'China',
     type: 'APT',
     color: '#ff3333',
-    targetSectors: ['grid', 'water', 'natural_gas'],
+    targetSectors: ['grid', 'water', 'natural_gas', 'hydro'],
     description: 'Chinese state-sponsored group focused on pre-positioning within US critical infrastructure for potential disruption. Known for living-off-the-land techniques targeting grid operations, water systems, and communications infrastructure.',
   },
   {
@@ -291,7 +291,7 @@ export const threatActors: ThreatActor[] = [
     country: 'Russia',
     type: 'APT (GRU Unit 74455)',
     color: '#ff4444',
-    targetSectors: ['grid', 'nuclear', 'oil', 'natural_gas'],
+    targetSectors: ['grid', 'nuclear', 'oil', 'natural_gas', 'hydro'],
     description: 'Russian GRU-linked group responsible for BlackEnergy and Industroyer attacks on Ukrainian power grid. Capable of destructive attacks against energy infrastructure including oil/gas and industrial control systems.',
   },
   {
@@ -344,7 +344,7 @@ export const threatActors: ThreatActor[] = [
   },
   {
     name: 'Lazarus',
-    aliases: ['HIDDEN COBRA', 'Zinc', 'Diamond Sleet', 'Labyrinth Chollima', 'APT38'],
+    aliases: ['HIDDEN COBRA', 'Zinc', 'Diamond Sleet', 'Labyrinth Chollima'],
     mitreId: 'G0032',
     mitrePage: 'https://attack.mitre.org/groups/G0032/',
     ttps: [
@@ -521,6 +521,7 @@ export const threatActors: ThreatActor[] = [
       { id: 'T0883', name: 'Internet Accessible Device', tactic: 'Initial Access (ICS)' },
       { id: 'T0814', name: 'Denial of Service', tactic: 'Impact (ICS)' },
       { id: 'T0826', name: 'Loss of Availability', tactic: 'Impact (ICS)' },
+      { id: 'T0828', name: 'Loss of Productivity and Revenue', tactic: 'Impact (ICS)' },
       { id: 'T0829', name: 'Loss of View', tactic: 'Impact (ICS)' },
       // Enterprise-domain techniques from CISA AA23-335A
       { id: 'T1078.001', name: 'Default Accounts', tactic: 'Initial Access' },
@@ -705,10 +706,10 @@ export const energyFacilities: EnergyFacility[] = [
   { id: 'oil-whiting', lat: 41.68, lng: -87.50, name: 'BP Whiting Refinery', sector: 'oil', operator: 'BP', capacity: '440,000 bbl/day' },
   { id: 'oil-baton-rouge', lat: 30.50, lng: -91.19, name: 'ExxonMobil Baton Rouge Refinery', sector: 'oil', operator: 'ExxonMobil', capacity: '502,500 bbl/day' },
   { id: 'oil-el-segundo', lat: 33.91, lng: -118.41, name: 'Chevron El Segundo Refinery', sector: 'oil', operator: 'Chevron', capacity: '290,000 bbl/day' },
-  { id: 'oil-beaumont', lat: 30.05, lng: -94.13, name: 'ExxonMobil Beaumont Refinery', sector: 'oil', operator: 'ExxonMobil', capacity: '609,024 bbl/day' },
-  { id: 'oil-galveston', lat: 29.38, lng: -94.91, name: 'Marathon Galveston Bay Refinery', sector: 'oil', operator: 'Marathon Petroleum', capacity: '585,000 bbl/day' },
-  { id: 'oil-lake-charles', lat: 30.24, lng: -93.28, name: 'Citgo Lake Charles Refinery', sector: 'oil', operator: 'Citgo', capacity: '455,000 bbl/day' },
-  { id: 'oil-valero-pa', lat: 29.87, lng: -93.95, name: 'Valero Port Arthur Refinery', sector: 'oil', operator: 'Valero', capacity: '360,000 bbl/day' },
+  { id: 'oil-beaumont', lat: 30.05, lng: -94.13, name: 'ExxonMobil Beaumont Refinery', sector: 'oil', operator: 'ExxonMobil', capacity: '630,000 bbl/day' },
+  { id: 'oil-galveston', lat: 29.38, lng: -94.91, name: 'Marathon Galveston Bay Refinery', sector: 'oil', operator: 'Marathon Petroleum', capacity: '631,000 bbl/day' },
+  { id: 'oil-lake-charles', lat: 30.24, lng: -93.28, name: 'Citgo Lake Charles Refinery', sector: 'oil', operator: 'Citgo', capacity: '479,000 bbl/day' },
+  { id: 'oil-valero-pa', lat: 29.87, lng: -93.95, name: 'Valero Port Arthur Refinery', sector: 'oil', operator: 'Valero', capacity: '380,000 bbl/day' },
 
   // ===== WATER SYSTEMS =====
   { id: 'wtr-jardine', lat: 41.90, lng: -87.61, name: 'Jardine Water Purification Plant', sector: 'water', operator: 'City of Chicago DWM', capacity: '1.4B gallons/day' },

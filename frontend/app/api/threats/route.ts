@@ -111,13 +111,18 @@ export async function GET() {
     })
 
     const NATION_STATE_INDICATORS = [
-      'volt typhoon', 'salt typhoon', 'flax typhoon',
+      'volt typhoon', 'salt typhoon', 'flax typhoon', 'brass typhoon',
       'sandworm', 'dragonfly', 'energetic bear', 'turla', 'fancy bear', 'cozy bear',
-      'xenotime', 'chernovite', 'kamacite',
+      'xenotime', 'chernovite', 'kamacite', 'winnti',
       'apt28', 'apt29', 'apt33', 'apt34', 'apt35', 'apt41',
       'lazarus', 'kimsuky', 'andariel',
       'cyberav3ngers', 'muddywater', 'oilrig', 'charming kitten',
       'temp.veles', 'mango sandstorm', 'hazel sandstorm',
+      // Microsoft naming convention aliases
+      'seashell blizzard', 'forest blizzard', 'midnight blizzard',
+      'diamond sleet', 'peach sandstorm', 'mint sandstorm',
+      'secret blizzard', 'emerald sleet', 'ghost blizzard',
+      'onyx sleet', 'ethereal panda',
       'china', 'russia', 'iran', 'north korea', 'dprk'
     ]
     const ICS_INDICATORS = [
