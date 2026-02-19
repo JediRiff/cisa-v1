@@ -9,9 +9,12 @@ import {
   createArcCurve,
   landPoints,
   threatActors,
-  energyTargets,
+  energyFacilities,
   regionColors,
-  GeoPoint,
+  sectorColors,
+  EnergyFacility,
+  ThreatActor,
+  Sector,
 } from './worldData'
 
 interface ActiveArc {
@@ -21,12 +24,31 @@ interface ActiveArc {
   head: THREE.Sprite
   fadeOut: boolean
   opacity: number
+  actor: ThreatActor
+  target: EnergyFacility
 }
 
 interface PulseMarker {
   mesh: THREE.Sprite
   phase: number
   baseScale: number
+}
+
+interface FacilityMarkerRef {
+  mesh: THREE.Mesh
+  facility: EnergyFacility
+  glowSprite: THREE.Sprite
+}
+
+interface ActorMarkerRef {
+  mesh: THREE.Sprite
+  actor: ThreatActor
+}
+
+export interface GlobeCanvasProps {
+  onFacilityClick?: (facility: EnergyFacility) => void
+  onThreatActorClick?: (actor: ThreatActor) => void
+  onEmptyClick?: () => void
 }
 
 // Generate a circular glow texture via canvas
@@ -46,8 +68,21 @@ function createGlowTexture(color: string, size = 64): THREE.Texture {
   return tex
 }
 
-export default function GlobeCanvas() {
+// Build targeting map: for each actor, which facilities can they target
+function buildTargetingMap(): Map<string, EnergyFacility[]> {
+  const map = new Map<string, EnergyFacility[]>()
+  threatActors.forEach((actor) => {
+    const targets = energyFacilities.filter((f) =>
+      actor.targetSectors.includes(f.sector)
+    )
+    map.set(actor.name, targets)
+  })
+  return map
+}
+
+export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmptyClick }: GlobeCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const callbacksRef = useRef({ onFacilityClick, onThreatActorClick, onEmptyClick })
   const sceneDataRef = useRef<{
     scene: THREE.Scene
     camera: THREE.PerspectiveCamera
@@ -59,6 +94,11 @@ export default function GlobeCanvas() {
     clock: THREE.Clock
     frameId: number
   } | null>(null)
+
+  // Keep callbacks ref up to date without triggering re-render
+  useEffect(() => {
+    callbacksRef.current = { onFacilityClick, onThreatActorClick, onEmptyClick }
+  })
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -95,7 +135,7 @@ export default function GlobeCanvas() {
     const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.15, transparent: true, opacity: 0.7 })
     scene.add(new THREE.Points(starGeo, starMat))
 
-    // Globe group (for synchronized rotation)
+    // Globe group
     const globeGroup = new THREE.Group()
     scene.add(globeGroup)
 
@@ -166,19 +206,47 @@ export default function GlobeCanvas() {
     })
     globeGroup.add(new THREE.Points(dotGeo, dotMat))
 
-    // Energy target markers (bright cyan dots)
-    energyTargets.forEach((target) => {
-      const pos = latLngToVector3(target.lat, target.lng, 1.012)
-      const markerGeo = new THREE.SphereGeometry(0.012, 8, 8)
-      const markerMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.9 })
+    // Energy facility markers - sector-colored, clickable
+    const facilityMarkers: FacilityMarkerRef[] = []
+    const facilityMeshGroup = new THREE.Group()
+    globeGroup.add(facilityMeshGroup)
+
+    energyFacilities.forEach((facility) => {
+      const pos = latLngToVector3(facility.lat, facility.lng, 1.012)
+      const color = sectorColors[facility.sector]
+
+      // Solid marker sphere
+      const markerGeo = new THREE.SphereGeometry(0.015, 10, 10)
+      const markerMat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(color),
+        transparent: true,
+        opacity: 0.95,
+      })
       const marker = new THREE.Mesh(markerGeo, markerMat)
       marker.position.copy(pos)
-      globeGroup.add(marker)
+      marker.userData = { type: 'facility', facility }
+      facilityMeshGroup.add(marker)
+
+      // Subtle glow sprite behind marker
+      const glowMat = new THREE.SpriteMaterial({
+        map: createGlowTexture(color, 32),
+        transparent: true,
+        opacity: 0.4,
+        blending: THREE.AdditiveBlending,
+      })
+      const glow = new THREE.Sprite(glowMat)
+      glow.position.copy(pos)
+      glow.scale.set(0.05, 0.05, 1)
+      facilityMeshGroup.add(glow)
+
+      facilityMarkers.push({ mesh: marker, facility, glowSprite: glow })
     })
 
     // Threat origin pulse markers
     const markers: PulseMarker[] = []
+    const actorMarkerRefs: ActorMarkerRef[] = []
     const glowTex = createGlowTexture('rgba(255, 60, 60, 0.6)')
+
     threatActors.forEach((actor) => {
       const pos = latLngToVector3(actor.origin.lat, actor.origin.lng, 1.015)
       const spriteMat = new THREE.SpriteMaterial({
@@ -190,9 +258,11 @@ export default function GlobeCanvas() {
       })
       const sprite = new THREE.Sprite(spriteMat)
       sprite.position.copy(pos)
-      sprite.scale.set(0.06, 0.06, 1)
+      sprite.scale.set(0.07, 0.07, 1)
+      sprite.userData = { type: 'actor', actor }
       globeGroup.add(sprite)
-      markers.push({ mesh: sprite, phase: Math.random() * Math.PI * 2, baseScale: 0.06 })
+      markers.push({ mesh: sprite, phase: Math.random() * Math.PI * 2, baseScale: 0.07 })
+      actorMarkerRefs.push({ mesh: sprite, actor })
     })
 
     // Lights
@@ -216,26 +286,91 @@ export default function GlobeCanvas() {
     controls.autoRotate = true
     controls.autoRotateSpeed = 0.3
 
-    // Active arcs tracking
+    // Raycaster for click/hover detection
+    const raycaster = new THREE.Raycaster()
+    const mouse = new THREE.Vector2()
+    let mouseDownPos = { x: 0, y: 0 }
+
+    // Collect all clickable objects
+    const clickableFacilityMeshes = facilityMarkers.map((m) => m.mesh)
+    const clickableActorSprites = actorMarkerRefs.map((m) => m.mesh)
+
+    function onMouseDown(event: MouseEvent) {
+      mouseDownPos = { x: event.clientX, y: event.clientY }
+    }
+
+    function onMouseUp(event: MouseEvent) {
+      const dx = event.clientX - mouseDownPos.x
+      const dy = event.clientY - mouseDownPos.y
+      // Only treat as click if mouse didn't move much (not a drag/rotate)
+      if (Math.sqrt(dx * dx + dy * dy) > 5) return
+
+      const rect = container.getBoundingClientRect()
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+
+      raycaster.setFromCamera(mouse, camera)
+
+      // Check facility markers first
+      const facilityHits = raycaster.intersectObjects(clickableFacilityMeshes)
+      if (facilityHits.length > 0) {
+        const hit = facilityHits[0].object
+        const data = hit.userData as { type: string; facility: EnergyFacility }
+        callbacksRef.current.onFacilityClick?.(data.facility)
+        return
+      }
+
+      // Check threat actor sprites
+      const actorHits = raycaster.intersectObjects(clickableActorSprites)
+      if (actorHits.length > 0) {
+        const hit = actorHits[0].object
+        const data = hit.userData as { type: string; actor: ThreatActor }
+        callbacksRef.current.onThreatActorClick?.(data.actor)
+        return
+      }
+
+      // Clicked on empty space
+      callbacksRef.current.onEmptyClick?.()
+    }
+
+    function onMouseMove(event: MouseEvent) {
+      const rect = container.getBoundingClientRect()
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+
+      raycaster.setFromCamera(mouse, camera)
+
+      const allClickable = [...clickableFacilityMeshes, ...clickableActorSprites]
+      const hits = raycaster.intersectObjects(allClickable)
+      container.style.cursor = hits.length > 0 ? 'pointer' : 'grab'
+    }
+
+    container.addEventListener('mousedown', onMouseDown)
+    container.addEventListener('mouseup', onMouseUp)
+    container.addEventListener('mousemove', onMouseMove)
+
+    // Data-driven arc spawning
+    const targetingMap = buildTargetingMap()
     const arcs: ActiveArc[] = []
 
-    // Spawn a new threat arc
     function spawnArc() {
       if (arcs.length >= 8) return
 
+      // Pick a random threat actor
       const actor = threatActors[Math.floor(Math.random() * threatActors.length)]
-      const target = energyTargets[Math.floor(Math.random() * energyTargets.length)]
+      const validTargets = targetingMap.get(actor.name) || []
+      if (validTargets.length === 0) return
+
+      // Pick a random valid target for this actor
+      const target = validTargets[Math.floor(Math.random() * validTargets.length)]
       const curve = createArcCurve(actor.origin, target, 1.01)
       const points = curve.getPoints(80)
 
       const geometry = new THREE.BufferGeometry().setFromPoints(points)
       geometry.setDrawRange(0, 0)
 
-      const severityColors = ['#ff3333', '#ff6600', '#ffcc00']
-      const color = severityColors[Math.floor(Math.random() * severityColors.length)]
-
       const material = new THREE.LineBasicMaterial({
-        color: new THREE.Color(color),
+        color: new THREE.Color(actor.color),
         transparent: true,
         opacity: 0.8,
       })
@@ -246,7 +381,7 @@ export default function GlobeCanvas() {
       // Glowing head sprite
       const headMat = new THREE.SpriteMaterial({
         map: createGlowTexture('rgba(255, 255, 255, 0.8)'),
-        color: new THREE.Color(color),
+        color: new THREE.Color(actor.color),
         transparent: true,
         blending: THREE.AdditiveBlending,
       })
@@ -262,6 +397,8 @@ export default function GlobeCanvas() {
         head,
         fadeOut: false,
         opacity: 0.8,
+        actor,
+        target,
       })
     }
 
@@ -284,11 +421,17 @@ export default function GlobeCanvas() {
 
       // Pulse threat origin markers
       markers.forEach((m) => {
-        const scale = m.baseScale + Math.sin(elapsed * 2 + m.phase) * 0.015
+        const scale = m.baseScale + Math.sin(elapsed * 2 + m.phase) * 0.018
         m.mesh.scale.set(scale, scale, 1)
         if (m.mesh.material instanceof THREE.SpriteMaterial) {
           m.mesh.material.opacity = 0.5 + Math.sin(elapsed * 2 + m.phase) * 0.3
         }
+      })
+
+      // Subtle pulse on facility glow sprites
+      facilityMarkers.forEach((fm, i) => {
+        const glowScale = 0.05 + Math.sin(elapsed * 1.5 + i * 0.5) * 0.008
+        fm.glowSprite.scale.set(glowScale, glowScale, 1)
       })
 
       // Spawn new arcs periodically
@@ -357,12 +500,17 @@ export default function GlobeCanvas() {
     // Cleanup
     return () => {
       window.removeEventListener('resize', onResize)
+      container.removeEventListener('mousedown', onMouseDown)
+      container.removeEventListener('mouseup', onMouseUp)
+      container.removeEventListener('mousemove', onMouseMove)
       if (sceneDataRef.current) {
         cancelAnimationFrame(sceneDataRef.current.frameId)
       }
       controls.dispose()
       renderer.dispose()
-      container.removeChild(renderer.domElement)
+      if (container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement)
+      }
     }
   }, [])
 

@@ -2,25 +2,33 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import dynamic from 'next/dynamic'
-import Link from 'next/link'
 import {
-  Home,
-  Rss,
-  Settings,
-  Database,
-  FileText,
-  Brain,
   Shield,
   Activity,
   AlertTriangle,
   ExternalLink,
   ChevronLeft,
   ChevronRight,
-  Monitor,
-  Zap,
-  Globe as GlobeIcon,
   RefreshCw,
+  Zap,
+  X,
+  Atom,
+  Droplets,
+  Fuel,
+  Flame,
+  Factory,
+  Waves,
 } from 'lucide-react'
+import {
+  EnergyFacility,
+  ThreatActor,
+  Sector,
+  sectorColors,
+  sectorLabels,
+  sectorKeywords,
+  threatActors as allThreatActors,
+  energyFacilities,
+} from '@/components/globe/worldData'
 
 // Dynamic import for Three.js (no SSR)
 const GlobeCanvas = dynamic(() => import('@/components/globe/GlobeCanvas'), {
@@ -28,8 +36,8 @@ const GlobeCanvas = dynamic(() => import('@/components/globe/GlobeCanvas'), {
   loading: () => (
     <div className="w-full h-full flex items-center justify-center bg-[#030810]">
       <div className="text-center">
-        <div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-cyan-400 text-sm font-mono">Initializing Globe...</p>
+        <div className="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-white/70 text-sm font-mono">Initializing Globe...</p>
       </div>
     </div>
   ),
@@ -72,22 +80,33 @@ function getScoreColor(score: number): string {
   return 'text-emerald-400'
 }
 
-const navItems = [
-  { icon: Home, label: 'Dashboard', href: '/', active: false },
-  { icon: GlobeIcon, label: 'Threat Map', href: '/globe', active: true },
-  { icon: Rss, label: 'Feed View', href: '#', active: false },
-  { icon: Database, label: 'IOC Catalog', href: '#', active: false },
-  { icon: FileText, label: 'IOC Reports', href: '#', active: false },
-  { icon: Brain, label: 'AI Intelligence', href: '#', active: false },
-  { icon: Settings, label: 'Settings', href: '#', active: false },
-]
+function getSectorIcon(sector: Sector) {
+  switch (sector) {
+    case 'nuclear': return Atom
+    case 'hydro': return Droplets
+    case 'grid': return Zap
+    case 'natural_gas': return Flame
+    case 'oil': return Fuel
+    case 'water': return Waves
+  }
+}
+
+// Filter threats by sector keywords
+function filterBySector(items: any[], sector: Sector): any[] {
+  const keywords = sectorKeywords[sector]
+  return items.filter((item) => {
+    const text = `${item.title || ''} ${item.shortDescription || ''} ${item.description || ''}`.toLowerCase()
+    return keywords.some((kw) => text.includes(kw.toLowerCase()))
+  })
+}
 
 export default function GlobePage() {
   const [data, setData] = useState<ThreatData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [leftNavOpen, setLeftNavOpen] = useState(true)
   const [rightPanelOpen, setRightPanelOpen] = useState(true)
   const [attackCount, setAttackCount] = useState(0)
+  const [selectedFacility, setSelectedFacility] = useState<EnergyFacility | null>(null)
+  const [selectedActor, setSelectedActor] = useState<ThreatActor | null>(null)
 
   const fetchData = useCallback(async () => {
     try {
@@ -130,14 +149,67 @@ export default function GlobePage() {
     }).slice(0, 10)
   }, [data])
 
+  // Filtered threats for selected facility's sector
+  const sectorThreats = useMemo(() => {
+    if (!selectedFacility || !data) return []
+    const allItems = [...(data.threats.all || []), ...(data.kev || [])]
+    return filterBySector(allItems, selectedFacility.sector).slice(0, 8)
+  }, [selectedFacility, data])
+
+  // Threat actors targeting the selected facility's sector
+  const targetingActors = useMemo(() => {
+    if (!selectedFacility) return []
+    return allThreatActors.filter((a) =>
+      a.targetSectors.includes(selectedFacility.sector)
+    )
+  }, [selectedFacility])
+
+  // Facilities targeted by selected actor
+  const actorTargetFacilities = useMemo(() => {
+    if (!selectedActor) return []
+    return energyFacilities.filter((f) =>
+      selectedActor.targetSectors.includes(f.sector)
+    )
+  }, [selectedActor])
+
+  // Actor-relevant threats
+  const actorThreats = useMemo(() => {
+    if (!selectedActor || !data) return []
+    const allItems = [...(data.threats.all || []), ...(data.kev || [])]
+    const keywords = [
+      selectedActor.name.toLowerCase(),
+      selectedActor.country.toLowerCase(),
+      ...selectedActor.targetSectors.flatMap((s) => sectorKeywords[s].slice(0, 3)),
+    ]
+    return allItems.filter((item) => {
+      const text = `${item.title || ''} ${item.shortDescription || ''} ${item.description || ''}`.toLowerCase()
+      return keywords.some((kw) => text.includes(kw))
+    }).slice(0, 8)
+  }, [selectedActor, data])
+
+  function handleFacilityClick(facility: EnergyFacility) {
+    setSelectedActor(null)
+    setSelectedFacility(facility)
+  }
+
+  function handleActorClick(actor: ThreatActor) {
+    setSelectedFacility(null)
+    setSelectedActor(actor)
+  }
+
+  function handleEmptyClick() {
+    setSelectedFacility(null)
+    setSelectedActor(null)
+  }
+
   return (
     <div className="h-[calc(100vh-84px)] flex flex-col bg-[#030810] text-white overflow-hidden">
       {/* Top Stats Bar */}
-      <div className="flex-shrink-0 h-12 bg-[#0a1225]/90 border-b border-cyan-500/10 flex items-center justify-between px-4 backdrop-blur-sm">
+      <div className="flex-shrink-0 h-12 bg-[#0a1225]/90 border-b border-white/10 flex items-center justify-between px-4 backdrop-blur-sm">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-cyan-400" />
-            <span className="text-sm font-semibold text-cyan-300">CAPRI Threat Map</span>
+            <Shield className="w-4 h-4 text-white" />
+            <span className="text-sm font-semibold text-white">CAPRI Threat Map</span>
           </div>
           <div className="hidden md:flex items-center gap-6 text-xs font-mono">
             <div className="flex items-center gap-2">
@@ -146,7 +218,7 @@ export default function GlobePage() {
             </div>
             <div>
               <span className="text-gray-500">IOCs: </span>
-              <span className="text-cyan-400">{attackCount.toLocaleString()}</span>
+              <span className="text-white">{attackCount.toLocaleString()}</span>
             </div>
             <div>
               <span className="text-gray-500">Active Threats: </span>
@@ -165,12 +237,12 @@ export default function GlobePage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={fetchData} className="text-gray-400 hover:text-cyan-400 transition-colors">
+          <button onClick={fetchData} className="text-gray-400 hover:text-white transition-colors">
             <RefreshCw className="w-4 h-4" />
           </button>
           <button
             onClick={() => setRightPanelOpen(!rightPanelOpen)}
-            className="md:hidden text-gray-400 hover:text-cyan-400 transition-colors text-xs font-mono border border-gray-700 px-2 py-1 rounded"
+            className="md:hidden text-gray-400 hover:text-white transition-colors text-xs font-mono border border-gray-700 px-2 py-1 rounded"
           >
             Threats
           </button>
@@ -179,66 +251,17 @@ export default function GlobePage() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Navigation Sidebar */}
-        <div className={`flex-shrink-0 bg-[#0a1225]/80 border-r border-cyan-500/10 transition-all duration-300 ${leftNavOpen ? 'w-48' : 'w-12'} hidden md:flex flex-col`}>
-          <div className="flex items-center justify-end p-2">
-            <button
-              onClick={() => setLeftNavOpen(!leftNavOpen)}
-              className="text-gray-500 hover:text-cyan-400 transition-colors p-1"
-            >
-              {leftNavOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            </button>
-          </div>
-
-          <nav className="flex-1 px-2 space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={`flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors ${
-                  item.active
-                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
-                    : 'text-gray-400 hover:text-cyan-300 hover:bg-white/5'
-                }`}
-              >
-                <item.icon className="w-4 h-4 flex-shrink-0" />
-                {leftNavOpen && <span className="truncate">{item.label}</span>}
-              </Link>
-            ))}
-          </nav>
-
-          {leftNavOpen && (
-            <div className="p-3 border-t border-cyan-500/10">
-              <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Threat Severity</p>
-              <div className="space-y-1.5 text-[11px]">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-1 rounded-full bg-red-500" />
-                  <span className="text-gray-400">Critical</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-1 rounded-full bg-orange-500" />
-                  <span className="text-gray-400">High</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-1 rounded-full bg-yellow-500" />
-                  <span className="text-gray-400">Medium</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-1 rounded-full bg-cyan-500" />
-                  <span className="text-gray-400">Target</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* Globe Viewport */}
         <div className="flex-1 relative">
-          <GlobeCanvas />
+          <GlobeCanvas
+            onFacilityClick={handleFacilityClick}
+            onThreatActorClick={handleActorClick}
+            onEmptyClick={handleEmptyClick}
+          />
 
           {/* Overlay: Score Badge */}
-          {data?.score && (
-            <div className="absolute top-4 left-4 bg-[#0a1225]/80 backdrop-blur-md border border-cyan-500/20 rounded-xl px-4 py-3">
+          {data?.score && !selectedFacility && !selectedActor && (
+            <div className="absolute top-4 left-4 bg-[#0a1225]/80 backdrop-blur-md border border-white/10 rounded-xl px-4 py-3">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">CAPRI Score</p>
               <div className="flex items-baseline gap-2">
                 <span className={`text-3xl font-bold font-mono ${getScoreColor(data.score.score)}`}>
@@ -251,8 +274,28 @@ export default function GlobePage() {
             </div>
           )}
 
+          {/* Overlay: Facility Detail Panel */}
+          {selectedFacility && (
+            <FacilityDetailPanel
+              facility={selectedFacility}
+              threats={sectorThreats}
+              actors={targetingActors}
+              onClose={() => setSelectedFacility(null)}
+            />
+          )}
+
+          {/* Overlay: Threat Actor Detail Panel */}
+          {selectedActor && (
+            <ActorDetailPanel
+              actor={selectedActor}
+              threats={actorThreats}
+              facilities={actorTargetFacilities}
+              onClose={() => setSelectedActor(null)}
+            />
+          )}
+
           {/* Overlay: Attack Counter */}
-          <div className="absolute bottom-4 left-4 bg-[#0a1225]/80 backdrop-blur-md border border-cyan-500/20 rounded-xl px-4 py-3">
+          <div className="absolute bottom-4 left-4 bg-[#0a1225]/80 backdrop-blur-md border border-white/10 rounded-xl px-4 py-3">
             <div className="flex items-center gap-3">
               <Activity className="w-4 h-4 text-red-400 animate-pulse" />
               <div>
@@ -262,32 +305,38 @@ export default function GlobePage() {
             </div>
           </div>
 
-          {/* Overlay: Region Legend */}
-          <div className="absolute bottom-4 right-4 bg-[#0a1225]/80 backdrop-blur-md border border-cyan-500/20 rounded-xl px-3 py-2 hidden lg:block">
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Regions</p>
+          {/* Overlay: Sector Legend */}
+          <div className="absolute bottom-4 right-4 bg-[#0a1225]/80 backdrop-blur-md border border-white/10 rounded-xl px-3 py-2 hidden lg:block">
+            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Infrastructure Sectors</p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: '#4a9eff' }} /><span className="text-gray-400">N. America</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: '#6b8aff' }} /><span className="text-gray-400">Europe</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: '#ff8844' }} /><span className="text-gray-400">Russia</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: '#ff9944' }} /><span className="text-gray-400">Asia</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: '#ffaa44' }} /><span className="text-gray-400">Mid. East</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: '#66cc88' }} /><span className="text-gray-400">Africa</span></div>
+              {(Object.entries(sectorColors) as [Sector, string][]).map(([sector, color]) => (
+                <div key={sector} className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />
+                  <span className="text-gray-300">{sectorLabels[sector]}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 pt-1.5 border-t border-white/5">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-gray-300 text-[10px]">Threat Actor Origin</span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Right Sidebar: Threat Feed */}
-        <div className={`flex-shrink-0 bg-[#0a1225]/90 border-l border-cyan-500/10 transition-all duration-300 overflow-hidden ${rightPanelOpen ? 'w-80' : 'w-0'} hidden md:block`}>
+        <div className={`flex-shrink-0 bg-[#0a1225]/90 border-l border-white/10 transition-all duration-300 overflow-hidden ${rightPanelOpen ? 'w-80' : 'w-0'} hidden md:block`}>
           <div className="h-full flex flex-col w-80">
-            <div className="flex-shrink-0 p-4 border-b border-cyan-500/10">
+            <div className="flex-shrink-0 p-4 border-b border-white/10">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-cyan-300 flex items-center gap-2">
+                <h2 className="text-sm font-bold text-white flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4" />
                   Top Critical Threats
                 </h2>
                 <button
                   onClick={() => setRightPanelOpen(false)}
-                  className="text-gray-500 hover:text-cyan-400 transition-colors"
+                  className="text-gray-500 hover:text-white transition-colors"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -309,13 +358,13 @@ export default function GlobePage() {
               ) : topThreats.length === 0 ? (
                 <p className="text-gray-500 text-sm text-center py-8">No threats loaded</p>
               ) : (
-                topThreats.map((threat, i) => (
+                topThreats.map((threat) => (
                   <a
                     key={threat.id}
                     href={threat.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 hover:border-cyan-500/20 rounded-lg p-3 transition-all group"
+                    className="block bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 hover:border-white/15 rounded-lg p-3 transition-all group"
                   >
                     <div className="flex items-center gap-2 mb-1.5">
                       <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border ${getSeverityColor(threat.severity)}`}>
@@ -332,7 +381,7 @@ export default function GlobePage() {
                         </span>
                       )}
                     </div>
-                    <h3 className="text-xs font-medium text-gray-200 group-hover:text-cyan-300 transition-colors line-clamp-2 mb-1.5">
+                    <h3 className="text-xs font-medium text-gray-200 group-hover:text-white transition-colors line-clamp-2 mb-1.5">
                       {threat.title}
                     </h3>
                     <div className="flex items-center justify-between text-[10px]">
@@ -349,7 +398,7 @@ export default function GlobePage() {
 
             {/* KEV Quick Count */}
             {data?.kev && data.kev.length > 0 && (
-              <div className="flex-shrink-0 p-3 border-t border-cyan-500/10">
+              <div className="flex-shrink-0 p-3 border-t border-white/10">
                 <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
                   <div className="flex items-center gap-2 mb-1">
                     <Zap className="w-3.5 h-3.5 text-red-400" />
@@ -363,15 +412,263 @@ export default function GlobePage() {
           </div>
         </div>
 
-        {/* Mobile Right Panel Toggle (when closed) */}
+        {/* Right Panel Toggle (when closed) */}
         {!rightPanelOpen && (
           <button
             onClick={() => setRightPanelOpen(true)}
-            className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 bg-cyan-500/10 border border-cyan-500/20 rounded-l-lg px-1 py-4 text-cyan-400 hover:bg-cyan-500/20 transition-colors"
+            className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 bg-white/5 border border-white/10 rounded-l-lg px-1 py-4 text-white/60 hover:bg-white/10 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ============================================================
+// Facility Detail Panel Component
+// ============================================================
+function FacilityDetailPanel({
+  facility,
+  threats,
+  actors,
+  onClose,
+}: {
+  facility: EnergyFacility
+  threats: any[]
+  actors: ThreatActor[]
+  onClose: () => void
+}) {
+  const SectorIcon = getSectorIcon(facility.sector)
+  const color = sectorColors[facility.sector]
+
+  return (
+    <div className="absolute top-4 left-4 w-[380px] max-h-[calc(100%-2rem)] bg-[#0a1225]/95 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden flex flex-col animate-in fade-in slide-in-from-left-4 duration-200">
+      {/* Header */}
+      <div className="flex-shrink-0 p-4 border-b border-white/10" style={{ borderTopColor: color, borderTopWidth: 3 }}>
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${color}20` }}>
+              <SectorIcon className="w-4 h-4" style={{ color }} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color }}>
+                {sectorLabels[facility.sector]}
+              </p>
+              <h3 className="text-sm font-bold text-white truncate">{facility.name}</h3>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors p-1 flex-shrink-0">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+          <div>
+            <span className="text-gray-500">Operator: </span>
+            <span className="text-gray-300">{facility.operator}</span>
+          </div>
+          {facility.capacity && (
+            <div>
+              <span className="text-gray-500">Capacity: </span>
+              <span className="text-gray-300">{facility.capacity}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
+        {/* Threat Actors Targeting This Sector */}
+        <div>
+          <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2">
+            Threat Actors Targeting {sectorLabels[facility.sector]}
+          </h4>
+          <div className="space-y-1.5">
+            {actors.map((actor) => (
+              <div key={actor.name} className="flex items-center gap-2 bg-white/[0.03] rounded-lg px-2.5 py-1.5">
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: actor.color }} />
+                <span className="text-xs text-gray-200">{actor.name}</span>
+                <span className="text-[10px] text-gray-500 ml-auto">{actor.country}</span>
+              </div>
+            ))}
+            {actors.length === 0 && (
+              <p className="text-[11px] text-gray-500 italic">No known threat actors targeting this sector</p>
+            )}
+          </div>
+        </div>
+
+        {/* Relevant Threats / CVEs */}
+        <div>
+          <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2">
+            Relevant Alerts & CVEs
+          </h4>
+          {threats.length > 0 ? (
+            <div className="space-y-1.5">
+              {threats.map((threat, i) => (
+                <a
+                  key={threat.id || threat.cveID || i}
+                  href={threat.link || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block bg-white/[0.03] hover:bg-white/[0.06] rounded-lg px-2.5 py-2 transition-colors group"
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    {threat.severity && (
+                      <span className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded border ${getSeverityColor(threat.severity)}`}>
+                        {threat.severity}
+                      </span>
+                    )}
+                    {threat.cveID && (
+                      <span className="text-[10px] font-mono text-red-400">{threat.cveID}</span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-gray-300 group-hover:text-white line-clamp-2 transition-colors">
+                    {threat.title || threat.shortDescription}
+                  </p>
+                  {threat.source && (
+                    <p className="text-[10px] text-gray-600 mt-1">{threat.source}</p>
+                  )}
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white/[0.02] rounded-lg p-3">
+              <p className="text-[11px] text-gray-500">
+                No sector-specific alerts currently detected. Monitor the general threat feed for broader indicators.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================
+// Threat Actor Detail Panel Component
+// ============================================================
+function ActorDetailPanel({
+  actor,
+  threats,
+  facilities,
+  onClose,
+}: {
+  actor: ThreatActor
+  threats: any[]
+  facilities: EnergyFacility[]
+  onClose: () => void
+}) {
+  return (
+    <div className="absolute top-4 left-4 w-[380px] max-h-[calc(100%-2rem)] bg-[#0a1225]/95 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden flex flex-col animate-in fade-in slide-in-from-left-4 duration-200">
+      {/* Header */}
+      <div className="flex-shrink-0 p-4 border-b border-white/10" style={{ borderTopColor: actor.color, borderTopWidth: 3 }}>
+        <div className="flex items-start justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-3 h-3 rounded-full animate-pulse" style={{ background: actor.color }} />
+              <h3 className="text-sm font-bold text-white">{actor.name}</h3>
+            </div>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+              <div>
+                <span className="text-gray-500">Origin: </span>
+                <span className="text-gray-300">{actor.country}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Type: </span>
+                <span className="text-gray-300">{actor.type}</span>
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors p-1 flex-shrink-0">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">{actor.description}</p>
+      </div>
+
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
+        {/* Target Sectors */}
+        <div>
+          <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2">Target Sectors</h4>
+          <div className="flex flex-wrap gap-1.5">
+            {actor.targetSectors.map((sector) => (
+              <span
+                key={sector}
+                className="text-[10px] font-medium px-2 py-1 rounded-md border"
+                style={{
+                  color: sectorColors[sector],
+                  background: `${sectorColors[sector]}15`,
+                  borderColor: `${sectorColors[sector]}30`,
+                }}
+              >
+                {sectorLabels[sector]}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Targeted Facilities */}
+        <div>
+          <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2">
+            At-Risk Facilities ({facilities.length})
+          </h4>
+          <div className="space-y-1 max-h-40 overflow-y-auto scrollbar-thin">
+            {facilities.slice(0, 15).map((f) => {
+              const SIcon = getSectorIcon(f.sector)
+              return (
+                <div key={f.id} className="flex items-center gap-2 bg-white/[0.03] rounded px-2 py-1.5">
+                  <SIcon className="w-3 h-3 flex-shrink-0" style={{ color: sectorColors[f.sector] }} />
+                  <span className="text-[11px] text-gray-300 truncate">{f.name}</span>
+                </div>
+              )
+            })}
+            {facilities.length > 15 && (
+              <p className="text-[10px] text-gray-500 pl-2">+{facilities.length - 15} more facilities</p>
+            )}
+          </div>
+        </div>
+
+        {/* Related Threats */}
+        <div>
+          <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2">
+            Related Alerts & CVEs
+          </h4>
+          {threats.length > 0 ? (
+            <div className="space-y-1.5">
+              {threats.map((threat, i) => (
+                <a
+                  key={threat.id || threat.cveID || i}
+                  href={threat.link || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block bg-white/[0.03] hover:bg-white/[0.06] rounded-lg px-2.5 py-2 transition-colors group"
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    {threat.severity && (
+                      <span className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded border ${getSeverityColor(threat.severity)}`}>
+                        {threat.severity}
+                      </span>
+                    )}
+                    {threat.cveID && (
+                      <span className="text-[10px] font-mono text-red-400">{threat.cveID}</span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-gray-300 group-hover:text-white line-clamp-2 transition-colors">
+                    {threat.title || threat.shortDescription}
+                  </p>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white/[0.02] rounded-lg p-3">
+              <p className="text-[11px] text-gray-500">
+                No specific alerts currently linked to this actor. Check general threat feed for updates.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
