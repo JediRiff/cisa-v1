@@ -80,6 +80,75 @@ function buildTargetingMap(): Map<string, EnergyFacility[]> {
   return map
 }
 
+// Minimal TopoJSON decoder - renders country border outlines on the globe
+function loadCountryBorders(globeGroup: THREE.Group, radius: number) {
+  fetch('/countries-110m.json')
+    .then((r) => r.json())
+    .then((topology) => {
+      const { arcs: encodedArcs, transform } = topology
+      const { scale, translate } = transform
+
+      // Decode all arcs (delta-encoded coordinates -> [lng, lat])
+      const decodedArcs: [number, number][][] = encodedArcs.map((arc: number[][]) => {
+        let x = 0, y = 0
+        return arc.map(([dx, dy]: number[]) => {
+          x += dx
+          y += dy
+          return [x * scale[0] + translate[0], y * scale[1] + translate[1]] as [number, number]
+        })
+      })
+
+      const borderMat = new THREE.LineBasicMaterial({
+        color: 0x3a6a8a,
+        transparent: true,
+        opacity: 0.4,
+      })
+
+      const countries = topology.objects.countries
+      if (!countries) return
+
+      countries.geometries.forEach((geo: any) => {
+        // Normalize to array-of-polygons, each polygon is array-of-rings
+        let polygons: number[][][]
+        if (geo.type === 'Polygon') {
+          polygons = [geo.arcs]
+        } else if (geo.type === 'MultiPolygon') {
+          polygons = geo.arcs
+        } else {
+          return
+        }
+
+        polygons.forEach((polygon: number[][]) => {
+          polygon.forEach((ring: number[]) => {
+            const coords: [number, number][] = []
+            ring.forEach((arcIdx: number) => {
+              const reversed = arcIdx < 0
+              const idx = reversed ? ~arcIdx : arcIdx
+              const arc = decodedArcs[idx]
+              if (!arc) return
+              const points = reversed ? [...arc].reverse() : arc
+              const start = coords.length > 0 ? 1 : 0
+              for (let i = start; i < points.length; i++) {
+                coords.push(points[i])
+              }
+            })
+
+            if (coords.length < 2) return
+
+            const points3d = coords.map(([lng, lat]) =>
+              latLngToVector3(lat, lng, radius)
+            )
+            const geometry = new THREE.BufferGeometry().setFromPoints(points3d)
+            globeGroup.add(new THREE.Line(geometry, borderMat))
+          })
+        })
+      })
+    })
+    .catch(() => {
+      console.warn('Failed to load country borders')
+    })
+}
+
 export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmptyClick }: GlobeCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const callbacksRef = useRef({ onFacilityClick, onThreatActorClick, onEmptyClick })
@@ -177,6 +246,9 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       transparent: true,
     })
     globeGroup.add(new THREE.Mesh(atmosGeo, atmosMat))
+
+    // Country border outlines (loaded async from TopoJSON)
+    loadCountryBorders(globeGroup, 1.005)
 
     // Land dots - colored by region
     const dotGeo = new THREE.BufferGeometry()
