@@ -562,15 +562,15 @@ function FacilityDetailPanel({
                     <span className="text-gray-400">Threat Actors (0-4 pts):</span> Each nation-state APT group targeting this sector adds 0.5 pts. {risk.actorCount} actor{risk.actorCount !== 1 ? 's' : ''} = {Math.min(risk.actorCount * 0.5, 4).toFixed(1)} pts
                   </p>
                   <p>
-                    <span className="text-gray-400">CVE Exposure (0-3 pts):</span> Each sector-relevant CVE in the live feed adds 0.15 pts. {risk.relevantCveCount} CVE{risk.relevantCveCount !== 1 ? 's' : ''} = {Math.min(risk.relevantCveCount * 0.15, 3).toFixed(1)} pts
+                    <span className="text-gray-400">CVE Exposure (0-3 pts):</span> Sector-relevant CVEs from the latest advisories across 10 intelligence sources (CISA, Microsoft, Unit42, CrowdStrike, etc.), each adding 0.15 pts. {risk.relevantCveCount} CVE{risk.relevantCveCount !== 1 ? 's' : ''} = {Math.min(risk.relevantCveCount * 0.15, 3).toFixed(1)} pts
                   </p>
                   <p>
-                    <span className="text-gray-400">KEV Urgency (0-3 pts):</span> Active KEVs (0.4 ea), overdue KEVs (+0.5 ea), ransomware-linked KEVs (+0.3 ea).{' '}
+                    <span className="text-gray-400">KEV Urgency (0-3 pts):</span> Known Exploited Vulnerabilities added to CISA&apos;s catalog in the past 30 days. Active KEVs (0.4 ea), overdue KEVs (+0.5 ea), ransomware-linked KEVs (+0.3 ea).{' '}
                     {risk.relevantKevCount} KEV{risk.relevantKevCount !== 1 ? 's' : ''}, {risk.overdueKevCount} overdue, {risk.ransomwareKevCount} ransomware
                   </p>
                 </div>
                 <p>
-                  Raw threat intensity is inverted to the 1-5 CAPRI scale. Higher threat = lower score.
+                  Raw threat intensity is inverted to the 1-5 CAPRI scale. Higher threat = lower score. Data refreshes every 60 seconds.
                 </p>
               </div>
             </details>
