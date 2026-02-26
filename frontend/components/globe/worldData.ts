@@ -65,7 +65,6 @@ export function calculateFacilityRisk(
   kevItems: any[],
 ): FacilityRisk {
   const sector = facility.sector
-  const keywords = sectorKeywords[sector]
 
   // 1. Threat actor assessment (0-4 points)
   // Each targeting actor adds weight; more actors = higher risk
@@ -77,10 +76,10 @@ export function calculateFacilityRisk(
   const actorScore = Math.min(actorCount * 0.5, 4)
 
   // 2. CVE exposure (0-3 points)
-  // Sector-relevant CVEs from the threat feed
+  // Sector-relevant CVEs from the threat feed (word-boundary matching)
   const relevantCves = threatItems.filter((item) => {
-    const text = `${item.title || ''} ${item.description || ''} ${item.shortDescription || ''}`.toLowerCase()
-    return keywords.some((kw) => text.includes(kw.toLowerCase()))
+    const text = `${item.title || ''} ${item.description || ''} ${item.shortDescription || ''}`
+    return matchesSectorKeywords(text, sector)
   })
   const relevantCveCount = relevantCves.length
   // More CVEs = higher exposure, diminishing returns
@@ -92,8 +91,8 @@ export function calculateFacilityRisk(
   today.setHours(0, 0, 0, 0)
 
   const relevantKevs = kevItems.filter((kev) => {
-    const text = `${kev.vendorProject || ''} ${kev.product || ''} ${kev.shortDescription || ''}`.toLowerCase()
-    return keywords.some((kw) => text.includes(kw.toLowerCase()))
+    const text = `${kev.vendorProject || ''} ${kev.product || ''} ${kev.shortDescription || ''}`
+    return matchesSectorKeywords(text, sector)
   })
   const relevantKevCount = relevantKevs.length
   const overdueKevs = relevantKevs.filter((kev) => new Date(kev.dueDate) < today)
@@ -222,10 +221,27 @@ export const sectorLabels: Record<Sector, string> = {
 export const sectorKeywords: Record<Sector, string[]> = {
   nuclear: ['nuclear', 'NRC', 'reactor', 'radiation', 'fuel rod', 'containment', 'IAEA', 'enrichment', 'centrifuge', 'Stuxnet', 'nuclear plant', 'nuclear power', 'uranium', 'spent fuel', 'BWR', 'PWR', 'fission'],
   hydro: ['hydroelectric', 'dam', 'reservoir', 'spillway', 'hydropower', 'water turbine', 'FERC', 'flood control', 'penstock', 'hydro plant', 'pumped storage'],
-  grid: ['power grid', 'SCADA', 'ICS', 'substation', 'transformer', 'transmission', 'NERC', 'CIP', 'EMS', 'DCS', 'RTU', 'PLC', 'HMI', 'smart grid', 'AMI', 'DERMS', 'Modbus', 'DNP3', 'IEC 61850', 'OT', 'industrial control', 'Industroyer', 'BlackEnergy', 'energy grid', 'electric grid', 'power system', 'operational technology', 'OPC UA', 'OPC', 'BACnet', 'IEC 104', 'IEC 60870', 'Profinet', 'EtherNet/IP', 'Siemens', 'Schneider Electric', 'ABB', 'Honeywell', 'Emerson', 'Rockwell', 'GE Vernova', 'Yokogawa', 'Hitachi Energy', 'CrashOverride', 'Industroyer2', 'Havex', 'Pipedream', 'Incontroller', 'FrostyGoop', 'CosmicEnergy', 'Triton'],
+  grid: ['power grid', 'SCADA', 'ICS', 'substation', 'transformer', 'transmission', 'NERC', 'CIP', 'EMS', 'DCS', 'RTU', 'PLC', 'HMI', 'smart grid', 'AMI', 'DERMS', 'Modbus', 'DNP3', 'IEC 61850', 'industrial control', 'Industroyer', 'BlackEnergy', 'energy grid', 'electric grid', 'power system', 'operational technology', 'OPC UA', 'OPC', 'BACnet', 'IEC 104', 'IEC 60870', 'Profinet', 'EtherNet/IP', 'Siemens', 'Schneider Electric', 'ABB', 'Honeywell', 'Emerson', 'Rockwell', 'GE Vernova', 'Yokogawa', 'Hitachi Energy', 'CrashOverride', 'Industroyer2', 'Havex', 'Pipedream', 'Incontroller', 'FrostyGoop', 'CosmicEnergy', 'Triton'],
   natural_gas: ['natural gas', 'LNG', 'pipeline', 'compressor station', 'gas turbine', 'methane', 'PHMSA', 'gas distribution', 'gas pipeline', 'liquefied natural gas', 'regasification', 'liquefaction', 'Colonial Pipeline'],
-  oil: ['oil', 'petroleum', 'refinery', 'crude', 'strategic petroleum', 'SPR', 'petrochemical', 'distillation', 'oil pipeline', 'oil refinery', 'Shamoon', 'Triton', 'TRISIS'],
+  oil: ['petroleum', 'refinery', 'crude oil', 'strategic petroleum', 'SPR', 'petrochemical', 'distillation', 'oil pipeline', 'oil refinery', 'oil and gas', 'oil & gas', 'oil sector', 'oil industry', 'crude', 'Shamoon', 'Triton', 'TRISIS'],
   water: ['water treatment', 'water utility', 'wastewater', 'drinking water', 'chlorination', 'water system', 'water infrastructure', 'water plant', 'sewage', 'water purification', 'Unitronics', 'Vision PLC'],
+}
+
+// Word-boundary keyword matching to prevent false positives
+// e.g., 'oil' won't match 'soil'/'foil', 'OT' won't match 'other'/'bot'
+const _keywordRegexCache = new Map<string, RegExp>()
+export function matchesKeyword(text: string, keyword: string): boolean {
+  let regex = _keywordRegexCache.get(keyword)
+  if (!regex) {
+    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    regex = new RegExp(`\\b${escaped}\\b`, 'i')
+    _keywordRegexCache.set(keyword, regex)
+  }
+  return regex.test(text)
+}
+
+export function matchesSectorKeywords(text: string, sector: Sector): boolean {
+  return sectorKeywords[sector].some((kw) => matchesKeyword(text, kw))
 }
 
 // Known threat actor origins with targeting data and MITRE ATT&CK TTPs

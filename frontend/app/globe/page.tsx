@@ -28,6 +28,7 @@ import {
   sectorColors,
   sectorLabels,
   sectorKeywords,
+  matchesSectorKeywords,
   threatActors as allThreatActors,
   energyFacilities,
   calculateFacilityRisk,
@@ -94,12 +95,11 @@ function getSectorIcon(sector: Sector) {
   }
 }
 
-// Filter threats by sector keywords
+// Filter threats by sector keywords (word-boundary matching)
 function filterBySector(items: any[], sector: Sector): any[] {
-  const keywords = sectorKeywords[sector]
   return items.filter((item) => {
-    const text = `${item.title || ''} ${item.shortDescription || ''} ${item.description || ''}`.toLowerCase()
-    return keywords.some((kw) => text.includes(kw.toLowerCase()))
+    const text = `${item.title || ''} ${item.shortDescription || ''} ${item.description || ''}`
+    return matchesSectorKeywords(text, sector)
   })
 }
 

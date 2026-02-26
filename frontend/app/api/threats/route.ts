@@ -135,15 +135,27 @@ export async function GET() {
       'frostygoop', 'cosmicenergy', 'triton', 'trisis'
     ]
 
+    // Word-boundary matching to prevent false positives
+    const indicatorRegexCache = new Map<string, RegExp>()
+    const matchesIndicator = (text: string, indicator: string): boolean => {
+      let regex = indicatorRegexCache.get(indicator)
+      if (!regex) {
+        const escaped = indicator.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        regex = new RegExp(`\\b${escaped}\\b`, 'i')
+        indicatorRegexCache.set(indicator, regex)
+      }
+      return regex.test(text)
+    }
+
     const last24h = {
       kev: last24hItems.filter(item => item.source === 'CISA KEV').length,
       nationState: last24hItems.filter(item => {
-        const text = (item.title + ' ' + item.description).toLowerCase()
-        return NATION_STATE_INDICATORS.some(indicator => text.includes(indicator))
+        const text = item.title + ' ' + item.description
+        return NATION_STATE_INDICATORS.some(indicator => matchesIndicator(text, indicator))
       }).length,
       ics: last24hItems.filter(item => {
-        const text = (item.title + ' ' + item.description).toLowerCase()
-        return ICS_INDICATORS.some(indicator => text.includes(indicator))
+        const text = item.title + ' ' + item.description
+        return ICS_INDICATORS.some(indicator => matchesIndicator(text, indicator))
       }).length,
       total: last24hItems.length
     }

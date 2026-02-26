@@ -34,16 +34,28 @@ export async function GET() {
   // Factor 2: Energy threats
   const energyThreats = recentItems.filter(item => item.isEnergyRelevant)
 
+  // Word-boundary matching for accuracy
+  const regexCache = new Map<string, RegExp>()
+  const matchesIndicator = (text: string, indicator: string): boolean => {
+    let regex = regexCache.get(indicator)
+    if (!regex) {
+      const escaped = indicator.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      regex = new RegExp(`\\b${escaped}\\b`, 'i')
+      regexCache.set(indicator, regex)
+    }
+    return regex.test(text)
+  }
+
   // Factor 3: Nation-state
   const nationStateThreats = recentItems.filter(item => {
-    const text = (item.title + ' ' + item.description).toLowerCase()
-    return NATION_STATE_INDICATORS.some(indicator => text.includes(indicator))
+    const text = item.title + ' ' + item.description
+    return NATION_STATE_INDICATORS.some(indicator => matchesIndicator(text, indicator))
   })
 
   // Factor 4: ICS/SCADA
   const icsThreats = recentItems.filter(item => {
-    const text = (item.title + ' ' + item.description).toLowerCase()
-    return ICS_INDICATORS.some(indicator => text.includes(indicator))
+    const text = item.title + ' ' + item.description
+    return ICS_INDICATORS.some(indicator => matchesIndicator(text, indicator))
   })
 
   // Factor 5: Vendor critical
@@ -56,12 +68,12 @@ export async function GET() {
 
   recentItems.forEach(item => {
     const factors: string[] = []
-    const text = (item.title + ' ' + item.description).toLowerCase()
+    const text = item.title + ' ' + item.description
 
     if (item.source === 'CISA KEV') factors.push('KEV')
     if (item.isEnergyRelevant) factors.push('Energy')
-    if (NATION_STATE_INDICATORS.some(i => text.includes(i))) factors.push('Nation-State')
-    if (ICS_INDICATORS.some(i => text.includes(i))) factors.push('ICS')
+    if (NATION_STATE_INDICATORS.some(i => matchesIndicator(text, i))) factors.push('Nation-State')
+    if (ICS_INDICATORS.some(i => matchesIndicator(text, i))) factors.push('ICS')
     if (item.sourceType === 'vendor' && item.severity === 'critical') factors.push('Vendor-Critical')
 
     if (factors.length > 1) {

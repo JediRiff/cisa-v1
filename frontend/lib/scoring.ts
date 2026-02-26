@@ -96,6 +96,18 @@ const ICS_INDICATORS = [
   'industrial control', 'operational technology'
 ]
 
+// Word-boundary matching to prevent false positives (e.g., 'ics' won't match 'logistics')
+const _regexCache = new Map<string, RegExp>()
+function matchesIndicator(text: string, indicator: string): boolean {
+  let regex = _regexCache.get(indicator)
+  if (!regex) {
+    const escaped = indicator.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    regex = new RegExp(`\\b${escaped}\\b`, 'i')
+    _regexCache.set(indicator, regex)
+  }
+  return regex.test(text)
+}
+
 // Temporal decay: newer threats weigh more than older ones
 function getTemporalDecay(pubDate: string): number {
   const ageMs = Date.now() - new Date(pubDate).getTime()
@@ -125,8 +137,8 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
   // Factor 1: Nation-state activity (-0.4 each, max -0.8) - HIGHEST IMPACT
   const nationStateThreats = recentItems.filter(item => {
     if (usedItemIds.has(item.id)) return false
-    const text = (item.title + ' ' + item.description).toLowerCase()
-    const matches = NATION_STATE_INDICATORS.some(indicator => text.includes(indicator))
+    const text = item.title + ' ' + item.description
+    const matches = NATION_STATE_INDICATORS.some(indicator => matchesIndicator(text, indicator))
     if (matches) usedItemIds.add(item.id)
     return matches
   })
@@ -188,8 +200,8 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
   // Factor 3: ICS/SCADA vulnerabilities (-0.3 each, max -0.6)
   const icsThreats = recentItems.filter(item => {
     if (usedItemIds.has(item.id)) return false
-    const text = (item.title + ' ' + item.description).toLowerCase()
-    const matches = ICS_INDICATORS.some(indicator => text.includes(indicator))
+    const text = item.title + ' ' + item.description
+    const matches = ICS_INDICATORS.some(indicator => matchesIndicator(text, indicator))
     if (matches) usedItemIds.add(item.id)
     return matches
   })
