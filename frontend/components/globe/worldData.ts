@@ -51,6 +51,11 @@ export interface FacilityRisk {
   overdueKevCount: number    // Overdue KEVs
   ransomwareKevCount: number // KEVs with known ransomware use
   factors: string[]          // Human-readable risk factors
+  // Transparent sub-scores for auditable breakdown
+  actorScore: number         // Raw actor sub-score (0-4)
+  cveScore: number           // Raw CVE sub-score (0-3)
+  kevScore: number           // Raw KEV sub-score (0-3)
+  rawTotal: number           // Sum of sub-scores before inversion (0-10)
 }
 
 // Calculate risk score for a single facility based on real threat data
@@ -161,6 +166,10 @@ export function calculateFacilityRisk(
     overdueKevCount,
     ransomwareKevCount,
     factors,
+    actorScore,
+    cveScore,
+    kevScore,
+    rawTotal: rawScore,
   }
 }
 

@@ -274,10 +274,10 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
     const impact = Math.min(decayedImpact, 0.3) // Lower impact for keyword-only
     score -= impact
     factors.push({
-      name: 'Energy Sector Keywords (Pending AI)',
+      name: 'Energy Sector Keyword Matches',
       impact: -impact,
       count: keywordOnlyThreats.length,
-      description: 'Keyword-matched items awaiting AI analysis — time-weighted',
+      description: 'Threats matching energy infrastructure keywords — time-weighted',
       weight: -0.1,
       maxImpact: -0.3,
       items: keywordOnlyThreats.slice(0, 10).map(item => ({

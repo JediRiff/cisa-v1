@@ -548,29 +548,65 @@ function FacilityDetailPanel({
                 </p>
               </div>
             </div>
-            {/* Methodology */}
+            {/* Transparent Score Computation */}
             <details className="mt-2 pt-2 border-t border-white/5">
               <summary className="text-[10px] text-gray-500 cursor-pointer hover:text-gray-300 transition-colors">
-                How is this score calculated?
+                How was this score calculated?
               </summary>
-              <div className="mt-2 space-y-1.5 text-[10px] text-gray-500 leading-relaxed">
-                <p>
-                  Score uses the CAPRI scale: <strong className="text-white">1 = Severe</strong>, <strong className="text-white">5 = Normal</strong>. Three weighted factors are combined:
+              <div className="mt-2 space-y-2 text-[10px] leading-relaxed">
+                <p className="text-gray-500">
+                  CAPRI scale: <strong className="text-white">1 = Severe</strong>, <strong className="text-white">5 = Normal</strong>. Score is computed from three weighted factors for the <strong className="text-white">{sectorLabels[facility.sector]}</strong> sector:
                 </p>
-                <div className="pl-2 space-y-1">
-                  <p>
-                    <span className="text-gray-400">Threat Actors (0-4 pts):</span> Each nation-state APT group targeting this sector adds 0.5 pts. {risk.actorCount} actor{risk.actorCount !== 1 ? 's' : ''} = {Math.min(risk.actorCount * 0.5, 4).toFixed(1)} pts
+                {/* Factor 1: Actors */}
+                <div className="bg-white/[0.03] rounded px-2 py-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">Threat Actors (0-4 pts)</span>
+                    <span className="text-white font-mono font-bold">{risk.actorScore.toFixed(1)}</span>
+                  </div>
+                  <p className="text-gray-600 mt-0.5">
+                    {risk.actorCount} nation-state APT group{risk.actorCount !== 1 ? 's' : ''} targeting {sectorLabels[facility.sector].toLowerCase()} &times; 0.5 = {(risk.actorCount * 0.5).toFixed(1)}{risk.actorCount * 0.5 > 4 ? ' (capped at 4.0)' : ''}
                   </p>
-                  <p>
-                    <span className="text-gray-400">CVE Exposure (0-3 pts):</span> Sector-relevant CVEs from the latest advisories across 10 intelligence sources (CISA, Microsoft, Unit42, CrowdStrike, etc.), each adding 0.15 pts. {risk.relevantCveCount} CVE{risk.relevantCveCount !== 1 ? 's' : ''} = {Math.min(risk.relevantCveCount * 0.15, 3).toFixed(1)} pts
-                  </p>
-                  <p>
-                    <span className="text-gray-400">KEV Urgency (0-3 pts):</span> Known Exploited Vulnerabilities added to CISA&apos;s catalog in the past 30 days. Active KEVs (0.4 ea), overdue KEVs (+0.5 ea), ransomware-linked KEVs (+0.3 ea).{' '}
-                    {risk.relevantKevCount} KEV{risk.relevantKevCount !== 1 ? 's' : ''}, {risk.overdueKevCount} overdue, {risk.ransomwareKevCount} ransomware
+                  {risk.actorCount > 0 && (
+                    <p className="text-gray-600 mt-0.5 italic">
+                      {risk.actorNames.join(', ')}
+                    </p>
+                  )}
+                </div>
+                {/* Factor 2: CVEs */}
+                <div className="bg-white/[0.03] rounded px-2 py-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">CVE Exposure (0-3 pts)</span>
+                    <span className="text-white font-mono font-bold">{risk.cveScore.toFixed(1)}</span>
+                  </div>
+                  <p className="text-gray-600 mt-0.5">
+                    {risk.relevantCveCount} sector-relevant CVE{risk.relevantCveCount !== 1 ? 's' : ''} from 10 intel sources &times; 0.15 = {(risk.relevantCveCount * 0.15).toFixed(1)}{risk.relevantCveCount * 0.15 > 3 ? ' (capped at 3.0)' : ''}
                   </p>
                 </div>
-                <p>
-                  Raw threat intensity is inverted to the 1-5 CAPRI scale. Higher threat = lower score. Data refreshes every 60 seconds.
+                {/* Factor 3: KEVs */}
+                <div className="bg-white/[0.03] rounded px-2 py-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">KEV Urgency (0-3 pts)</span>
+                    <span className="text-white font-mono font-bold">{risk.kevScore.toFixed(1)}</span>
+                  </div>
+                  <p className="text-gray-600 mt-0.5">
+                    {risk.relevantKevCount} active KEV{risk.relevantKevCount !== 1 ? 's' : ''} (0.4 ea) + {risk.overdueKevCount} overdue (+0.5 ea) + {risk.ransomwareKevCount} ransomware (+0.3 ea)
+                  </p>
+                </div>
+                {/* Inversion formula */}
+                <div className="bg-white/[0.05] rounded px-2 py-1.5 border border-white/10">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">Raw Threat Intensity</span>
+                    <span className="text-white font-mono font-bold">{risk.rawTotal.toFixed(1)} / 10</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-gray-400">Inverted to CAPRI scale</span>
+                    <span className="font-mono font-bold" style={{ color: risk.color }}>
+                      5 &minus; ({risk.rawTotal.toFixed(1)} &divide; 10 &times; 4) = {risk.score.toFixed(1)}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-gray-600">
+                  Data: CVEs from latest advisories across 10 sources (CISA, Microsoft, Unit42, CrowdStrike, etc.). KEVs from CISA catalog (past 30 days). Refreshes every 60s.
                 </p>
               </div>
             </details>
