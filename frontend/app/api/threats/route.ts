@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server'
 import { fetchAllFeeds, ThreatItem } from '@/lib/feeds'
 import { calculateEnergyScore } from '@/lib/scoring'
 import { analyzeThreatsWithAI, AIAnalysisResult } from '@/lib/ai-analysis'
+import { detectCampaigns } from '@/lib/campaign-correlation'
+import { threatActors } from '@/components/globe/worldData'
 
 export const revalidate = 0 // No caching - always fetch fresh data
 
@@ -92,6 +94,10 @@ export async function GET() {
       }
       return item
     })
+
+    // Detect active campaigns by correlating feed items against actor TTP signatures
+    const campaigns = detectCampaigns(feedResult.items, threatActors)
+    const activeCampaignCount = campaigns.filter(c => c.confidence === 'high' || c.confidence === 'medium').length
 
     // Calculate energy sector score (now uses AI severity scores)
     const scoreResult = calculateEnergyScore(feedResult.items)
@@ -188,6 +194,7 @@ export async function GET() {
         energyRelevant: feedResult.items.filter(item => item.isEnergyRelevant).slice(0, 20),
         critical: feedResult.items.filter(item => item.severity === 'critical').slice(0, 20),
       },
+      campaigns,
       kev: kevActions,
       trend: weeklyTrend,
       meta: {
@@ -197,6 +204,7 @@ export async function GET() {
         totalItems: feedResult.items.length,
         deduplicatedCount: feedResult.deduplicatedCount || 0,
         alertsThisWeek,
+        activeCampaigns: activeCampaignCount,
         last24h,
         errors: feedResult.errors,
         cacheAge: 0,

@@ -32,6 +32,7 @@ interface PulseMarker {
   mesh: THREE.Sprite
   phase: number
   baseScale: number
+  actorName: string
 }
 
 interface FacilityMarkerRef {
@@ -51,6 +52,7 @@ export interface GlobeCanvasProps {
   onEmptyClick?: () => void
   selectedFacilityId?: string | null
   selectedActorName?: string | null
+  activeCampaignActors?: string[]
 }
 
 // Generate a circular glow texture via canvas
@@ -151,9 +153,10 @@ function loadCountryBorders(globeGroup: THREE.Group, radius: number) {
     })
 }
 
-export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmptyClick, selectedFacilityId, selectedActorName }: GlobeCanvasProps) {
+export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmptyClick, selectedFacilityId, selectedActorName, activeCampaignActors }: GlobeCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const callbacksRef = useRef({ onFacilityClick, onThreatActorClick, onEmptyClick })
+  const activeCampaignActorsRef = useRef<string[]>(activeCampaignActors || [])
   const selectionRef = useRef({ selectedFacilityId, selectedActorName })
   const facilityMarkersRef = useRef<FacilityMarkerRef[]>([])
   const actorMarkersRef = useRef<ActorMarkerRef[]>([])
@@ -174,6 +177,11 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
   useEffect(() => {
     callbacksRef.current = { onFacilityClick, onThreatActorClick, onEmptyClick }
   })
+
+  // Keep activeCampaignActors ref up to date
+  useEffect(() => {
+    activeCampaignActorsRef.current = activeCampaignActors || []
+  }, [activeCampaignActors])
 
   // Keep selection ref up to date and update selection ring
   useEffect(() => {
@@ -428,7 +436,7 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       sprite.scale.set(0.07, 0.07, 1)
       sprite.userData = { type: 'actor', actor }
       globeGroup.add(sprite)
-      markers.push({ mesh: sprite, phase: Math.random() * Math.PI * 2, baseScale: 0.07 })
+      markers.push({ mesh: sprite, phase: Math.random() * Math.PI * 2, baseScale: 0.07, actorName: actor.name })
       actorMarkerRefs.push({ mesh: sprite, actor })
     })
     actorMarkersRef.current = actorMarkerRefs
@@ -587,12 +595,17 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
 
       controls.update()
 
-      // Pulse threat origin markers
+      // Pulse threat origin markers (enhanced for campaign actors)
+      const campaignActorSet = new Set(activeCampaignActorsRef.current)
       markers.forEach((m) => {
-        const scale = m.baseScale + Math.sin(elapsed * 2 + m.phase) * 0.018
+        const isCampaignActor = campaignActorSet.has(m.actorName)
+        const pulseSpeed = isCampaignActor ? 3 : 2
+        const pulseAmplitude = isCampaignActor ? 0.035 : 0.018
+        const baseOpacity = isCampaignActor ? 0.7 : 0.5
+        const scale = m.baseScale + Math.sin(elapsed * pulseSpeed + m.phase) * pulseAmplitude
         m.mesh.scale.set(scale, scale, 1)
         if (m.mesh.material instanceof THREE.SpriteMaterial) {
-          m.mesh.material.opacity = 0.5 + Math.sin(elapsed * 2 + m.phase) * 0.3
+          m.mesh.material.opacity = baseOpacity + Math.sin(elapsed * pulseSpeed + m.phase) * 0.3
         }
       })
 

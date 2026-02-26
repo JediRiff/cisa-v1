@@ -18,6 +18,7 @@ import {
   Flame,
   Factory,
   Waves,
+  Crosshair,
 } from 'lucide-react'
 import {
   EnergyFacility,
@@ -33,6 +34,7 @@ import {
   energyFacilities,
   calculateFacilityRisk,
 } from '@/components/globe/worldData'
+import type { CampaignCandidate } from '@/lib/campaign-correlation'
 
 // Dynamic import for Three.js (no SSR)
 const GlobeCanvas = dynamic(() => import('@/components/globe/GlobeCanvas'), {
@@ -50,12 +52,14 @@ const GlobeCanvas = dynamic(() => import('@/components/globe/GlobeCanvas'), {
 interface ThreatData {
   score: { score: number; label: string; color: string; factors: any[] }
   threats: { all: any[]; energyRelevant: any[]; critical: any[] }
+  campaigns?: CampaignCandidate[]
   kev: any[]
   meta: {
     sourcesOnline: number
     sourcesTotal: number
     totalItems: number
     errors: string[]
+    activeCampaigns?: number
     last24h: { kev: number; nationState: number; ics: number; total: number }
   }
 }
@@ -200,6 +204,29 @@ export default function GlobePage() {
     }).slice(0, 8)
   }, [selectedActor, data])
 
+  // Campaigns for selected actor
+  const actorCampaigns = useMemo(() => {
+    if (!selectedActor || !data?.campaigns) return []
+    return data.campaigns.filter(c => c.actorName === selectedActor.name)
+  }, [selectedActor, data?.campaigns])
+
+  // Campaigns affecting selected facility's sector
+  const facilityCampaigns = useMemo(() => {
+    if (!selectedFacility || !data?.campaigns) return []
+    return data.campaigns.filter(c => c.affectedSectors.includes(selectedFacility.sector))
+  }, [selectedFacility, data?.campaigns])
+
+  // Medium/high campaigns for sidebar display
+  const activeCampaigns = useMemo(() => {
+    if (!data?.campaigns) return []
+    return data.campaigns.filter(c => c.confidence === 'high' || c.confidence === 'medium')
+  }, [data?.campaigns])
+
+  // Actor names with active campaigns (for globe pulse enhancement)
+  const activeCampaignActors = useMemo(() => {
+    return activeCampaigns.map(c => c.actorName)
+  }, [activeCampaigns])
+
   function handleFacilityClick(facility: EnergyFacility) {
     setSelectedActor(null)
     setSelectedFacility(facility)
@@ -238,6 +265,12 @@ export default function GlobePage() {
               <span className="text-red-400">{data?.meta?.last24h?.total || '--'}</span>
             </div>
             <div>
+              <span className="text-gray-500">Campaigns: </span>
+              <span className={(data?.meta?.activeCampaigns || 0) > 0 ? 'text-amber-400' : 'text-emerald-400'}>
+                {data?.meta?.activeCampaigns ?? '--'}
+              </span>
+            </div>
+            <div>
               <span className="text-gray-500">Sources: </span>
               <span className="text-emerald-400">{data?.meta?.sourcesOnline || '--'}/{data?.meta?.sourcesTotal || '--'}</span>
             </div>
@@ -272,6 +305,7 @@ export default function GlobePage() {
             onEmptyClick={handleEmptyClick}
             selectedFacilityId={selectedFacility?.id || null}
             selectedActorName={selectedActor?.name || null}
+            activeCampaignActors={activeCampaignActors}
           />
 
           {/* Overlay: Score Badge */}
@@ -296,6 +330,7 @@ export default function GlobePage() {
               threats={sectorThreats}
               actors={targetingActors}
               risk={facilityRisk}
+              campaigns={facilityCampaigns}
               onClose={() => setSelectedFacility(null)}
             />
           )}
@@ -306,6 +341,7 @@ export default function GlobePage() {
               actor={selectedActor}
               threats={actorThreats}
               facilities={actorTargetFacilities}
+              campaigns={actorCampaigns}
               onClose={() => setSelectedActor(null)}
             />
           )}
@@ -361,6 +397,46 @@ export default function GlobePage() {
                 {data?.meta?.last24h?.total || 0} threats in last 24h
               </p>
             </div>
+
+            {/* Campaign Alerts Section */}
+            {activeCampaigns.length > 0 && (
+              <div className="flex-shrink-0 p-3 border-b border-white/10">
+                <div className="flex items-center gap-2 mb-2">
+                  <Crosshair className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Active Campaigns</span>
+                  <span className="text-[10px] text-gray-500 ml-auto">{activeCampaigns.length}</span>
+                </div>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto scrollbar-thin">
+                  {activeCampaigns.map((campaign) => (
+                    <div
+                      key={campaign.id}
+                      className="bg-white/[0.03] border border-white/5 rounded-lg p-2.5"
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-[11px] font-semibold text-white">{campaign.actorName}</span>
+                        <span className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded ${
+                          campaign.confidence === 'high'
+                            ? 'text-red-400 bg-red-500/20'
+                            : 'text-amber-400 bg-amber-500/20'
+                        }`}>
+                          {campaign.confidence}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-[10px] text-gray-400">
+                        <span>{campaign.correlatedItems.length} items</span>
+                        <span>{Math.round(campaign.techniquesCoverage * 100)}% TTP match</span>
+                      </div>
+                      <details className="mt-1">
+                        <summary className="text-[10px] text-gray-500 cursor-pointer hover:text-gray-300 transition-colors">
+                          Rationale
+                        </summary>
+                        <p className="text-[10px] text-gray-500 mt-1 leading-relaxed">{campaign.rationale}</p>
+                      </details>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
               {loading ? (
@@ -450,12 +526,14 @@ function FacilityDetailPanel({
   threats,
   actors,
   risk,
+  campaigns,
   onClose,
 }: {
   facility: EnergyFacility
   threats: any[]
   actors: ThreatActor[]
   risk: FacilityRisk | null
+  campaigns: CampaignCandidate[]
   onClose: () => void
 }) {
   const SectorIcon = getSectorIcon(facility.sector)
@@ -613,6 +691,43 @@ function FacilityDetailPanel({
           </div>
         )}
 
+        {/* Campaign Exposure */}
+        {campaigns.length > 0 && (
+          <div>
+            <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Crosshair className="w-3 h-3 text-amber-400" />
+              Campaign Exposure
+            </h4>
+            <div className="space-y-1.5">
+              {campaigns.map((campaign) => (
+                <div
+                  key={campaign.id}
+                  className="bg-white/[0.03] border border-white/5 rounded-lg p-2.5"
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="text-[11px] font-semibold text-white">{campaign.actorName}</span>
+                    <span className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded ${
+                      campaign.confidence === 'high'
+                        ? 'text-red-400 bg-red-500/20'
+                        : campaign.confidence === 'medium'
+                        ? 'text-amber-400 bg-amber-500/20'
+                        : 'text-gray-400 bg-gray-500/20'
+                    }`}>
+                      {campaign.confidence}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-[10px] text-gray-400 mb-1">
+                    <span>{campaign.correlatedItems.length} items</span>
+                    <span>{Math.round(campaign.techniquesCoverage * 100)}% TTP</span>
+                    <span className="text-gray-500">{formatTimeAgo(campaign.lastSeen)}</span>
+                  </div>
+                  <p className="text-[10px] text-gray-500 leading-relaxed">{campaign.rationale}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Threat Actors Targeting This Sector */}
         <div>
           <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2">
@@ -686,11 +801,13 @@ function ActorDetailPanel({
   actor,
   threats,
   facilities,
+  campaigns,
   onClose,
 }: {
   actor: ThreatActor
   threats: any[]
   facilities: EnergyFacility[]
+  campaigns: CampaignCandidate[]
   onClose: () => void
 }) {
   return (
@@ -747,6 +864,80 @@ function ActorDetailPanel({
             ))}
           </div>
         </div>
+
+        {/* Campaign Activity */}
+        {campaigns.length > 0 && (
+          <div>
+            <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Crosshair className="w-3 h-3 text-amber-400" />
+              Campaign Activity
+            </h4>
+            <div className="space-y-2">
+              {campaigns.map((campaign) => (
+                <div
+                  key={campaign.id}
+                  className={`border rounded-lg p-3 ${
+                    campaign.confidence === 'high'
+                      ? 'bg-red-500/5 border-red-500/20'
+                      : campaign.confidence === 'medium'
+                      ? 'bg-amber-500/5 border-amber-500/20'
+                      : 'bg-white/[0.02] border-white/5'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                      campaign.confidence === 'high'
+                        ? 'text-red-400 bg-red-500/20'
+                        : campaign.confidence === 'medium'
+                        ? 'text-amber-400 bg-amber-500/20'
+                        : 'text-gray-400 bg-gray-500/20'
+                    }`}>
+                      {campaign.confidence} confidence
+                    </span>
+                    <span className="text-[10px] text-gray-500 font-mono ml-auto">
+                      {campaign.confidenceScore.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center mb-2">
+                    <div>
+                      <p className="text-[10px] text-gray-500">Items</p>
+                      <p className="text-xs font-bold text-white">{campaign.correlatedItems.length}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-500">TTPs</p>
+                      <p className="text-xs font-bold text-white">{campaign.uniqueTechniquesMatched.length}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-500">Coverage</p>
+                      <p className="text-xs font-bold text-white">{Math.round(campaign.techniquesCoverage * 100)}%</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] text-gray-500 mb-2">
+                    <span>{formatTimeAgo(campaign.firstSeen)} &ndash; {formatTimeAgo(campaign.lastSeen)}</span>
+                  </div>
+                  <p className="text-[10px] text-gray-400 leading-relaxed">{campaign.rationale}</p>
+                  {/* Correlated items */}
+                  <details className="mt-2">
+                    <summary className="text-[10px] text-gray-500 cursor-pointer hover:text-gray-300 transition-colors">
+                      Correlated items ({campaign.correlatedItems.length})
+                    </summary>
+                    <div className="mt-1.5 space-y-1">
+                      {campaign.correlatedItems.slice(0, 5).map((ci) => (
+                        <div key={ci.itemId} className="flex items-start gap-1.5">
+                          <span className="text-[10px] font-mono text-gray-500 flex-shrink-0">{ci.pairScore.toFixed(2)}</span>
+                          <span className="text-[10px] text-gray-400 line-clamp-1">{ci.title}</span>
+                        </div>
+                      ))}
+                      {campaign.correlatedItems.length > 5 && (
+                        <p className="text-[10px] text-gray-600">+{campaign.correlatedItems.length - 5} more</p>
+                      )}
+                    </div>
+                  </details>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* MITRE ATT&CK TTPs */}
         {actor.ttps && actor.ttps.length > 0 && (
