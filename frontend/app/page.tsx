@@ -6,6 +6,7 @@ import { AlertTriangle, Shield, RefreshCw, Clock, CheckCircle, XCircle, Bell, Be
 import { saveScore } from '@/lib/history'
 import { checkAndTriggerAlerts, requestNotificationPermission, getNotificationPermission, setWebhookUrl, getWebhookUrl } from '@/lib/alerts'
 import ActionableRecommendations, { type KEVAction } from '@/components/ActionableRecommendations'
+import RecoverEstimate from '@/components/RecoverEstimate'
 import ScoreBreakdown from '@/components/ScoreBreakdown'
 import ScoringMethodology from '@/components/ScoringMethodology'
 import KeyMetrics from '@/components/KeyMetrics'
@@ -469,6 +470,18 @@ export default function Dashboard() {
       {data && (
         <div className={`transition-opacity duration-300 ease-in-out ${isRefreshing ? 'opacity-70' : 'opacity-100'}`}>
           <ActionableRecommendations kevItems={data.kev} />
+        </div>
+      )}
+
+      {/* Recover: Economic Loss Estimation */}
+      {data && (
+        <div className={`transition-opacity duration-300 ease-in-out ${isRefreshing ? 'opacity-70' : 'opacity-100'}`}>
+          <RecoverEstimate
+            threats={data.threats}
+            kev={data.kev}
+            last24h={data.meta.last24h || { kev: 0, nationState: 0, ics: 0, total: 0 }}
+            score={data.score.score}
+          />
         </div>
       )}
 

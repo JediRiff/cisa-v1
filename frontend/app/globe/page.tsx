@@ -256,13 +256,13 @@ export default function GlobePage() {
   return (
     <div className="h-[calc(100vh-84px)] flex flex-col bg-[#030810] text-white overflow-hidden">
       {/* Top Stats Bar */}
-      <div className="flex-shrink-0 h-12 bg-[#0a1225]/90 border-b border-white/10 flex items-center justify-between px-4 backdrop-blur-sm">
+      <div className="flex-shrink-0 h-10 bg-[#060d1a]/95 border-b border-white/[0.06] flex items-center justify-between px-4 backdrop-blur-sm">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-white" />
-            <span className="text-sm font-semibold text-white">CAPRI Threat Map</span>
+            <Shield className="w-3.5 h-3.5 text-gray-400" />
+            <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">CAPRI Threat Map</span>
           </div>
-          <div className="hidden md:flex items-center gap-6 text-xs font-mono">
+          <div className="hidden md:flex items-center gap-5 text-[11px] font-mono">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
               <span className="text-gray-400">LIVE</span>
@@ -310,6 +310,11 @@ export default function GlobePage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Globe Viewport */}
         <div className="flex-1 relative">
+          {/* Vignette overlay — dark edges for focus */}
+          <div
+            className="absolute inset-0 pointer-events-none z-10"
+            style={{ background: 'radial-gradient(ellipse at center, transparent 50%, rgba(3,8,16,0.6) 100%)' }}
+          />
           <GlobeCanvas
             onFacilityClick={handleFacilityClick}
             onThreatActorClick={handleActorClick}
@@ -322,7 +327,7 @@ export default function GlobePage() {
 
           {/* Overlay: Score Badge */}
           {data?.score && !selectedFacility && !selectedActor && (
-            <div className="absolute top-4 left-4 bg-[#0a1225]/80 backdrop-blur-md border border-white/10 rounded-xl px-4 py-3">
+            <div className="absolute top-4 left-4 z-20 bg-[#060d1a]/90 backdrop-blur-md border border-white/[0.08] rounded-lg px-4 py-3">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">CAPRI Score</p>
               <div className="flex items-baseline gap-2">
                 <span className={`text-3xl font-bold font-mono ${getScoreColor(data.score.score)}`}>
@@ -359,7 +364,7 @@ export default function GlobePage() {
           )}
 
           {/* Overlay: Attack Counter */}
-          <div className="absolute bottom-4 left-4 bg-[#0a1225]/80 backdrop-blur-md border border-white/10 rounded-xl px-4 py-3">
+          <div className="absolute bottom-4 left-4 z-20 bg-[#060d1a]/90 backdrop-blur-md border border-white/[0.08] rounded-lg px-4 py-3">
             <div className="flex items-center gap-3">
               <Activity className="w-4 h-4 text-red-400 animate-pulse" />
               <div>
@@ -370,7 +375,7 @@ export default function GlobePage() {
           </div>
 
           {/* Overlay: Sector Legend */}
-          <div className="absolute bottom-4 right-4 bg-[#0a1225]/80 backdrop-blur-md border border-white/10 rounded-xl px-3 py-2 hidden lg:block">
+          <div className="absolute bottom-4 right-4 z-20 bg-[#060d1a]/90 backdrop-blur-md border border-white/[0.08] rounded-lg px-3 py-2 hidden lg:block">
             <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Infrastructure Sectors</p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
               {(Object.entries(sectorColors) as [Sector, string][]).map(([sector, color]) => (
@@ -390,13 +395,13 @@ export default function GlobePage() {
         </div>
 
         {/* Right Sidebar: Threat Feed */}
-        <div className={`flex-shrink-0 bg-[#0a1225]/90 border-l border-white/10 transition-all duration-300 overflow-hidden ${rightPanelOpen ? 'w-80' : 'w-0'} hidden md:block`}>
+        <div className={`flex-shrink-0 bg-[#060d1a]/95 border-l border-white/[0.06] transition-all duration-300 overflow-hidden ${rightPanelOpen ? 'w-80' : 'w-0'} hidden md:block`}>
           <div className="h-full flex flex-col w-80">
-            <div className="flex-shrink-0 p-4 border-b border-white/10">
+            <div className="flex-shrink-0 p-3 border-b border-white/[0.06]">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" />
-                  Top Critical Threats
+                <h2 className="text-[11px] font-bold text-gray-300 uppercase tracking-widest flex items-center gap-2">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Critical Threats
                 </h2>
                 <button
                   onClick={() => setRightPanelOpen(false)}

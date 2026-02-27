@@ -86,6 +86,7 @@ function buildTargetingMap(): Map<string, EnergyFacility[]> {
 }
 
 // Minimal TopoJSON decoder - renders country border outlines on the globe
+// US (ISO 3166-1 numeric 840) is highlighted in white; all others are dim
 function loadCountryBorders(globeGroup: THREE.Group, radius: number) {
   fetch('/countries-110m.json')
     .then((r) => r.json())
@@ -103,16 +104,59 @@ function loadCountryBorders(globeGroup: THREE.Group, radius: number) {
         })
       })
 
-      const borderMat = new THREE.LineBasicMaterial({
-        color: 0x3a6a8a,
+      const defaultBorderMat = new THREE.LineBasicMaterial({
+        color: 0x1a2a3a,
         transparent: true,
-        opacity: 0.4,
+        opacity: 0.25,
       })
+
+      const usBorderMat = new THREE.LineBasicMaterial({
+        color: 0xe0e4e8,
+        transparent: true,
+        opacity: 0.85,
+      })
+
+      const usFillMat = new THREE.MeshBasicMaterial({
+        color: 0xd0d4d8,
+        transparent: true,
+        opacity: 0.12,
+        side: THREE.DoubleSide,
+      })
+
+      // Dim fill for non-US countries
+      const defaultFillMat = new THREE.MeshBasicMaterial({
+        color: 0x1a2030,
+        transparent: true,
+        opacity: 0.04,
+        side: THREE.DoubleSide,
+      })
+
+      const US_ID = '840'
+
+      // Helper: decode a ring of arc indices into [lng, lat] coordinates
+      function decodeRing(ring: number[]): [number, number][] {
+        const coords: [number, number][] = []
+        ring.forEach((arcIdx: number) => {
+          const reversed = arcIdx < 0
+          const idx = reversed ? ~arcIdx : arcIdx
+          const arc = decodedArcs[idx]
+          if (!arc) return
+          const points = reversed ? [...arc].reverse() : arc
+          const start = coords.length > 0 ? 1 : 0
+          for (let i = start; i < points.length; i++) {
+            coords.push(points[i])
+          }
+        })
+        return coords
+      }
 
       const countries = topology.objects.countries
       if (!countries) return
 
       countries.geometries.forEach((geo: any) => {
+        const isUS = String(geo.id) === US_ID
+        const borderMat = isUS ? usBorderMat : defaultBorderMat
+
         // Normalize to array-of-polygons, each polygon is array-of-rings
         let polygons: number[][][]
         if (geo.type === 'Polygon') {
@@ -124,28 +168,52 @@ function loadCountryBorders(globeGroup: THREE.Group, radius: number) {
         }
 
         polygons.forEach((polygon: number[][]) => {
-          polygon.forEach((ring: number[]) => {
-            const coords: [number, number][] = []
-            ring.forEach((arcIdx: number) => {
-              const reversed = arcIdx < 0
-              const idx = reversed ? ~arcIdx : arcIdx
-              const arc = decodedArcs[idx]
-              if (!arc) return
-              const points = reversed ? [...arc].reverse() : arc
-              const start = coords.length > 0 ? 1 : 0
-              for (let i = start; i < points.length; i++) {
-                coords.push(points[i])
-              }
-            })
+          const rings = polygon.map((ring: number[]) => decodeRing(ring))
 
+          // Draw border lines for each ring
+          rings.forEach((coords) => {
             if (coords.length < 2) return
-
             const points3d = coords.map(([lng, lat]) =>
               latLngToVector3(lat, lng, radius)
             )
             const geometry = new THREE.BufferGeometry().setFromPoints(points3d)
             globeGroup.add(new THREE.Line(geometry, borderMat))
           })
+
+          // Fill country polygons
+          if (rings[0] && rings[0].length >= 3) {
+            try {
+              const contour = rings[0].map(([lng, lat]) => new THREE.Vector2(lng, lat))
+              const holes = rings.slice(1)
+                .filter((r) => r.length >= 3)
+                .map((r) => r.map(([lng, lat]) => new THREE.Vector2(lng, lat)))
+
+              const faces = THREE.ShapeUtils.triangulateShape(contour, holes)
+              const allVerts2D = [...contour]
+              holes.forEach((h) => allVerts2D.push(...h))
+
+              const allVerts3D = allVerts2D.map((v) =>
+                latLngToVector3(v.y, v.x, radius + 0.001)
+              )
+
+              const positions = new Float32Array(faces.length * 9)
+              faces.forEach((face, fi) => {
+                for (let vi = 0; vi < 3; vi++) {
+                  const v = allVerts3D[face[vi]]
+                  positions[fi * 9 + vi * 3] = v.x
+                  positions[fi * 9 + vi * 3 + 1] = v.y
+                  positions[fi * 9 + vi * 3 + 2] = v.z
+                }
+              })
+
+              const fillGeo = new THREE.BufferGeometry()
+              fillGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+              fillGeo.computeVertexNormals()
+              globeGroup.add(new THREE.Mesh(fillGeo, isUS ? usFillMat : defaultFillMat))
+            } catch {
+              // Triangulation can fail for complex island polygons — skip silently
+            }
+          }
         })
       })
     })
@@ -257,8 +325,8 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     container.appendChild(renderer.domElement)
 
-    // Stars
-    const starCount = 1500
+    // Stars — sparse and subtle for a clean look
+    const starCount = 300
     const starGeo = new THREE.BufferGeometry()
     const starPos = new Float32Array(starCount * 3)
     for (let i = 0; i < starCount; i++) {
@@ -270,7 +338,7 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       starPos[i * 3 + 2] = r * Math.cos(phi)
     }
     starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3))
-    const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.15, transparent: true, opacity: 0.7 })
+    const starMat = new THREE.PointsMaterial({ color: 0x8899aa, size: 0.08, transparent: true, opacity: 0.35 })
     scene.add(new THREE.Points(starGeo, starMat))
 
     // Globe group
@@ -287,10 +355,10 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
     })
     globeGroup.add(new THREE.Mesh(globeGeo, globeMat))
 
-    // Wireframe grid overlay
+    // Wireframe grid overlay — very subtle
     const wireGeo = new THREE.SphereGeometry(1.002, 36, 18)
     const wireEdges = new THREE.EdgesGeometry(wireGeo)
-    const wireMat = new THREE.LineBasicMaterial({ color: 0x1a2a4a, transparent: true, opacity: 0.25 })
+    const wireMat = new THREE.LineBasicMaterial({ color: 0x101828, transparent: true, opacity: 0.08 })
     globeGroup.add(new THREE.LineSegments(wireEdges, wireMat))
 
     // Atmosphere glow ring
@@ -307,7 +375,7 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
         varying vec3 vNormal;
         void main() {
           float intensity = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.5);
-          gl_FragColor = vec4(0.2, 0.5, 1.0, 1.0) * intensity * 0.6;
+          gl_FragColor = vec4(0.15, 0.35, 0.7, 1.0) * intensity * 0.4;
         }
       `,
       blending: THREE.AdditiveBlending,
@@ -316,33 +384,60 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
     })
     globeGroup.add(new THREE.Mesh(atmosGeo, atmosMat))
 
+    // Radar sweep — rotating scan line across globe surface
+    const sweepGeo = new THREE.PlaneGeometry(2.2, 2.2)
+    const sweepMat = new THREE.ShaderMaterial({
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        varying vec2 vUv;
+        void main() {
+          vec2 center = vUv - 0.5;
+          float dist = length(center) * 2.0;
+          if (dist > 1.02) discard;
+          float angle = atan(center.y, center.x);
+          // Narrow wedge: ~25 degrees visible, fading trail
+          float wedge = smoothstep(0.0, 0.44, angle) * (1.0 - smoothstep(0.44, 0.52, angle));
+          // Also a thin leading-edge line
+          float line = (1.0 - smoothstep(0.42, 0.46, angle)) * smoothstep(0.40, 0.42, angle);
+          float alpha = (wedge * 0.06 + line * 0.12) * (1.0 - dist * 0.7);
+          if (alpha < 0.002) discard;
+          gl_FragColor = vec4(0.25, 0.6, 0.9, alpha);
+        }
+      `,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    })
+    const sweepMesh = new THREE.Mesh(sweepGeo, sweepMat)
+    globeGroup.add(sweepMesh)
+
     // Country border outlines (loaded async from TopoJSON)
     loadCountryBorders(globeGroup, 1.005)
 
-    // Land dots - colored by region
+    // Land dots — monochrome for clean intelligence-map look
     const dotGeo = new THREE.BufferGeometry()
     const dotPositions = new Float32Array(landPoints.length * 3)
-    const dotColors = new Float32Array(landPoints.length * 3)
 
     landPoints.forEach((p, i) => {
       const vec = latLngToVector3(p.lat, p.lng, 1.008)
       dotPositions[i * 3] = vec.x
       dotPositions[i * 3 + 1] = vec.y
       dotPositions[i * 3 + 2] = vec.z
-
-      const color = new THREE.Color(regionColors[p.region || 'na'] || '#4a9eff')
-      dotColors[i * 3] = color.r
-      dotColors[i * 3 + 1] = color.g
-      dotColors[i * 3 + 2] = color.b
     })
 
     dotGeo.setAttribute('position', new THREE.BufferAttribute(dotPositions, 3))
-    dotGeo.setAttribute('color', new THREE.BufferAttribute(dotColors, 3))
     const dotMat = new THREE.PointsMaterial({
-      size: 0.025,
-      vertexColors: true,
+      color: 0x2a3a4a,
+      size: 0.015,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.4,
       sizeAttenuation: true,
     })
     globeGroup.add(new THREE.Points(dotGeo, dotMat))
@@ -642,6 +737,9 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
         const glowScale = 0.05 + Math.sin(elapsed * 1.5 + i * 0.5) * 0.008
         fm.glowSprite.scale.set(glowScale, glowScale, 1)
       })
+
+      // Rotate radar sweep
+      sweepMesh.rotation.y += delta * 0.4
 
       // Pulse selection ring
       if (selectionRing.visible) {
