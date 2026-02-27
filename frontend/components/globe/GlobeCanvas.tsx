@@ -399,7 +399,7 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
         : baseHeight
 
       // 3D risk bar (cylinder)
-      const markerGeo = new THREE.CylinderGeometry(0.008, 0.008, height, 8)
+      const markerGeo = new THREE.CylinderGeometry(0.01, 0.01, height, 8)
       // Shift geometry so bottom sits at origin (cylinder is centered by default)
       markerGeo.translate(0, height / 2, 0)
       const markerMat = new THREE.MeshBasicMaterial({
@@ -410,8 +410,9 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       const marker = new THREE.Mesh(markerGeo, markerMat)
       marker.position.copy(pos)
       // Orient cylinder to point radially outward from globe center
-      marker.lookAt(0, 0, 0)
-      marker.rotateX(Math.PI / 2)
+      // setFromUnitVectors rotates Y-axis (cylinder axis) to align with outward direction
+      const outward = pos.clone().normalize()
+      marker.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), outward)
       marker.userData = { type: 'facility', facility }
       facilityMeshGroup.add(marker)
 
