@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Instrument+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -95,13 +95,8 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Instrument Serif', serif;
-  letter-spacing: -0.02em;
-}
-
 body {
-  font-family: 'Instrument Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
@@ -154,35 +149,6 @@ body {
 .card-elevated:hover {
   box-shadow: var(--shadow-card-hover);
   transform: translateY(-4px);
-}
-
-/* Accordion section */
-.accordion-section {
-  @apply overflow-hidden;
-  background: var(--bg-card);
-  border: 1px solid var(--border-primary);
-  border-radius: 12px;
-}
-
-.accordion-trigger-section {
-  @apply flex items-center justify-between w-full p-6 text-left;
-  @apply font-semibold text-lg transition-all duration-200;
-  color: var(--accent-navy);
-}
-
-.accordion-trigger-section:hover {
-  background: var(--bg-tertiary);
-}
-
-.accordion-trigger-section .arrow-icon {
-  @apply w-6 h-6 transition-transform duration-300;
-  color: var(--accent-navy);
-}
-
-.accordion-content-section {
-  @apply px-6 pb-6 leading-relaxed;
-  color: var(--text-secondary);
-  border-top: 1px solid var(--border-primary);
 }
 
 /* Legacy accordion styles */

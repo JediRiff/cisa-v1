@@ -95,7 +95,6 @@ export default function Dashboard() {
   const [showAlertSettings, setShowAlertSettings] = useState(false)
   const [showAlertSettingsPanel, setShowAlertSettingsPanel] = useState(false)
   const [webhookConfigured, setWebhookConfigured] = useState(false)
-  const [expandedFaq, setExpandedFaq] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<ThreatFilter>('all')
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [cacheAge, setCacheAge] = useState<number>(0)
@@ -193,10 +192,6 @@ export default function Dashboard() {
     if (minutes < 60) return minutes + 'm ago'
     return Math.floor(minutes / 60) + 'h ago'
   }
-
-  const toggleFaq = useCallback((id: string) => {
-    setExpandedFaq(prev => prev === id ? null : id)
-  }, [])
 
   // Filter threats based on active filter - memoized for performance
   const filterThreats = useCallback((items: ThreatItem[]): ThreatItem[] => {
@@ -323,10 +318,10 @@ export default function Dashboard() {
 
           {/* Heading */}
           <div className="text-center mb-8">
-            <h1 className="text-5xl md:text-6xl text-cisa-navy dark:text-blue-400 mb-2" style={{ letterSpacing: '-0.03em', lineHeight: 1 }}>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-widest text-cisa-navy dark:text-blue-400 mb-1">
               CAPRI
             </h1>
-            <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 font-medium tracking-wide">
+            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium tracking-wider uppercase">
               Cyber Alert Prioritization &amp; Readiness Index
             </p>
           </div>
@@ -486,56 +481,6 @@ export default function Dashboard() {
       {/* Decorative Divider */}
       <div className="govt-top-border"></div>
 
-      {/* Key Features - Navy Boxes - Hidden */}
-      <section className="py-16 px-4 bg-white hidden">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-cisa-navy font-bold text-4xl md:text-5xl text-cisa-navy text-center mb-4">
-            Energy Sector Protection
-          </h2>
-          <p className="text-xl text-gray-600 text-center mb-12 max-w-3xl mx-auto">
-            Comprehensive threat monitoring for America&apos;s critical infrastructure
-          </p>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {/* Feature Box 1 */}
-            <div className="feature-box-navy">
-              <div className="feature-icon">
-                <Shield className="h-8 w-8 text-white" />
-              </div>
-              <h3>Real-Time Monitoring</h3>
-              <p>
-                7 threat intelligence sources aggregated every 10 minutes.
-              </p>
-            </div>
-
-            {/* Feature Box 2 */}
-            <div className="feature-box-navy">
-              <div className="feature-icon">
-                <AlertTriangle className="h-8 w-8 text-white" />
-              </div>
-              <h3>Energy Sector Focus</h3>
-              <p>
-                Filtered for power grids, pipelines, and energy infrastructure.
-              </p>
-            </div>
-
-            {/* Feature Box 3 */}
-            <div className="feature-box-navy">
-              <div className="feature-icon">
-                <Bell className="h-8 w-8 text-white" />
-              </div>
-              <h3>Instant Alerts</h3>
-              <p>
-                Browser notifications and webhooks for critical threats.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Decorative Divider */}
-      <div className="govt-top-border"></div>
-
       {/* Sources Status Bar */}
       <div className="px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border-y border-gray-100 dark:border-slate-700/50">
         <div className="max-w-6xl mx-auto flex items-center justify-between text-sm">
@@ -625,90 +570,6 @@ export default function Dashboard() {
                   <ThreatCard key={item.id} item={item} showExtendedDetails={false} />
                 ))}
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Methodology Section - Hidden (replaced by ScoreBreakdown) */}
-      <section className="py-16 px-4 bg-white hidden">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-cisa-navy font-bold text-4xl md:text-5xl text-center text-cisa-navy mb-12">
-            Methodology
-          </h2>
-          <div className="space-y-4">
-            {/* Scoring Method */}
-            <div className="accordion-section">
-              <button onClick={() => toggleFaq('scoring')} className="accordion-trigger-section">
-                <span>How is the score calculated?</span>
-                <ChevronDown className={`arrow-icon transition-transform duration-300 ${expandedFaq === 'scoring' ? 'rotate-180' : ''}`} />
-              </button>
-              {expandedFaq === 'scoring' && (
-                <div className="accordion-content-section pt-4">
-                  <p className="mb-4">
-                    The score starts at 5.0 (Normal) and decreases based on detected threats. Each threat category has documented weights:
-                  </p>
-                  {data?.score.methodology && (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-cisa-light">
-                          <tr>
-                            <th className="px-3 py-2 text-left font-semibold text-cisa-navy">Factor</th>
-                            <th className="px-3 py-2 text-center font-semibold text-cisa-navy">Per Item</th>
-                            <th className="px-3 py-2 text-center font-semibold text-cisa-navy">Max</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                          {Object.entries(data.score.methodology).map(([key, weight]) => (
-                            <tr key={key}>
-                              <td className="px-3 py-2 text-gray-900">{weight.name}</td>
-                              <td className="px-3 py-2 text-center text-red-600 font-mono">{weight.perItem}</td>
-                              <td className="px-3 py-2 text-center text-red-600 font-mono">{weight.maxImpact}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Sources */}
-            <div className="accordion-section">
-              <button onClick={() => toggleFaq('sources')} className="accordion-trigger-section">
-                <span>What sources are used?</span>
-                <ChevronDown className={`arrow-icon transition-transform duration-300 ${expandedFaq === 'sources' ? 'rotate-180' : ''}`} />
-              </button>
-              {expandedFaq === 'sources' && (
-                <div className="accordion-content-section pt-4">
-                  <p className="mb-3">CAPRI aggregates from 7 verified threat intelligence sources:</p>
-                  <ul className="space-y-2">
-                    <li className="flex items-center gap-2"><span className="w-2 h-2 bg-blue-500 rounded-full"></span> <strong>CISA KEV</strong> - Known Exploited Vulnerabilities</li>
-                    <li className="flex items-center gap-2"><span className="w-2 h-2 bg-blue-500 rounded-full"></span> <strong>CISA Advisories</strong> - Official cybersecurity alerts</li>
-                    <li className="flex items-center gap-2"><span className="w-2 h-2 bg-purple-500 rounded-full"></span> <strong>Microsoft Security</strong> - Threat intelligence blog</li>
-                    <li className="flex items-center gap-2"><span className="w-2 h-2 bg-purple-500 rounded-full"></span> <strong>Unit42</strong> - Palo Alto threat research</li>
-                    <li className="flex items-center gap-2"><span className="w-2 h-2 bg-purple-500 rounded-full"></span> <strong>CrowdStrike</strong> - Threat intelligence</li>
-                    <li className="flex items-center gap-2"><span className="w-2 h-2 bg-purple-500 rounded-full"></span> <strong>SentinelOne</strong> - Security research</li>
-                    <li className="flex items-center gap-2"><span className="w-2 h-2 bg-purple-500 rounded-full"></span> <strong>Mandiant</strong> - Google threat intelligence</li>
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            {/* Updates */}
-            <div className="accordion-section">
-              <button onClick={() => toggleFaq('updates')} className="accordion-trigger-section">
-                <span>How often does it update?</span>
-                <ChevronDown className={`arrow-icon transition-transform duration-300 ${expandedFaq === 'updates' ? 'rotate-180' : ''}`} />
-              </button>
-              {expandedFaq === 'updates' && (
-                <div className="accordion-content-section pt-4">
-                  <p>
-                    The dashboard auto-refreshes every <strong>10 minutes</strong> when open. The API caches data for 5 minutes to balance freshness with performance. You can also manually refresh at any time using the Refresh button.
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         </div>
