@@ -1,60 +1,52 @@
-# CAPRI for NYU
+# CAPRI - Cyber Alert Prioritization & Readiness Index
 
-## What
+Real-time threat intelligence dashboard for US energy sector critical infrastructure. Aggregates government and vendor feeds into a single risk score to help analysts prioritize response.
 
-CAPRI-E monitors threat intelligence feeds from government agencies (CISA, NCSC) and security vendors (Microsoft, CrowdStrike, Palo Alto, etc.) to calculate a risk score specifically for energy sector organizations.
+**Live:** [capri-security.vercel.app](https://capri-security.vercel.app)
 
-### Scoring System (s/o to US Cyber's CPCON)
+## Scoring
 
-- **5.0 (Normal)** - Baseline threat level
-- **3.0 (Elevated)** - Heightened threat activity
-- **1.0 (Severe)** - Active threats targeting energy sector
+Score starts at 5.0 (Normal) and decreases based on active threats. Inspired by the US Cyber Command CPCON scale.
 
-### Scoring
+| Factor | Per Item | Max Impact |
+|--------|----------|------------|
+| CISA KEV Entries | -0.3 | -1.2 |
+| Nation-State Activity | -0.4 | -0.8 |
+| ICS/SCADA Vulnerabilities | -0.3 | -0.6 |
+| Energy Sector Threats | -0.2 | -0.8 |
+| Vendor Critical Alerts | -0.15 | -0.4 |
 
-| Factor | Weight | Max Impact |
-|--------|--------|------------|
-| CISA KEV Entries | -0.3 each | -1.2 |
-| Nation-State Activity | -0.4 each | -0.8 |
-| ICS/SCADA Vulnerabilities | -0.3 each | -0.6 |
-| Energy Sector Threats | -0.2 each | -0.8 |
-| Vendor Critical Alerts | -0.15 each | -0.4 |
-
-## Features
-
-- Real-time threat intelligence from 12 sources
-- CISA KEV integration with actionable recommendations
-- ICS-CERT advisory tracking
-- Score breakdown with contributing factors
-- CISA source badges for authoritative items
+| Level | Range | Meaning |
+|-------|-------|---------|
+| Severe | 1.0 - 2.0 | Active threats, immediate attention |
+| Elevated | 2.1 - 3.0 | Heightened activity, enhanced monitoring |
+| Normal | 3.1 - 5.0 | Baseline threat level |
 
 ## Tech Stack
 
-- **Frontend:** Next.js 13, React, TypeScript
-- **Styling:** Tailwind CSS
+- **Framework:** Next.js 13, React 18, TypeScript
+- **Styling:** Tailwind CSS, DM Sans
+- **3D Globe:** Three.js with TopoJSON country data
+- **Charts:** Recharts
 - **Deployment:** Vercel
 
-## Data Sources
+## Sources
 
-**Government:**
+**Government**
 - CISA Known Exploited Vulnerabilities (KEV)
 - CISA Cybersecurity Advisories
 - CISA ICS-CERT Advisories
-- UK NCSC Reports
 
-**Vendors:**
+**Vendor**
 - Microsoft Security
 - Palo Alto Unit42
 - CrowdStrike Intelligence
 - SentinelOne Labs
-- Cisco Talos
-- Mandiant Threat Intel
-- Google Threat Analysis Group
-- The DFIR Report
+- Mandiant / Google Threat Intelligence
 
 ## Contributing
 
-Have feedback on the scoring weights? [Submit an issue](https://github.com/JediRiff/cisa-v1/issues/new?template=weight-adjustment.yml) to propose adjustments.
+We welcome contributors. If you want to improve the scoring model, add threat sources, or enhance the globe visualization, open a PR or [submit an issue](https://github.com/JediRiff/cisa-v1/issues/new).
 
 ## License
 
