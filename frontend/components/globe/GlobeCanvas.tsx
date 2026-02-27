@@ -398,8 +398,8 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
         ? 0.02 + (1 - (riskScore - 1) / 4) * 0.15
         : baseHeight
 
-      // 3D risk bar (cylinder)
-      const markerGeo = new THREE.CylinderGeometry(0.01, 0.01, height, 8)
+      // 3D risk bar (square column)
+      const markerGeo = new THREE.BoxGeometry(0.018, height, 0.018)
       // Shift geometry so bottom sits at origin (cylinder is centered by default)
       markerGeo.translate(0, height / 2, 0)
       const markerMat = new THREE.MeshBasicMaterial({
