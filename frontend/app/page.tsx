@@ -307,7 +307,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="hero-bg-pattern relative py-12 md:py-16 px-4 overflow-hidden">
+      <section className="hero-bg relative py-12 md:py-16 px-4 overflow-hidden">
         <div className="max-w-4xl mx-auto relative">
           {/* CISA Agency Identifier with Official Logo */}
           <div className="flex justify-center mb-6">
@@ -486,10 +486,10 @@ export default function Dashboard() {
       {/* Decorative Divider */}
       <div className="govt-top-border"></div>
 
-      {/* Key Features - Navy Boxes (TrumpCard Style) - Simplified */}
+      {/* Key Features - Navy Boxes - Hidden */}
       <section className="py-16 px-4 bg-white hidden">
         <div className="max-w-6xl mx-auto">
-          <h2 className="hero-heading text-4xl md:text-5xl text-cisa-navy text-center mb-4">
+          <h2 className="text-cisa-navy font-bold text-4xl md:text-5xl text-cisa-navy text-center mb-4">
             Energy Sector Protection
           </h2>
           <p className="text-xl text-gray-600 text-center mb-12 max-w-3xl mx-auto">
@@ -536,29 +536,26 @@ export default function Dashboard() {
       {/* Decorative Divider */}
       <div className="govt-top-border"></div>
 
-      {/* Live Feed Sources */}
-      <section className="py-8 px-4 bg-cisa-light dark:bg-slate-800/50">
-        <div className="max-w-6xl mx-auto">
-          <div className="card-premium-trump p-6 flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
-                <CheckCircle className="h-7 w-7 text-green-600 dark:text-green-400" />
-              </div>
-              <div>
-                <span className="text-3xl font-bold text-cisa-navy dark:text-blue-400">{data?.meta.sourcesOnline}/{data?.meta.sourcesTotal}</span>
-                <span className="text-gray-600 dark:text-gray-400 ml-2 text-lg">Sources Online</span>
-              </div>
-            </div>
-            <div className="text-gray-600 dark:text-gray-400 text-lg font-medium">{data?.meta.totalItems} threat items aggregated</div>
-            {data?.meta.errors && data.meta.errors.length > 0 && (
-              <details className="text-sm text-red-600 dark:text-red-400">
-                <summary className="cursor-pointer font-medium">{data.meta.errors.length} feed error(s)</summary>
-                <ul className="mt-2 text-xs">{data.meta.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
-              </details>
-            )}
+      {/* Sources Status Bar */}
+      <div className="px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border-y border-gray-100 dark:border-slate-700/50">
+        <div className="max-w-6xl mx-auto flex items-center justify-between text-sm">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <span className="font-semibold text-cisa-navy dark:text-blue-400">{data?.meta.sourcesOnline}/{data?.meta.sourcesTotal}</span>
+            <span className="text-gray-500 dark:text-gray-400">Sources Online</span>
+            <span className="text-gray-300 dark:text-gray-600">|</span>
+            <span className="text-gray-500 dark:text-gray-400">{data?.meta.totalItems} items aggregated</span>
           </div>
+          {data?.meta.errors && data.meta.errors.length > 0 && (
+            <details className="text-red-600 dark:text-red-400">
+              <summary className="cursor-pointer font-medium text-xs">{data.meta.errors.length} error(s)</summary>
+              <ul className="mt-1 text-xs absolute right-4 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-800 rounded-md p-2 shadow-lg z-10">
+                {data.meta.errors.map((e, i) => <li key={i}>{e}</li>)}
+              </ul>
+            </details>
+          )}
         </div>
-      </section>
+      </div>
 
       {/* Threat Feeds */}
       <section className="py-12 px-4 bg-white dark:bg-slate-900">
@@ -593,7 +590,7 @@ export default function Dashboard() {
 
           <div className="grid md:grid-cols-2 gap-8">
             {/* Energy-Relevant Threats */}
-            <div className="card-premium-trump p-8">
+            <div className="card-elevated p-8">
               <h3 className="text-2xl font-bold text-cisa-navy dark:text-blue-400 mb-6 flex items-center gap-3">
                 <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center">
                   <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
@@ -613,7 +610,7 @@ export default function Dashboard() {
             </div>
 
             {/* All Recent Threats */}
-            <div className="card-premium-trump p-8">
+            <div className="card-elevated p-8">
               <h3 className="text-2xl font-bold text-cisa-navy dark:text-blue-400 mb-6 flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
                   <Shield className="h-6 w-6 text-cisa-navy dark:text-blue-400" />
@@ -636,18 +633,18 @@ export default function Dashboard() {
       {/* Methodology Section - Hidden (replaced by ScoreBreakdown) */}
       <section className="py-16 px-4 bg-white hidden">
         <div className="max-w-3xl mx-auto">
-          <h2 className="hero-heading text-4xl md:text-5xl text-center text-cisa-navy mb-12">
+          <h2 className="text-cisa-navy font-bold text-4xl md:text-5xl text-center text-cisa-navy mb-12">
             Methodology
           </h2>
           <div className="space-y-4">
             {/* Scoring Method */}
-            <div className="accordion-trump">
-              <button onClick={() => toggleFaq('scoring')} className="accordion-trigger-trump">
+            <div className="accordion-section">
+              <button onClick={() => toggleFaq('scoring')} className="accordion-trigger-section">
                 <span>How is the score calculated?</span>
                 <ChevronDown className={`arrow-icon transition-transform duration-300 ${expandedFaq === 'scoring' ? 'rotate-180' : ''}`} />
               </button>
               {expandedFaq === 'scoring' && (
-                <div className="accordion-content-trump pt-4">
+                <div className="accordion-content-section pt-4">
                   <p className="mb-4">
                     The score starts at 5.0 (Normal) and decreases based on detected threats. Each threat category has documented weights:
                   </p>
@@ -678,13 +675,13 @@ export default function Dashboard() {
             </div>
 
             {/* Sources */}
-            <div className="accordion-trump">
-              <button onClick={() => toggleFaq('sources')} className="accordion-trigger-trump">
+            <div className="accordion-section">
+              <button onClick={() => toggleFaq('sources')} className="accordion-trigger-section">
                 <span>What sources are used?</span>
                 <ChevronDown className={`arrow-icon transition-transform duration-300 ${expandedFaq === 'sources' ? 'rotate-180' : ''}`} />
               </button>
               {expandedFaq === 'sources' && (
-                <div className="accordion-content-trump pt-4">
+                <div className="accordion-content-section pt-4">
                   <p className="mb-3">CAPRI aggregates from 7 verified threat intelligence sources:</p>
                   <ul className="space-y-2">
                     <li className="flex items-center gap-2"><span className="w-2 h-2 bg-blue-500 rounded-full"></span> <strong>CISA KEV</strong> - Known Exploited Vulnerabilities</li>
@@ -700,13 +697,13 @@ export default function Dashboard() {
             </div>
 
             {/* Updates */}
-            <div className="accordion-trump">
-              <button onClick={() => toggleFaq('updates')} className="accordion-trigger-trump">
+            <div className="accordion-section">
+              <button onClick={() => toggleFaq('updates')} className="accordion-trigger-section">
                 <span>How often does it update?</span>
                 <ChevronDown className={`arrow-icon transition-transform duration-300 ${expandedFaq === 'updates' ? 'rotate-180' : ''}`} />
               </button>
               {expandedFaq === 'updates' && (
-                <div className="accordion-content-trump pt-4">
+                <div className="accordion-content-section pt-4">
                   <p>
                     The dashboard auto-refreshes every <strong>10 minutes</strong> when open. The API caches data for 5 minutes to balance freshness with performance. You can also manually refresh at any time using the Refresh button.
                   </p>

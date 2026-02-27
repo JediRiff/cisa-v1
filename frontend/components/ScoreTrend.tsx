@@ -61,7 +61,7 @@ export default function ScoreTrend({ trend, currentScore }: ScoreTrendProps) {
     return (
       <section className="py-8 px-4 bg-white dark:bg-slate-900">
         <div className="max-w-4xl mx-auto">
-          <div className="card-premium-trump p-6">
+          <div className="card-elevated p-6">
             <h3 className="text-xl font-bold text-cisa-navy dark:text-blue-400 mb-4">Threat Activity Trend</h3>
             <div className="h-48 flex items-center justify-center bg-gray-50 dark:bg-slate-800 rounded-xl">
               <p className="text-gray-500 dark:text-gray-400 text-center">
@@ -77,7 +77,7 @@ export default function ScoreTrend({ trend, currentScore }: ScoreTrendProps) {
   return (
     <section className="py-8 px-4 bg-white dark:bg-slate-900">
       <div className="max-w-4xl mx-auto">
-        <div className="card-premium-trump p-6">
+        <div className="card-elevated p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-bold text-cisa-navy dark:text-blue-400">Threat Activity (Last 4 Weeks)</h3>
             <div className={`flex items-center gap-2 ${trendColor}`}>

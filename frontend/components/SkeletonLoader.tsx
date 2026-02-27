@@ -4,7 +4,7 @@ export default function SkeletonLoader() {
   return (
     <div className="min-h-screen animate-pulse">
       {/* Hero Section Skeleton */}
-      <section className="hero-bg-pattern relative py-24 px-4 overflow-hidden">
+      <section className="hero-bg relative py-24 px-4 overflow-hidden">
         <div className="max-w-5xl mx-auto relative">
           {/* Logo placeholder */}
           <div className="flex justify-center mb-10">
@@ -53,7 +53,7 @@ export default function SkeletonLoader() {
       {/* Score Breakdown Skeleton */}
       <section className="py-12 px-4 bg-white dark:bg-slate-900">
         <div className="max-w-4xl mx-auto">
-          <div className="card-premium-trump p-8">
+          <div className="card-elevated p-8">
             <div className="h-8 w-64 bg-gray-200 dark:bg-slate-700 rounded mb-6" />
             <div className="h-4 w-full bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 rounded-full mb-8" />
             <div className="space-y-4">
@@ -75,24 +75,20 @@ export default function SkeletonLoader() {
       </section>
 
       {/* Sources Bar Skeleton */}
-      <section className="py-8 px-4 bg-cisa-light dark:bg-slate-800/50">
-        <div className="max-w-6xl mx-auto">
-          <div className="card-premium-trump p-6 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gray-200 dark:bg-slate-700 rounded-xl" />
-              <div className="h-8 w-40 bg-gray-200 dark:bg-slate-700 rounded" />
-            </div>
-            <div className="h-6 w-48 bg-gray-200 dark:bg-slate-700 rounded" />
-          </div>
+      <div className="px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border-y border-gray-100 dark:border-slate-700/50">
+        <div className="max-w-6xl mx-auto flex items-center gap-3">
+          <div className="h-4 w-4 bg-gray-200 dark:bg-slate-700 rounded-full" />
+          <div className="h-4 w-32 bg-gray-200 dark:bg-slate-700 rounded" />
+          <div className="h-4 w-40 bg-gray-200 dark:bg-slate-700 rounded" />
         </div>
-      </section>
+      </div>
 
       {/* Threat Feeds Skeleton */}
       <section className="py-12 px-4 bg-white dark:bg-slate-900">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-2 gap-8">
             {/* Energy column */}
-            <div className="card-premium-trump p-8">
+            <div className="card-elevated p-8">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-xl" />
                 <div className="h-7 w-48 bg-gray-200 dark:bg-slate-700 rounded" />
@@ -112,7 +108,7 @@ export default function SkeletonLoader() {
             </div>
 
             {/* All threats column */}
-            <div className="card-premium-trump p-8">
+            <div className="card-elevated p-8">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl" />
                 <div className="h-7 w-44 bg-gray-200 dark:bg-slate-700 rounded" />
