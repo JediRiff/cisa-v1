@@ -44,7 +44,7 @@ Score starts at 5.0 (Normal) and decreases based on active threats(inspired by  
 
 ## Contributing
 
-We welcome contributors. If you want to improve the scoring model, add threat sources, or enhance the globe visualization, open a PR or [submit an issue](https://github.com/JediRiff/cisa-v1/issues/new).
+We welcome contributors. If you want to improve the scoring model, add threat sources, or build/iterate on the globe, open a PR or [submit an issue](https://github.com/JediRiff/cisa-v1/issues/new).
 
 ## License
 
