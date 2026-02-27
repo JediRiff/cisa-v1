@@ -53,6 +53,7 @@ export interface GlobeCanvasProps {
   selectedFacilityId?: string | null
   selectedActorName?: string | null
   activeCampaignActors?: string[]
+  facilityRiskScores?: Record<string, number>
 }
 
 // Generate a circular glow texture via canvas
@@ -153,10 +154,11 @@ function loadCountryBorders(globeGroup: THREE.Group, radius: number) {
     })
 }
 
-export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmptyClick, selectedFacilityId, selectedActorName, activeCampaignActors }: GlobeCanvasProps) {
+export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmptyClick, selectedFacilityId, selectedActorName, activeCampaignActors, facilityRiskScores }: GlobeCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const callbacksRef = useRef({ onFacilityClick, onThreatActorClick, onEmptyClick })
   const activeCampaignActorsRef = useRef<string[]>(activeCampaignActors || [])
+  const facilityRiskScoresRef = useRef<Record<string, number>>(facilityRiskScores || {})
   const selectionRef = useRef({ selectedFacilityId, selectedActorName })
   const facilityMarkersRef = useRef<FacilityMarkerRef[]>([])
   const actorMarkersRef = useRef<ActorMarkerRef[]>([])
@@ -182,6 +184,19 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
   useEffect(() => {
     activeCampaignActorsRef.current = activeCampaignActors || []
   }, [activeCampaignActors])
+
+  // Keep facilityRiskScores ref up to date and update bar heights
+  useEffect(() => {
+    facilityRiskScoresRef.current = facilityRiskScores || {}
+    // Update existing cylinder heights if markers already exist
+    facilityMarkersRef.current.forEach(fm => {
+      const score = facilityRiskScoresRef.current[fm.facility.id]
+      if (score != null) {
+        const height = 0.02 + (1 - (score - 1) / 4) * 0.15
+        fm.mesh.scale.set(1, height / 0.02, 1) // Scale Y relative to base height
+      }
+    })
+  }, [facilityRiskScores])
 
   // Keep selection ref up to date and update selection ring
   useEffect(() => {
@@ -376,8 +391,17 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       const pos = latLngToVector3(coords.lat, coords.lng, 1.012)
       const color = sectorColors[facility.sector]
 
-      // Solid marker sphere
-      const markerGeo = new THREE.SphereGeometry(0.015, 10, 10)
+      // Compute bar height from risk score (CAPRI 1=tallest/severe, 5=shortest/low)
+      const riskScore = facilityRiskScoresRef.current[facility.id]
+      const baseHeight = 0.02
+      const height = riskScore != null
+        ? 0.02 + (1 - (riskScore - 1) / 4) * 0.15
+        : baseHeight
+
+      // 3D risk bar (cylinder)
+      const markerGeo = new THREE.CylinderGeometry(0.008, 0.008, height, 8)
+      // Shift geometry so bottom sits at origin (cylinder is centered by default)
+      markerGeo.translate(0, height / 2, 0)
       const markerMat = new THREE.MeshBasicMaterial({
         color: new THREE.Color(color),
         transparent: true,
@@ -385,10 +409,13 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       })
       const marker = new THREE.Mesh(markerGeo, markerMat)
       marker.position.copy(pos)
+      // Orient cylinder to point radially outward from globe center
+      marker.lookAt(0, 0, 0)
+      marker.rotateX(Math.PI / 2)
       marker.userData = { type: 'facility', facility }
       facilityMeshGroup.add(marker)
 
-      // Subtle glow sprite behind marker
+      // Subtle glow sprite behind bar
       const glowMat = new THREE.SpriteMaterial({
         map: createGlowTexture(color, 32),
         transparent: true,

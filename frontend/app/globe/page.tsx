@@ -227,6 +227,17 @@ export default function GlobePage() {
     return activeCampaigns.map(c => c.actorName)
   }, [activeCampaigns])
 
+  // Facility risk scores for 3D bar heights on globe
+  const facilityRiskScores = useMemo(() => {
+    if (!data) return {}
+    const scores: Record<string, number> = {}
+    for (const facility of energyFacilities) {
+      const risk = calculateFacilityRisk(facility, data.threats.all || [], data.kev || [])
+      scores[facility.id] = risk.score
+    }
+    return scores
+  }, [data])
+
   function handleFacilityClick(facility: EnergyFacility) {
     setSelectedActor(null)
     setSelectedFacility(facility)
@@ -306,6 +317,7 @@ export default function GlobePage() {
             selectedFacilityId={selectedFacility?.id || null}
             selectedActorName={selectedActor?.name || null}
             activeCampaignActors={activeCampaignActors}
+            facilityRiskScores={facilityRiskScores}
           />
 
           {/* Overlay: Score Badge */}
@@ -424,7 +436,7 @@ export default function GlobePage() {
                       </div>
                       <div className="flex items-center gap-3 text-[10px] text-gray-400">
                         <span>{campaign.correlatedItems.length} items</span>
-                        <span>{Math.round(campaign.techniquesCoverage * 100)}% TTP match</span>
+                        <span>Severity: {campaign.avgSeverity.toFixed(2)}</span>
                       </div>
                       <details className="mt-1">
                         <summary className="text-[10px] text-gray-500 cursor-pointer hover:text-gray-300 transition-colors">
@@ -718,7 +730,7 @@ function FacilityDetailPanel({
                   </div>
                   <div className="flex items-center gap-3 text-[10px] text-gray-400 mb-1">
                     <span>{campaign.correlatedItems.length} items</span>
-                    <span>{Math.round(campaign.techniquesCoverage * 100)}% TTP</span>
+                    <span>Severity: {campaign.avgSeverity.toFixed(2)}</span>
                     <span className="text-gray-500">{formatTimeAgo(campaign.lastSeen)}</span>
                   </div>
                   <p className="text-[10px] text-gray-500 leading-relaxed">{campaign.rationale}</p>
@@ -904,12 +916,12 @@ function ActorDetailPanel({
                       <p className="text-xs font-bold text-white">{campaign.correlatedItems.length}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-gray-500">TTPs</p>
-                      <p className="text-xs font-bold text-white">{campaign.uniqueTechniquesMatched.length}</p>
+                      <p className="text-[10px] text-gray-500">Severity</p>
+                      <p className="text-xs font-bold text-white">{campaign.avgSeverity.toFixed(2)}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-gray-500">Coverage</p>
-                      <p className="text-xs font-bold text-white">{Math.round(campaign.techniquesCoverage * 100)}%</p>
+                      <p className="text-[10px] text-gray-500">KEVs</p>
+                      <p className="text-xs font-bold text-white">{campaign.kevCount}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-[10px] text-gray-500 mb-2">

@@ -1,4 +1,4 @@
-// TTP-to-signal-phrase dictionary for campaign correlation
+// Energy Related TTPs
 // Maps MITRE ATT&CK technique IDs to observable signal phrases found in real advisories
 
 export interface TTPSignature {
