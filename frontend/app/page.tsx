@@ -316,33 +316,37 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Heading */}
+          {/* Heading - dev/README style */}
           <div className="text-center mb-8">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-widest text-cisa-navy dark:text-blue-400 mb-1">
-              CAPRI
-            </h1>
-            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium tracking-wider uppercase">
-              Cyber Alert Prioritization &amp; Readiness Index
-            </p>
+            <pre className="inline-block text-cisa-navy dark:text-blue-400 text-[10px] sm:text-xs md:text-sm leading-tight font-mono select-none" aria-hidden="true">{`
+  ██████╗ █████╗ ██████╗ ██████╗ ██╗
+ ██╔════╝██╔══██╗██╔══██╗██╔══██╗██║
+ ██║     ███████║██████╔╝██████╔╝██║
+ ██║     ██╔══██║██╔═══╝ ██╔══██║██║
+ ╚██████╗██║  ██║██║     ██║  ██║██║
+  ╚═════╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝╚═╝`}</pre>
+            <h1 className="sr-only">CAPRI - Cyber Alert Prioritization & Readiness Index</h1>
+            <pre className="inline-block text-[8px] sm:text-[10px] leading-tight font-mono select-none mt-1 text-red-600 dark:text-red-400" aria-hidden="true">{`
+ ═══╦═══
+ ███║░░░
+ ███║═══
+ ░░░║███
+ ═══╩═══`}</pre>
           </div>
 
-          {/* Score Display */}
+          {/* Score Display - Terminal Style */}
           <div className="flex flex-col items-center gap-4 mb-10">
-            <div className="flex items-center gap-5">
-              <div
-                className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg flex items-center justify-center text-white font-mono text-4xl sm:text-5xl font-bold transition-all duration-500 ease-in-out"
-                style={{ backgroundColor: data?.score.color }}
-              >
-                <span className="transition-all duration-300 ease-in-out">
+            <div className="font-mono text-center">
+              <pre className="inline-block text-[10px] sm:text-xs leading-tight select-none text-gray-400 dark:text-gray-500">{`┌─────────────────────────────────┐`}</pre>
+              <div className="border-x border-gray-300 dark:border-gray-600 px-4 py-3 inline-block" style={{ borderColor: data?.score.color + '40' }}>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1">threat level</p>
+                <p className="text-5xl sm:text-6xl font-bold transition-all duration-500 ease-in-out" style={{ color: data?.score.color }}>
                   {data?.score.score.toFixed(1)}
-                </span>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-medium">Threat Level</p>
-                <p className="text-xl font-bold transition-colors duration-500 ease-in-out" style={{ color: data?.score.color }}>
-                  {data?.score.label}
                 </p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1.5 mt-1">
+                <p className="text-sm font-bold uppercase tracking-wider mt-1 transition-colors duration-500 ease-in-out" style={{ color: data?.score.color }}>
+                  [ {data?.score.label} ]
+                </p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 flex items-center justify-center gap-1.5 mt-2">
                   <Clock className="h-3 w-3" />
                   {lastRefresh ? getTimeSince(lastRefresh) : 'never'}
                   {isRefreshing && (
@@ -352,6 +356,7 @@ export default function Dashboard() {
                   )}
                 </p>
               </div>
+              <pre className="inline-block text-[10px] sm:text-xs leading-tight select-none text-gray-400 dark:text-gray-500">{`└─────────────────────────────────┘`}</pre>
             </div>
             {cacheAge > 120 && (
               <div className="flex items-center gap-2 px-3 py-1 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-md">
