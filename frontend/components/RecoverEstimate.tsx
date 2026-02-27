@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ChevronDown, ChevronUp, DollarSign, Users, ShieldCheck, Info } from 'lucide-react'
+import { ChevronDown, ChevronUp, DollarSign, Users, Info } from 'lucide-react'
 import { type KEVAction } from '@/components/ActionableRecommendations'
 import { type ThreatItem } from '@/components/ThreatCard'
 
@@ -103,21 +103,8 @@ function formatUnitCost(amount: number): string {
   return `$${amount.toLocaleString()}`
 }
 
-function getReadinessLabel(score: number): string {
-  if (score >= 4.5) return 'Strong'
-  if (score >= 3.5) return 'Good'
-  if (score >= 2.5) return 'Moderate'
-  if (score >= 1.5) return 'Weak'
-  return 'Critical'
-}
 
-function getReadinessColor(score: number): string {
-  if (score >= 3.5) return '#16a34a'
-  if (score >= 2.5) return '#f59e0b'
-  return '#d92525'
-}
-
-export default function RecoverEstimate({ threats, kev, last24h, score }: RecoverEstimateProps) {
+export default function RecoverEstimate({ threats, kev, last24h }: RecoverEstimateProps) {
   const [breakdownOpen, setBreakdownOpen] = useState(false)
   const [policyOpen, setPolicyOpen] = useState(false)
 
@@ -125,8 +112,6 @@ export default function RecoverEstimate({ threats, kev, last24h, score }: Recove
     () => estimateEconomicImpact(threats, kev, last24h),
     [threats, kev, last24h]
   )
-
-  const readinessColor = getReadinessColor(impact.readiness)
 
   return (
     <section className="py-8 px-4 bg-white dark:bg-slate-900">
@@ -138,8 +123,8 @@ export default function RecoverEstimate({ threats, kev, last24h, score }: Recove
           Estimated financial impact derived from active threat data — supports CIRCIA cost-benefit analysis
         </p>
 
-        {/* Summary Cards - 3 column grid matching KeyMetrics navy box style */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        {/* Summary Cards - 2 column grid matching KeyMetrics navy box style */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           {/* Estimated Weekly Loss */}
           <div className="bg-cisa-navy dark:bg-slate-800 rounded-xl p-6 text-center">
             <p className="text-blue-100 text-sm font-medium uppercase tracking-wider mb-2">Est. Weekly Loss</p>
@@ -158,19 +143,6 @@ export default function RecoverEstimate({ threats, kev, last24h, score }: Recove
               <p className="text-white text-3xl font-bold">{impact.personDays.toLocaleString()}</p>
             </div>
             <p className="text-blue-200 text-sm mt-1">estimated recovery effort</p>
-          </div>
-
-          {/* Recovery Readiness */}
-          <div className="bg-cisa-navy dark:bg-slate-800 rounded-xl p-6 text-center">
-            <p className="text-blue-100 text-sm font-medium uppercase tracking-wider mb-2">Recovery Readiness</p>
-            <div className="flex items-center justify-center gap-2">
-              <ShieldCheck className="h-6 w-6" style={{ color: readinessColor }} />
-              <p className="text-white text-3xl font-bold">{impact.readiness.toFixed(1)}</p>
-              <span className="text-sm font-medium" style={{ color: readinessColor }}>/ 5</span>
-            </div>
-            <p className="text-sm font-semibold mt-1" style={{ color: readinessColor }}>
-              {getReadinessLabel(impact.readiness)}
-            </p>
           </div>
         </div>
 
