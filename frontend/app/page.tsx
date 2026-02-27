@@ -306,102 +306,100 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section - TrumpCard.gov Style */}
-      <section className="hero-bg-pattern relative py-24 px-4 overflow-hidden">
-        <div className="max-w-5xl mx-auto relative">
+      {/* Hero Section */}
+      <section className="hero-bg-pattern relative py-12 md:py-16 px-4 overflow-hidden">
+        <div className="max-w-4xl mx-auto relative">
           {/* CISA Agency Identifier with Official Logo */}
-          <div className="flex justify-center mb-10">
+          <div className="flex justify-center mb-6">
             <Image
               src="/cisa-logo.svg"
               alt="CISA - Cybersecurity and Infrastructure Security Agency"
-              width={400}
-              height={80}
-              className="h-16 md:h-20 w-auto"
+              width={300}
+              height={60}
+              className="h-10 md:h-12 w-auto"
               priority
             />
           </div>
 
-          {/* Big Bold Hero Heading */}
-          <div className="text-center mb-10">
-            <h1 className="hero-heading text-6xl md:text-7xl lg:text-8xl text-cisa-navy dark:text-blue-400 mb-6">
+          {/* Heading */}
+          <div className="text-center mb-8">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-widest text-cisa-navy dark:text-blue-400 mb-1">
               CAPRI
             </h1>
-            <div className="inline-block">
-              <p className="text-lg md:text-xl text-cisa-navy dark:text-blue-300 font-semibold tracking-wide uppercase">
-                Cyber Alert Prioritization & Readiness Index
-              </p>
-              <div className="h-1 bg-gradient-to-r from-cisa-red via-white to-cisa-navy dark:from-red-500 dark:via-slate-700 dark:to-blue-500 mt-3 rounded-full"></div>
-            </div>
+            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium tracking-wider uppercase">
+              Cyber Alert Prioritization & Readiness Index
+            </p>
           </div>
 
-          {/* Score Display - Static colored square with smooth transitions */}
-          <div className="flex flex-col items-center gap-6 mb-12">
-            <div
-              className="w-32 h-32 sm:w-44 sm:h-44 rounded-2xl flex items-center justify-center text-white text-5xl sm:text-6xl font-bold transition-all duration-500 ease-in-out"
-              style={{ backgroundColor: data?.score.color }}
-            >
-              <span className="transition-all duration-300 ease-in-out">
-                {data?.score.score.toFixed(1)}
-              </span>
+          {/* Score Display */}
+          <div className="flex flex-col items-center gap-4 mb-10">
+            <div className="flex items-center gap-5">
+              <div
+                className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg flex items-center justify-center text-white font-mono text-4xl sm:text-5xl font-bold transition-all duration-500 ease-in-out"
+                style={{ backgroundColor: data?.score.color }}
+              >
+                <span className="transition-all duration-300 ease-in-out">
+                  {data?.score.score.toFixed(1)}
+                </span>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-medium">Threat Level</p>
+                <p className="text-xl font-bold transition-colors duration-500 ease-in-out" style={{ color: data?.score.color }}>
+                  {data?.score.label}
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1.5 mt-1">
+                  <Clock className="h-3 w-3" />
+                  {lastRefresh ? getTimeSince(lastRefresh) : 'never'}
+                  {isRefreshing && (
+                    <span className="inline-flex items-center gap-1 ml-1 text-blue-600 dark:text-blue-400 animate-pulse">
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                    </span>
+                  )}
+                </p>
+              </div>
             </div>
-            <div className="text-center">
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Current Threat Level</h2>
-              <p className="text-2xl font-semibold transition-colors duration-500 ease-in-out" style={{ color: data?.score.color }}>
-                {data?.score.label}
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center gap-2 mt-3">
-                <Clock className="h-4 w-4" />
-                Updated {lastRefresh ? getTimeSince(lastRefresh) : 'never'}
-                {isRefreshing && (
-                  <span className="inline-flex items-center gap-1.5 ml-2 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium animate-pulse">
-                    <RefreshCw className="h-3 w-3 animate-spin" />
-                    Refreshing...
-                  </span>
-                )}
-              </p>
-              {cacheAge > 120 && (
-                <div className="flex items-center justify-center gap-2 mt-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-full">
-                  <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                  <span className="text-sm text-amber-700 dark:text-amber-300 font-medium">
-                    Data may be stale - consider refreshing
-                  </span>
-                </div>
-              )}
-            </div>
+            {cacheAge > 120 && (
+              <div className="flex items-center gap-2 px-3 py-1 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-md">
+                <AlertCircle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                <span className="text-xs text-amber-700 dark:text-amber-300 font-medium">
+                  Data may be stale
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap justify-center gap-4">
+          <div className="flex flex-wrap justify-center gap-3">
             <button
               onClick={() => notificationStatus === 'granted' ? setShowAlertSettings(!showAlertSettings) : handleEnableAlerts()}
-              className={`flex items-center gap-2 px-6 sm:px-8 py-4 rounded-xl font-semibold text-base sm:text-lg transition-all shadow-md hover:shadow-lg min-h-[48px] ${
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium text-sm transition-all shadow-sm hover:shadow-md min-h-[40px] ${
                 notificationStatus === 'granted'
                   ? 'bg-green-600 text-white hover:bg-green-700'
-                  : 'bg-white dark:bg-slate-800 text-cisa-navy dark:text-blue-400 border-2 border-cisa-navy dark:border-blue-500 hover:bg-cisa-light dark:hover:bg-slate-700'
+                  : 'bg-white dark:bg-slate-800 text-cisa-navy dark:text-blue-400 border border-cisa-navy dark:border-blue-500 hover:bg-cisa-light dark:hover:bg-slate-700'
               }`}
             >
-              {notificationStatus === 'granted' ? <Bell className="h-5 w-5 sm:h-6 sm:w-6" /> : <BellOff className="h-5 w-5 sm:h-6 sm:w-6" />}
-              {notificationStatus === 'granted' ? 'Alerts Enabled' : 'Enable Alerts'}
+              {notificationStatus === 'granted' ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+              {notificationStatus === 'granted' ? 'Alerts On' : 'Enable Alerts'}
             </button>
             <button
               onClick={() => fetchData(false)}
               disabled={loading || isRefreshing}
-              className="flex items-center gap-2 px-6 sm:px-8 py-4 bg-cisa-navy dark:bg-blue-600 text-white rounded-xl font-semibold text-base sm:text-lg hover:bg-cisa-navy-dark dark:hover:bg-blue-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px]"
+              className="flex items-center gap-2 px-5 py-2.5 bg-cisa-navy dark:bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-cisa-navy-dark dark:hover:bg-blue-700 transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px]"
             >
-              <RefreshCw className={`h-5 w-5 sm:h-6 sm:w-6 ${(loading || isRefreshing) ? 'animate-spin' : ''}`} />
-              {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
+              <RefreshCw className={`h-4 w-4 ${(loading || isRefreshing) ? 'animate-spin' : ''}`} />
+              Refresh
             </button>
             <button
               onClick={() => setShowAlertSettingsPanel(true)}
-              className={`flex items-center gap-2 px-6 sm:px-8 py-4 rounded-xl font-semibold text-base sm:text-lg transition-all shadow-md hover:shadow-lg min-h-[48px] ${
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium text-sm transition-all shadow-sm hover:shadow-md min-h-[40px] ${
                 webhookConfigured
                   ? 'bg-purple-600 text-white hover:bg-purple-700'
-                  : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600'
+                  : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600'
               }`}
               title={webhookConfigured ? 'Webhook configured' : 'Configure webhook alerts'}
             >
-              <Settings className="h-5 w-5 sm:h-6 sm:w-6" />
-              Configure Alerts
+              <Settings className="h-4 w-4" />
+              Configure
             </button>
           </div>
 
