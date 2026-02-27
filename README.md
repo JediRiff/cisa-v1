@@ -1,12 +1,10 @@
 # CAPRI - Cyber Alert Prioritization & Readiness Index
 
-Real-time threat intelligence dashboard for US energy sector critical infrastructure. Aggregates government and vendor feeds into a single risk score to help analysts prioritize response.
-
-**Live:** [capri-security.vercel.app](https://capri-security.vercel.app)
+Real-time TI dashboard for US energy sector critical infra. Aggregates government and vendor feeds into a single risk score to help analysts prioritize response.
 
 ## Scoring
 
-Score starts at 5.0 (Normal) and decreases based on active threats. Inspired by the US Cyber Command CPCON scale.
+Score starts at 5.0 (Normal) and decreases based on active threats(inspired by  US Cyber Command CPCON).
 
 | Factor | Per Item | Max Impact |
 |--------|----------|------------|
@@ -28,7 +26,7 @@ Score starts at 5.0 (Normal) and decreases based on active threats. Inspired by 
 - **Styling:** Tailwind CSS, DM Sans
 - **3D Globe:** Three.js with TopoJSON country data
 - **Charts:** Recharts
-- **Deployment:** Vercel
+- **Deployment:** Vercel (for now)
 
 ## Sources
 
@@ -39,8 +37,8 @@ Score starts at 5.0 (Normal) and decreases based on active threats. Inspired by 
 
 **Vendor**
 - Microsoft Security
-- Palo Alto Unit42
-- CrowdStrike Intelligence
+- Palo Alto's Unit42
+- CrowdStrike Intel
 - SentinelOne Labs
 - Mandiant / Google Threat Intelligence
 
