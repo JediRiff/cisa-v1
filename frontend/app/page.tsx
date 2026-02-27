@@ -323,11 +323,11 @@ export default function Dashboard() {
 
           {/* Heading */}
           <div className="text-center mb-8">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-widest text-cisa-navy dark:text-blue-400 mb-1">
+            <h1 className="text-5xl md:text-6xl text-cisa-navy dark:text-blue-400 mb-2" style={{ letterSpacing: '-0.03em', lineHeight: 1 }}>
               CAPRI
             </h1>
-            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium tracking-wider uppercase">
-              Cyber Alert Prioritization & Readiness Index
+            <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 font-medium tracking-wide">
+              Cyber Alert Prioritization &amp; Readiness Index
             </p>
           </div>
 

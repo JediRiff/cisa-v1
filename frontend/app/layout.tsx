@@ -93,7 +93,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   />
                 </div>
                 <div className="border-l border-white/30 pl-6 hidden sm:block">
-                  <h1 className="text-xl font-bold tracking-tight">CAPRI</h1>
+                  <h1 className="text-2xl tracking-tight">CAPRI</h1>
                   <p className="text-sm text-blue-200 dark:text-blue-300 tracking-wide">Cyber Alert Prioritization & Readiness Index</p>
                 </div>
               </div>
