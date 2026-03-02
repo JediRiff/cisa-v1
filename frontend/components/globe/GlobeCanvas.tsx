@@ -7,14 +7,11 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import {
   latLngToVector3,
   createArcCurve,
-  landPoints,
   threatActors,
   energyFacilities,
-  regionColors,
   sectorColors,
   EnergyFacility,
   ThreatActor,
-  Sector,
 } from './worldData'
 
 interface ActiveArc {
@@ -85,16 +82,14 @@ function buildTargetingMap(): Map<string, EnergyFacility[]> {
   return map
 }
 
-// Minimal TopoJSON decoder - renders country border outlines on the globe
-// US (ISO 3166-1 numeric 840) is highlighted in white; all others are dim
-function loadCountryBorders(globeGroup: THREE.Group, radius: number) {
+// Load US-only highlight from TopoJSON — no other country borders
+function loadUSHighlight(globeGroup: THREE.Group, radius: number) {
   fetch('/countries-110m.json')
     .then((r) => r.json())
     .then((topology) => {
       const { arcs: encodedArcs, transform } = topology
       const { scale, translate } = transform
 
-      // Decode all arcs (delta-encoded coordinates -> [lng, lat])
       const decodedArcs: [number, number][][] = encodedArcs.map((arc: number[][]) => {
         let x = 0, y = 0
         return arc.map(([dx, dy]: number[]) => {
@@ -104,18 +99,12 @@ function loadCountryBorders(globeGroup: THREE.Group, radius: number) {
         })
       })
 
-      const defaultBorderMat = new THREE.LineBasicMaterial({
-        color: 0x1a2a3a,
-        transparent: true,
-        opacity: 0.25,
-      })
-
+      // US gets white border outline + brighter fill
       const usBorderMat = new THREE.LineBasicMaterial({
         color: 0xe0e4e8,
         transparent: true,
         opacity: 0.85,
       })
-
       const usFillMat = new THREE.MeshBasicMaterial({
         color: 0xd0d4d8,
         transparent: true,
@@ -123,7 +112,7 @@ function loadCountryBorders(globeGroup: THREE.Group, radius: number) {
         side: THREE.DoubleSide,
       })
 
-      // Dim fill for non-US countries
+      // Other countries get dim fill only (no border lines)
       const defaultFillMat = new THREE.MeshBasicMaterial({
         color: 0x1a2030,
         transparent: true,
@@ -133,7 +122,6 @@ function loadCountryBorders(globeGroup: THREE.Group, radius: number) {
 
       const US_ID = '840'
 
-      // Helper: decode a ring of arc indices into [lng, lat] coordinates
       function decodeRing(ring: number[]): [number, number][] {
         const coords: [number, number][] = []
         ring.forEach((arcIdx: number) => {
@@ -155,9 +143,7 @@ function loadCountryBorders(globeGroup: THREE.Group, radius: number) {
 
       countries.geometries.forEach((geo: any) => {
         const isUS = String(geo.id) === US_ID
-        const borderMat = isUS ? usBorderMat : defaultBorderMat
 
-        // Normalize to array-of-polygons, each polygon is array-of-rings
         let polygons: number[][][]
         if (geo.type === 'Polygon') {
           polygons = [geo.arcs]
@@ -170,17 +156,19 @@ function loadCountryBorders(globeGroup: THREE.Group, radius: number) {
         polygons.forEach((polygon: number[][]) => {
           const rings = polygon.map((ring: number[]) => decodeRing(ring))
 
-          // Draw border lines for each ring
-          rings.forEach((coords) => {
-            if (coords.length < 2) return
-            const points3d = coords.map(([lng, lat]) =>
-              latLngToVector3(lat, lng, radius)
-            )
-            const geometry = new THREE.BufferGeometry().setFromPoints(points3d)
-            globeGroup.add(new THREE.Line(geometry, borderMat))
-          })
+          // Only draw border lines for the US
+          if (isUS) {
+            rings.forEach((coords) => {
+              if (coords.length < 2) return
+              const points3d = coords.map(([lng, lat]) =>
+                latLngToVector3(lat, lng, radius)
+              )
+              const geometry = new THREE.BufferGeometry().setFromPoints(points3d)
+              globeGroup.add(new THREE.Line(geometry, usBorderMat))
+            })
+          }
 
-          // Fill country polygons
+          // Fill all countries (US brighter, others dim)
           if (rings[0] && rings[0].length >= 3) {
             try {
               const contour = rings[0].map(([lng, lat]) => new THREE.Vector2(lng, lat))
@@ -211,14 +199,14 @@ function loadCountryBorders(globeGroup: THREE.Group, radius: number) {
               fillGeo.computeVertexNormals()
               globeGroup.add(new THREE.Mesh(fillGeo, isUS ? usFillMat : defaultFillMat))
             } catch {
-              // Triangulation can fail for complex island polygons — skip silently
+              // skip
             }
           }
         })
       })
     })
     .catch(() => {
-      console.warn('Failed to load country borders')
+      console.warn('Failed to load country data')
     })
 }
 
@@ -256,12 +244,11 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
   // Keep facilityRiskScores ref up to date and update bar heights
   useEffect(() => {
     facilityRiskScoresRef.current = facilityRiskScores || {}
-    // Update existing cylinder heights if markers already exist
     facilityMarkersRef.current.forEach(fm => {
       const score = facilityRiskScoresRef.current[fm.facility.id]
       if (score != null) {
         const height = 0.02 + (1 - (score - 1) / 4) * 0.15
-        fm.mesh.scale.set(1, height / 0.02, 1) // Scale Y relative to base height
+        fm.mesh.scale.set(1, height / 0.02, 1)
       }
     })
   }, [facilityRiskScores])
@@ -418,29 +405,8 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
     const sweepMesh = new THREE.Mesh(sweepGeo, sweepMat)
     globeGroup.add(sweepMesh)
 
-    // Country border outlines (loaded async from TopoJSON)
-    loadCountryBorders(globeGroup, 1.005)
-
-    // Land dots — monochrome for clean intelligence-map look
-    const dotGeo = new THREE.BufferGeometry()
-    const dotPositions = new Float32Array(landPoints.length * 3)
-
-    landPoints.forEach((p, i) => {
-      const vec = latLngToVector3(p.lat, p.lng, 1.008)
-      dotPositions[i * 3] = vec.x
-      dotPositions[i * 3 + 1] = vec.y
-      dotPositions[i * 3 + 2] = vec.z
-    })
-
-    dotGeo.setAttribute('position', new THREE.BufferAttribute(dotPositions, 3))
-    const dotMat = new THREE.PointsMaterial({
-      color: 0x2a3a4a,
-      size: 0.015,
-      transparent: true,
-      opacity: 0.4,
-      sizeAttenuation: true,
-    })
-    globeGroup.add(new THREE.Points(dotGeo, dotMat))
+    // US-only highlight (loaded async from TopoJSON)
+    loadUSHighlight(globeGroup, 1.005)
 
     // Declutter overlapping facility positions
     // Detect facilities within MIN_DIST degrees and spread them in a ring
@@ -495,7 +461,6 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
 
       // 3D risk bar (square column)
       const markerGeo = new THREE.BoxGeometry(0.018, height, 0.018)
-      // Shift geometry so bottom sits at origin (cylinder is centered by default)
       markerGeo.translate(0, height / 2, 0)
       const markerMat = new THREE.MeshBasicMaterial({
         color: new THREE.Color(color),
@@ -504,8 +469,6 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       })
       const marker = new THREE.Mesh(markerGeo, markerMat)
       marker.position.copy(pos)
-      // Orient cylinder to point radially outward from globe center
-      // setFromUnitVectors rotates Y-axis (cylinder axis) to align with outward direction
       const outward = pos.clone().normalize()
       marker.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), outward)
       marker.userData = { type: 'facility', facility }
@@ -540,7 +503,7 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
     globeGroup.add(selectionRing)
     selectionRingRef.current = selectionRing
 
-    // Threat origin pulse markers
+    // Threat origin markers — constantly highlighted, no pulsing
     const markers: PulseMarker[] = []
     const actorMarkerRefs: ActorMarkerRef[] = []
     const glowTex = createGlowTexture('rgba(255, 60, 60, 0.6)')
@@ -551,15 +514,15 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
         map: glowTex,
         color: new THREE.Color(actor.color),
         transparent: true,
-        opacity: 0.7,
+        opacity: 0.85,
         blending: THREE.AdditiveBlending,
       })
       const sprite = new THREE.Sprite(spriteMat)
       sprite.position.copy(pos)
-      sprite.scale.set(0.07, 0.07, 1)
+      sprite.scale.set(0.08, 0.08, 1)
       sprite.userData = { type: 'actor', actor }
       globeGroup.add(sprite)
-      markers.push({ mesh: sprite, phase: Math.random() * Math.PI * 2, baseScale: 0.07, actorName: actor.name })
+      markers.push({ mesh: sprite, phase: 0, baseScale: 0.08, actorName: actor.name })
       actorMarkerRefs.push({ mesh: sprite, actor })
     })
     actorMarkersRef.current = actorMarkerRefs
@@ -718,19 +681,7 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
 
       controls.update()
 
-      // Pulse threat origin markers (enhanced for campaign actors)
-      const campaignActorSet = new Set(activeCampaignActorsRef.current)
-      markers.forEach((m) => {
-        const isCampaignActor = campaignActorSet.has(m.actorName)
-        const pulseSpeed = isCampaignActor ? 3 : 2
-        const pulseAmplitude = isCampaignActor ? 0.035 : 0.018
-        const baseOpacity = isCampaignActor ? 0.7 : 0.5
-        const scale = m.baseScale + Math.sin(elapsed * pulseSpeed + m.phase) * pulseAmplitude
-        m.mesh.scale.set(scale, scale, 1)
-        if (m.mesh.material instanceof THREE.SpriteMaterial) {
-          m.mesh.material.opacity = baseOpacity + Math.sin(elapsed * pulseSpeed + m.phase) * 0.3
-        }
-      })
+      // Threat actor markers — constant (no pulsing)
 
       // Subtle pulse on facility glow sprites
       facilityMarkers.forEach((fm, i) => {

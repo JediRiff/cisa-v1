@@ -80,7 +80,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
           <header className="bg-cisa-navy dark:bg-slate-800 text-white py-5 px-6 shadow-lg transition-colors duration-300">
             <div className="max-w-7xl mx-auto flex items-center justify-between">
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4 md:gap-6">
                 {/* Official CISA Logo - white background for visibility */}
                 <div className="bg-white rounded-lg px-3 py-2">
                   <Image
@@ -92,9 +92,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     priority
                   />
                 </div>
-                <div className="border-l border-white/30 pl-6 hidden sm:block">
-                  <h1 className="text-2xl tracking-tight">CAPRI</h1>
-                  <p className="text-sm text-blue-200 dark:text-blue-300 tracking-wide">Cyber Alert Prioritization & Readiness Index</p>
+                {/* Mini ASCII Flag */}
+                <pre className="hidden md:block text-[6px] lg:text-[7px] leading-[1.2] select-none" style={{ fontFamily: 'Consolas, "Courier New", monospace' }} aria-hidden="true">{
+`\n`}<span className="text-white bg-blue-700">{`* * *`}</span><span className="text-red-500">{` ████████`}</span>{
+`\n`}<span className="text-white bg-blue-700">{` * * `}</span>{`         `}{
+`\n`}<span className="text-white bg-blue-700">{`* * *`}</span><span className="text-red-500">{` ████████`}</span>{
+`\n`}<span className="text-white bg-blue-700">{` * * `}</span>{`         `}{
+`\n`}<span className="text-red-500">{`██████████████`}</span>{
+`\n`}{`              `}{
+`\n`}<span className="text-red-500">{`██████████████`}</span>
+                </pre>
+                <div className="border-l border-white/30 pl-4 md:pl-6 hidden sm:block">
+                  <pre className="text-[5px] md:text-[6px] leading-[1.1] font-mono text-white select-none" aria-hidden="true">{
+` ██████╗ █████╗ ██████╗ ██████╗ ██╗\n`}{
+`██╔════╝██╔══██╗██╔══██╗██╔══██╗██║\n`}{
+`██║     ███████║██████╔╝██████╔╝██║\n`}{
+`██║     ██╔══██║██╔═══╝ ██╔══██║██║\n`}{
+`╚██████╗██║  ██║██║     ██║  ██║██║\n`}{
+` ╚═════╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝╚═╝`
+                  }</pre>
+                  <h1 className="sr-only">CAPRI</h1>
+                  <p className="text-[10px] md:text-xs text-blue-200 dark:text-blue-300 tracking-wide mt-0.5">Cyber Alert Prioritization &amp; Readiness Index</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">

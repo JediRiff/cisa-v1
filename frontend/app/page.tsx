@@ -13,7 +13,7 @@ import KeyMetrics from '@/components/KeyMetrics'
 import SkeletonLoader from '@/components/SkeletonLoader'
 import ScoreTrend from '@/components/ScoreTrend'
 import ThreatCard, { type ThreatItem } from '@/components/ThreatCard'
-import AlertSettings, { isWebhookConfigured } from '@/components/AlertSettings'
+import AlertSettings, { isWebhookConfigured, getStoredEnrichmentKeys } from '@/components/AlertSettings'
 
 interface FactorItem {
   id: string
@@ -108,7 +108,16 @@ export default function Dashboard() {
     }
     setError(null)
     try {
-      const response = await fetch('/api/threats')
+      // Build headers with user-provided enrichment API keys
+      const headers: Record<string, string> = {}
+      const enrichmentKeys = getStoredEnrichmentKeys()
+      if (enrichmentKeys.abuseIPDBKey) headers['X-AbuseIPDB-Key'] = enrichmentKeys.abuseIPDBKey
+      if (enrichmentKeys.shodanKey) headers['X-Shodan-Key'] = enrichmentKeys.shodanKey
+      if (enrichmentKeys.virusTotalKey) headers['X-VirusTotal-Key'] = enrichmentKeys.virusTotalKey
+
+      const response = await fetch('/api/threats', {
+        headers: Object.keys(headers).length > 0 ? headers : undefined,
+      })
       const json = await response.json()
       if (json.success) {
         setData(json)

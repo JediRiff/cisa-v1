@@ -43,9 +43,6 @@ export default function ScoreBreakdown({ score, label, color, factors }: ScoreBr
   // Calculate position on the scale (5.0 = 0%, 1.0 = 100%)
   const position = ((5.0 - score) / 4.0) * 100
 
-  // Filter factors that have actual impact
-  const activeFactors = factors.filter(f => f.impact !== 0)
-
   const toggleFactor = (name: string) => {
     setExpandedFactor(expandedFactor === name ? null : name)
   }
@@ -89,26 +86,37 @@ export default function ScoreBreakdown({ score, label, color, factors }: ScoreBr
             <span className="text-lg font-bold text-severity-normal">5.0</span>
           </div>
 
-          {/* Active factors - Expandable */}
-          {activeFactors.length > 0 ? (
-            activeFactors.map((factor) => (
+          {/* All factors - always shown, expandable when items exist */}
+          {factors.map((factor) => {
+            const hasImpact = factor.impact !== 0
+            const hasItems = factor.items && factor.items.length > 0
+
+            return (
               <div key={factor.name} className="border-b border-gray-200 dark:border-slate-700">
-                {/* Factor Header - Clickable */}
+                {/* Factor Header - Clickable when items exist */}
                 <button
-                  onClick={() => toggleFactor(factor.name)}
-                  className="w-full flex items-center justify-between py-2 hover:bg-white/50 dark:hover:bg-slate-700/50 transition-colors rounded"
+                  onClick={() => hasItems ? toggleFactor(factor.name) : undefined}
+                  className={`w-full flex items-center justify-between py-2 rounded ${hasItems ? 'hover:bg-white/50 dark:hover:bg-slate-700/50 cursor-pointer' : 'cursor-default'} transition-colors`}
                 >
                   <div className="flex items-center gap-2">
-                    <ChevronDown
-                      className={`h-4 w-4 text-gray-400 transition-transform ${
-                        expandedFactor === factor.name ? 'rotate-180' : ''
-                      }`}
-                    />
-                    <span className="text-red-500 dark:text-red-400 font-bold">-</span>
-                    <span className="text-sm text-gray-800 dark:text-gray-200">{factor.name}</span>
+                    {hasItems ? (
+                      <ChevronDown
+                        className={`h-4 w-4 text-gray-400 transition-transform ${
+                          expandedFactor === factor.name ? 'rotate-180' : ''
+                        }`}
+                      />
+                    ) : (
+                      <span className="w-4" />
+                    )}
+                    {hasImpact ? (
+                      <span className="text-red-500 dark:text-red-400 font-bold">-</span>
+                    ) : (
+                      <span className="text-gray-300 dark:text-gray-600 font-bold">-</span>
+                    )}
+                    <span className={`text-sm ${hasImpact ? 'text-gray-800 dark:text-gray-200' : 'text-gray-400 dark:text-gray-500'}`}>{factor.name}</span>
                     <span className="text-xs text-gray-500 dark:text-gray-400">({factor.count} items)</span>
                   </div>
-                  <span className="text-sm font-bold text-red-600 dark:text-red-400">{Math.abs(factor.impact).toFixed(1)}</span>
+                  <span className={`text-sm font-bold ${hasImpact ? 'text-red-600 dark:text-red-400' : 'text-gray-300 dark:text-gray-600'}`}>{Math.abs(factor.impact).toFixed(1)}</span>
                 </button>
 
                 {/* Expanded Items */}
@@ -142,12 +150,8 @@ export default function ScoreBreakdown({ score, label, color, factors }: ScoreBr
                   </div>
                 )}
               </div>
-            ))
-          ) : (
-            <div className="py-2 text-center text-sm text-gray-500 dark:text-gray-400">
-              No active threat factors detected
-            </div>
-          )}
+            )
+          })}
 
           {/* Final score */}
           <div className="flex items-center justify-between pt-3 mt-1">

@@ -11,38 +11,31 @@ import { ThreatItem } from './feeds'
 // Base score starts at 5.0 (Normal), deductions lower it toward 1.0 (Severe)
 
 export const SCORING_WEIGHTS = {
-  kevEntry: {
-    name: 'CISA KEV Entry',
-    perItem: -0.3,
-    maxImpact: -1.2,  // Reduced from -1.5 for better dynamic range
-    timeWindow: '7 days',
-    rationale: 'Known Exploited Vulnerabilities indicate active exploitation in the wild'
-  },
-  energyThreat: {
-    name: 'AI-Assessed Energy Threats',
-    perItem: -0.1,  // Base, actual impact varies by AI severity (0.1-0.4)
-    maxImpact: -0.8,
-    timeWindow: '30 days',
-    rationale: 'AI-analyzed threats with graduated impact based on energy sector relevance (severity 9-10: -0.4, 7-8: -0.3, 5-6: -0.2, 3-4: -0.1)'
-  },
   nationState: {
     name: 'Nation-State Activity',
     perItem: -0.4,
-    maxImpact: -0.8,  // Reduced from -1.2 for better dynamic range
+    maxImpact: -0.8,
     timeWindow: '30 days',
     rationale: 'Reports involving Volt Typhoon, Sandworm, or other nation-state actors targeting infrastructure'
   },
-  icsScada: {
-    name: 'ICS/SCADA Vulnerability',
+  kevEntry: {
+    name: 'CISA KEV Entries',
     perItem: -0.3,
-    maxImpact: -0.6,  // Reduced from -0.9 for better dynamic range
+    maxImpact: -1.2,
+    timeWindow: '7 days',
+    rationale: 'Known Exploited Vulnerabilities indicate active exploitation in the wild'
+  },
+  icsScada: {
+    name: 'ICS/SCADA Vulnerabilities',
+    perItem: -0.3,
+    maxImpact: -0.6,
     timeWindow: '30 days',
     rationale: 'Industrial control system vulnerabilities directly impact energy operations'
   },
   vendorCritical: {
-    name: 'Vendor Critical Alert',
+    name: 'Vendor Critical Alerts',
     perItem: -0.15,
-    maxImpact: -0.4,  // Reduced from -0.6 for better dynamic range
+    maxImpact: -0.4,
     timeWindow: '7 days',
     rationale: 'Critical severity reports from Microsoft, CrowdStrike, Unit42, etc.'
   }
@@ -131,10 +124,15 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
   const recentItems = items.filter(item => new Date(item.pubDate) >= thirtyDaysAgo)
   const veryRecentItems = items.filter(item => new Date(item.pubDate) >= sevenDaysAgo)
 
-  // Process factors in order of per-item impact (highest first)
-  // This ensures items are assigned to their highest-impact category
+  // Helper to map items for factor output
+  const mapItems = (items: ThreatItem[]) => items.slice(0, 10).map(item => ({
+    id: item.id, title: item.title, link: item.link, source: item.source, pubDate: item.pubDate
+  }))
 
-  // Factor 1: Nation-state activity (-0.4 each, max -0.8) - HIGHEST IMPACT
+  // Process factors in priority order (highest per-item impact first)
+  // Items are assigned to their highest-impact category via usedItemIds
+
+  // ── Factor 1: Nation-State Activity (-0.4 each, max -0.8) ──
   const nationStateThreats = recentItems.filter(item => {
     if (usedItemIds.has(item.id)) return false
     const text = item.title + ' ' + item.description
@@ -142,11 +140,8 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
     if (matches) usedItemIds.add(item.id)
     return matches
   })
-  if (nationStateThreats.length > 0) {
-    // Apply temporal decay: newer threats weigh more
-    const decayedImpact = nationStateThreats.reduce((sum, item) => {
-      return sum + (0.4 * getTemporalDecay(item.pubDate))
-    }, 0)
+  {
+    const decayedImpact = nationStateThreats.reduce((sum, item) => sum + (0.4 * getTemporalDecay(item.pubDate)), 0)
     const impact = Math.min(decayedImpact, 0.8)
     score -= impact
     factors.push({
@@ -156,48 +151,33 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
       description: 'Reports of nation-state actors (Volt Typhoon, Sandworm, etc.) — time-weighted',
       weight: SCORING_WEIGHTS.nationState.perItem,
       maxImpact: SCORING_WEIGHTS.nationState.maxImpact,
-      items: nationStateThreats.slice(0, 10).map(item => ({
-        id: item.id,
-        title: item.title,
-        link: item.link,
-        source: item.source,
-        pubDate: item.pubDate
-      }))
+      items: mapItems(nationStateThreats)
     })
   }
 
-  // Factor 2: Critical KEVs in last 7 days (-0.3 each, max -1.2)
+  // ── Factor 2: CISA KEV Entries (-0.3 each, max -1.2) ──
   const recentKEVs = veryRecentItems.filter(item => {
     if (usedItemIds.has(item.id)) return false
     const matches = item.source === 'CISA KEV' && item.severity === 'critical'
     if (matches) usedItemIds.add(item.id)
     return matches
   })
-  if (recentKEVs.length > 0) {
-    // Apply temporal decay: newer KEVs weigh more
-    const decayedImpact = recentKEVs.reduce((sum, item) => {
-      return sum + (0.3 * getTemporalDecay(item.pubDate))
-    }, 0)
+  {
+    const decayedImpact = recentKEVs.reduce((sum, item) => sum + (0.3 * getTemporalDecay(item.pubDate)), 0)
     const impact = Math.min(decayedImpact, 1.2)
     score -= impact
     factors.push({
-      name: 'Recent KEV Entries',
+      name: 'CISA KEV Entries',
       impact: -impact,
       count: recentKEVs.length,
       description: 'Actively exploited vulnerabilities added to CISA KEV — time-weighted',
       weight: SCORING_WEIGHTS.kevEntry.perItem,
       maxImpact: SCORING_WEIGHTS.kevEntry.maxImpact,
-      items: recentKEVs.slice(0, 10).map(item => ({
-        id: item.id,
-        title: item.title,
-        link: item.link,
-        source: item.source,
-        pubDate: item.pubDate
-      }))
+      items: mapItems(recentKEVs)
     })
   }
 
-  // Factor 3: ICS/SCADA vulnerabilities (-0.3 each, max -0.6)
+  // ── Factor 3: ICS/SCADA Vulnerabilities (-0.3 each, max -0.6) ──
   const icsThreats = recentItems.filter(item => {
     if (usedItemIds.has(item.id)) return false
     const text = item.title + ' ' + item.description
@@ -205,11 +185,8 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
     if (matches) usedItemIds.add(item.id)
     return matches
   })
-  if (icsThreats.length > 0) {
-    // Apply temporal decay: newer ICS threats weigh more
-    const decayedImpact = icsThreats.reduce((sum, item) => {
-      return sum + (0.3 * getTemporalDecay(item.pubDate))
-    }, 0)
+  {
+    const decayedImpact = icsThreats.reduce((sum, item) => sum + (0.3 * getTemporalDecay(item.pubDate)), 0)
     const impact = Math.min(decayedImpact, 0.6)
     score -= impact
     factors.push({
@@ -219,101 +196,19 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
       description: 'Industrial control system specific threats — time-weighted',
       weight: SCORING_WEIGHTS.icsScada.perItem,
       maxImpact: SCORING_WEIGHTS.icsScada.maxImpact,
-      items: icsThreats.slice(0, 10).map(item => ({
-        id: item.id,
-        title: item.title,
-        link: item.link,
-        source: item.source,
-        pubDate: item.pubDate
-      }))
+      items: mapItems(icsThreats)
     })
   }
 
-  // Factor 4: AI-Assessed Energy Threats (graduated impact based on AI severity score)
-  // Items with aiSeverityScore: 9-10 = -0.4, 7-8 = -0.3, 5-6 = -0.2, 3-4 = -0.1, 1-2 = 0
-  const aiAnalyzedThreats = recentItems.filter(item => {
+  // ── Factor 4: Vendor Critical Alerts (-0.15 each, max -0.4) ──
+  const criticalVendorItems = recentItems.filter(item => {
     if (usedItemIds.has(item.id)) return false
-    // Only count items that have AI analysis and score >= 3 (not false positives)
-    const hasValidAIScore = item.aiSeverityScore !== undefined && item.aiSeverityScore >= 3
-    if (hasValidAIScore) usedItemIds.add(item.id)
-    return hasValidAIScore
-  })
-  if (aiAnalyzedThreats.length > 0) {
-    // Calculate graduated impact based on AI severity scores with temporal decay
-    let totalImpact = 0
-    for (const item of aiAnalyzedThreats) {
-      const aiScore = item.aiSeverityScore || 5
-      const decay = getTemporalDecay(item.pubDate)
-      let baseImpact = 0
-      if (aiScore >= 9) baseImpact = 0.4       // Critical
-      else if (aiScore >= 7) baseImpact = 0.3 // Direct threat
-      else if (aiScore >= 5) baseImpact = 0.2 // Relevant
-      else if (aiScore >= 3) baseImpact = 0.1 // Tangential
-      totalImpact += baseImpact * decay
-    }
-    const impact = Math.min(totalImpact, 0.8)
-    score -= impact
-    factors.push({
-      name: 'AI-Assessed Energy Threats',
-      impact: -impact,
-      count: aiAnalyzedThreats.length,
-      description: 'AI-analyzed threats with graduated severity scoring — time-weighted',
-      weight: SCORING_WEIGHTS.energyThreat.perItem,
-      maxImpact: SCORING_WEIGHTS.energyThreat.maxImpact,
-      items: aiAnalyzedThreats.slice(0, 10).map(item => ({
-        id: item.id,
-        title: item.title,
-        link: item.link,
-        source: item.source,
-        pubDate: item.pubDate
-      }))
-    })
-  }
-
-  // Fallback: Energy-relevant threats without AI analysis (keyword-based, lower impact)
-  const keywordOnlyThreats = recentItems.filter(item => {
-    if (usedItemIds.has(item.id)) return false
-    // Only items with keyword match but NO AI analysis
-    const matches = item.isEnergyRelevant && item.aiSeverityScore === undefined
+    const matches = item.sourceType === 'vendor' && (item.severity === 'critical' || item.severity === 'high')
     if (matches) usedItemIds.add(item.id)
     return matches
   })
-  if (keywordOnlyThreats.length > 0) {
-    // Apply temporal decay
-    const decayedImpact = keywordOnlyThreats.reduce((sum, item) => {
-      return sum + (0.1 * getTemporalDecay(item.pubDate))
-    }, 0)
-    const impact = Math.min(decayedImpact, 0.3) // Lower impact for keyword-only
-    score -= impact
-    factors.push({
-      name: 'Energy Sector Keyword Matches',
-      impact: -impact,
-      count: keywordOnlyThreats.length,
-      description: 'Threats matching energy infrastructure keywords — time-weighted',
-      weight: -0.1,
-      maxImpact: -0.3,
-      items: keywordOnlyThreats.slice(0, 10).map(item => ({
-        id: item.id,
-        title: item.title,
-        link: item.link,
-        source: item.source,
-        pubDate: item.pubDate
-      }))
-    })
-  }
-
-  // Factor 5: Critical severity items from vendors (-0.15 each, max -0.4) - LOWEST IMPACT
-  const criticalVendorItems = veryRecentItems.filter(item => {
-    if (usedItemIds.has(item.id)) return false
-    const matches = item.sourceType === 'vendor' && item.severity === 'critical'
-    if (matches) usedItemIds.add(item.id)
-    return matches
-  })
-  if (criticalVendorItems.length > 0) {
-    // Apply temporal decay
-    const decayedImpact = criticalVendorItems.reduce((sum, item) => {
-      return sum + (0.15 * getTemporalDecay(item.pubDate))
-    }, 0)
+  {
+    const decayedImpact = criticalVendorItems.reduce((sum, item) => sum + (0.15 * getTemporalDecay(item.pubDate)), 0)
     const impact = Math.min(decayedImpact, 0.4)
     score -= impact
     factors.push({
@@ -323,13 +218,7 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
       description: 'Critical severity reports from security vendors — time-weighted',
       weight: SCORING_WEIGHTS.vendorCritical.perItem,
       maxImpact: SCORING_WEIGHTS.vendorCritical.maxImpact,
-      items: criticalVendorItems.slice(0, 10).map(item => ({
-        id: item.id,
-        title: item.title,
-        link: item.link,
-        source: item.source,
-        pubDate: item.pubDate
-      }))
+      items: mapItems(criticalVendorItems)
     })
   }
 
@@ -353,8 +242,8 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
   }
 
   // Generate summary
-  const aiThreatCount = aiAnalyzedThreats.length + keywordOnlyThreats.length
-  const summary = generateSummary(score, aiThreatCount, recentKEVs.length)
+  const energyRelevantCount = recentItems.filter(item => item.isEnergyRelevant).length
+  const summary = generateSummary(score, energyRelevantCount, recentKEVs.length)
 
   return {
     score,

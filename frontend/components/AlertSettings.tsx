@@ -1,11 +1,41 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { X, Bell, CheckCircle, AlertCircle, Loader2, ExternalLink, Save, Send } from 'lucide-react'
+import { X, Bell, CheckCircle, AlertCircle, Loader2, ExternalLink, Save, Send, ChevronDown, ChevronUp, Eye, EyeOff, Key } from 'lucide-react'
 
 // localStorage keys
 const WEBHOOK_URL_KEY = 'capri-webhook-url'
 const ALERT_TRIGGERS_KEY = 'capri-alert-triggers'
+const ENRICHMENT_KEY_ABUSEIPDB = 'capri-api-abuseipdb'
+const ENRICHMENT_KEY_SHODAN = 'capri-api-shodan'
+const ENRICHMENT_KEY_VIRUSTOTAL = 'capri-api-virustotal'
+
+export type EnrichmentSource = 'abuseipdb' | 'shodan' | 'virustotal'
+
+const ENRICHMENT_STORAGE_KEYS: Record<EnrichmentSource, string> = {
+  abuseipdb: ENRICHMENT_KEY_ABUSEIPDB,
+  shodan: ENRICHMENT_KEY_SHODAN,
+  virustotal: ENRICHMENT_KEY_VIRUSTOTAL,
+}
+
+export function getStoredEnrichmentKeys(): { abuseIPDBKey: string; shodanKey: string; virusTotalKey: string } {
+  if (typeof window === 'undefined') return { abuseIPDBKey: '', shodanKey: '', virusTotalKey: '' }
+  return {
+    abuseIPDBKey: localStorage.getItem(ENRICHMENT_KEY_ABUSEIPDB) || '',
+    shodanKey: localStorage.getItem(ENRICHMENT_KEY_SHODAN) || '',
+    virusTotalKey: localStorage.getItem(ENRICHMENT_KEY_VIRUSTOTAL) || '',
+  }
+}
+
+export function setStoredEnrichmentKey(source: EnrichmentSource, key: string): void {
+  if (typeof window === 'undefined') return
+  const storageKey = ENRICHMENT_STORAGE_KEYS[source]
+  if (key.trim()) {
+    localStorage.setItem(storageKey, key.trim())
+  } else {
+    localStorage.removeItem(storageKey)
+  }
+}
 
 export interface AlertTriggers {
   criticalThreats: boolean
@@ -26,6 +56,23 @@ const DEFAULT_TRIGGERS: AlertTriggers = {
   newKevEntries: true,
   scoreElevatedOrSevere: true,
   nationStateActivity: true,
+}
+
+type WebhookPlatform = 'slack' | 'discord' | 'telegram' | 'generic'
+
+function detectPlatform(url: string): WebhookPlatform {
+  if (!url) return 'generic'
+  if (url.includes('hooks.slack.com')) return 'slack'
+  if (url.includes('discord.com/api/webhooks') || url.includes('discordapp.com/api/webhooks')) return 'discord'
+  if (url.includes('api.telegram.org/bot')) return 'telegram'
+  return 'generic'
+}
+
+const PLATFORM_CONFIG: Record<WebhookPlatform, { label: string; color: string; bgColor: string; textColor: string }> = {
+  slack: { label: 'Slack', color: '#4A154B', bgColor: 'bg-green-100', textColor: 'text-green-800' },
+  discord: { label: 'Discord', color: '#5865F2', bgColor: 'bg-purple-100', textColor: 'text-purple-800' },
+  telegram: { label: 'Telegram', color: '#0088cc', bgColor: 'bg-blue-100', textColor: 'text-blue-800' },
+  generic: { label: 'Generic Webhook', color: '#6B7280', bgColor: 'bg-gray-100', textColor: 'text-gray-800' },
 }
 
 export function getStoredWebhookUrl(): string {
@@ -103,6 +150,14 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
   const [testStatus, setTestStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
   const [testError, setTestError] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle')
+  const [expandedGuide, setExpandedGuide] = useState<WebhookPlatform | null>(null)
+
+  // Enrichment API keys
+  const [enrichmentKeys, setEnrichmentKeys] = useState({ abuseipdb: '', shodan: '', virustotal: '' })
+  const [enrichmentVisible, setEnrichmentVisible] = useState({ abuseipdb: false, shodan: false, virustotal: false })
+  const [enrichmentSaveStatus, setEnrichmentSaveStatus] = useState<'idle' | 'saved'>('idle')
+
+  const detectedPlatform = detectPlatform(webhookUrl)
 
   // Load saved settings on mount
   useEffect(() => {
@@ -112,6 +167,15 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
       setTestStatus('idle')
       setTestError(null)
       setSaveStatus('idle')
+
+      const keys = getStoredEnrichmentKeys()
+      setEnrichmentKeys({
+        abuseipdb: keys.abuseIPDBKey,
+        shodan: keys.shodanKey,
+        virustotal: keys.virusTotalKey,
+      })
+      setEnrichmentVisible({ abuseipdb: false, shodan: false, virustotal: false })
+      setEnrichmentSaveStatus('idle')
     }
   }, [isOpen])
 
@@ -126,6 +190,14 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
     setSaveStatus('saved')
     setTimeout(() => setSaveStatus('idle'), 2000)
   }, [webhookUrl, triggers])
+
+  const handleSaveEnrichmentKeys = useCallback(() => {
+    setStoredEnrichmentKey('abuseipdb', enrichmentKeys.abuseipdb)
+    setStoredEnrichmentKey('shodan', enrichmentKeys.shodan)
+    setStoredEnrichmentKey('virustotal', enrichmentKeys.virustotal)
+    setEnrichmentSaveStatus('saved')
+    setTimeout(() => setEnrichmentSaveStatus('idle'), 2000)
+  }, [enrichmentKeys])
 
   const handleTestWebhook = useCallback(async () => {
     if (!webhookUrl.trim()) {
@@ -237,7 +309,7 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                 <input
                   type="url"
                   id="webhook-url"
-                  placeholder="https://hooks.slack.com/services/... or any webhook URL"
+                  placeholder="Paste Slack, Discord, Telegram, or generic webhook URL"
                   value={webhookUrl}
                   onChange={(e) => {
                     setWebhookUrl(e.target.value)
@@ -245,8 +317,15 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                   }}
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-sm focus:border-cisa-navy focus:outline-none transition-colors"
                 />
+                {webhookUrl.trim() && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${PLATFORM_CONFIG[detectedPlatform].bgColor} ${PLATFORM_CONFIG[detectedPlatform].textColor}`}>
+                      {PLATFORM_CONFIG[detectedPlatform].label} detected
+                    </span>
+                  </div>
+                )}
                 <p className="mt-2 text-xs text-gray-500">
-                  Supports Slack incoming webhooks, Microsoft Teams, Discord, or any generic webhook endpoint.
+                  Supports Slack, Discord, Telegram bots, and generic JSON webhook endpoints.
                 </p>
               </div>
 
@@ -361,25 +440,262 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                 </div>
               </div>
 
-              {/* Slack Setup Help */}
-              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">Setting up Slack Webhooks</h4>
-                <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-                  <li>Go to your Slack App settings</li>
-                  <li>Enable &quot;Incoming Webhooks&quot;</li>
-                  <li>Click &quot;Add New Webhook to Workspace&quot;</li>
-                  <li>Select the channel for alerts</li>
-                  <li>Copy the webhook URL and paste above</li>
-                </ol>
-                <a
-                  href="https://api.slack.com/messaging/webhooks"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 mt-3 text-sm text-blue-700 hover:text-blue-900 font-medium"
+              {/* Platform Setup Guides */}
+              <div className="mb-6 space-y-2">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Setup Guides</h4>
+
+                {/* Slack Guide */}
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setExpandedGuide(expandedGuide === 'slack' ? null : 'slack')}
+                    className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-left transition-colors ${detectedPlatform === 'slack' ? 'bg-green-50 text-green-900' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}
+                  >
+                    <span>Slack</span>
+                    {expandedGuide === 'slack' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                  {expandedGuide === 'slack' && (
+                    <div className="px-4 py-3 bg-white">
+                      <ol className="text-sm text-gray-700 space-y-1 list-decimal list-inside">
+                        <li>Go to your Slack App settings</li>
+                        <li>Enable &quot;Incoming Webhooks&quot;</li>
+                        <li>Click &quot;Add New Webhook to Workspace&quot;</li>
+                        <li>Select the channel for alerts</li>
+                        <li>Copy the webhook URL and paste above</li>
+                      </ol>
+                      <a href="https://api.slack.com/messaging/webhooks" target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 mt-3 text-sm text-blue-700 hover:text-blue-900 font-medium">
+                        Slack Webhooks Documentation <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* Discord Guide */}
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setExpandedGuide(expandedGuide === 'discord' ? null : 'discord')}
+                    className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-left transition-colors ${detectedPlatform === 'discord' ? 'bg-purple-50 text-purple-900' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}
+                  >
+                    <span>Discord</span>
+                    {expandedGuide === 'discord' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                  {expandedGuide === 'discord' && (
+                    <div className="px-4 py-3 bg-white">
+                      <ol className="text-sm text-gray-700 space-y-1 list-decimal list-inside">
+                        <li>Open Server Settings &gt; Integrations</li>
+                        <li>Click &quot;Webhooks&quot; &gt; &quot;New Webhook&quot;</li>
+                        <li>Name it (e.g., &quot;CAPRI Alerts&quot;) and select a channel</li>
+                        <li>Click &quot;Copy Webhook URL&quot;</li>
+                        <li>Paste the URL above</li>
+                      </ol>
+                      <a href="https://support.discord.com/hc/en-us/articles/228383668" target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 mt-3 text-sm text-blue-700 hover:text-blue-900 font-medium">
+                        Discord Webhooks Guide <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* Telegram Guide */}
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setExpandedGuide(expandedGuide === 'telegram' ? null : 'telegram')}
+                    className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-left transition-colors ${detectedPlatform === 'telegram' ? 'bg-blue-50 text-blue-900' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}
+                  >
+                    <span>Telegram</span>
+                    {expandedGuide === 'telegram' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                  {expandedGuide === 'telegram' && (
+                    <div className="px-4 py-3 bg-white">
+                      <ol className="text-sm text-gray-700 space-y-1 list-decimal list-inside">
+                        <li>Message <strong>@BotFather</strong> on Telegram and send <code>/newbot</code></li>
+                        <li>Follow prompts to name your bot and get a <strong>bot token</strong></li>
+                        <li>Add the bot to your group/channel, then send a message</li>
+                        <li>Visit <code>https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code> to find your <strong>chat_id</strong></li>
+                        <li>Construct URL: <code>https://api.telegram.org/bot&lt;TOKEN&gt;/sendMessage?chat_id=&lt;CHAT_ID&gt;</code></li>
+                      </ol>
+                      <p className="mt-2 text-xs text-gray-500">
+                        Paste the full constructed URL above. CAPRI will extract the token and chat ID automatically.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Generic Guide */}
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setExpandedGuide(expandedGuide === 'generic' ? null : 'generic')}
+                    className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-left transition-colors ${detectedPlatform === 'generic' && webhookUrl.trim() ? 'bg-gray-200 text-gray-900' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}
+                  >
+                    <span>Generic / Custom</span>
+                    {expandedGuide === 'generic' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                  {expandedGuide === 'generic' && (
+                    <div className="px-4 py-3 bg-white">
+                      <p className="text-sm text-gray-700 mb-2">
+                        Any HTTP endpoint that accepts POST with JSON body. Payload format:
+                      </p>
+                      <pre className="text-xs bg-gray-100 p-3 rounded overflow-x-auto text-gray-800">{`{
+  "source": "CAPRI",
+  "alertType": "critical_threat",
+  "alertLabel": "Critical Threat",
+  "title": "...",
+  "description": "...",
+  "details": { ... },
+  "dashboardUrl": "...",
+  "timestamp": "ISO-8601",
+  "severity": "high"
+}`}</pre>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Enrichment Sources */}
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Key className="h-4 w-4 text-gray-500" />
+                  <h3 className="text-sm font-medium text-gray-700">Enrichment Sources</h3>
+                </div>
+                <p className="text-xs text-gray-500 mb-4">
+                  Connect your own API keys to enable additional threat intelligence sources. All keys are stored locally in your browser.
+                </p>
+
+                <div className="space-y-4">
+                  {/* AbuseIPDB */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label htmlFor="enrichment-abuseipdb" className="text-sm font-medium text-gray-700">AbuseIPDB</label>
+                      <span className={`flex items-center gap-1.5 text-xs ${enrichmentKeys.abuseipdb ? 'text-green-600' : 'text-gray-400'}`}>
+                        <span className={`inline-block w-2 h-2 rounded-full ${enrichmentKeys.abuseipdb ? 'bg-green-500' : 'bg-gray-300'}`} />
+                        {enrichmentKeys.abuseipdb ? 'Connected' : 'Not connected'}
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={enrichmentVisible.abuseipdb ? 'text' : 'password'}
+                        id="enrichment-abuseipdb"
+                        placeholder="AbuseIPDB API key"
+                        value={enrichmentKeys.abuseipdb}
+                        onChange={(e) => {
+                          setEnrichmentKeys(prev => ({ ...prev, abuseipdb: e.target.value }))
+                          setEnrichmentSaveStatus('idle')
+                        }}
+                        className="w-full px-4 py-2.5 pr-10 border-2 border-gray-200 rounded-lg text-sm focus:border-cisa-navy focus:outline-none transition-colors font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setEnrichmentVisible(prev => ({ ...prev, abuseipdb: !prev.abuseipdb }))}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {enrichmentVisible.abuseipdb ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-400">
+                      Free API key &rarr;{' '}
+                      <a href="https://www.abuseipdb.com/account/api" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        abuseipdb.com/account/api
+                      </a>
+                    </p>
+                  </div>
+
+                  {/* Shodan */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label htmlFor="enrichment-shodan" className="text-sm font-medium text-gray-700">Shodan</label>
+                      <span className={`flex items-center gap-1.5 text-xs ${enrichmentKeys.shodan ? 'text-green-600' : 'text-gray-400'}`}>
+                        <span className={`inline-block w-2 h-2 rounded-full ${enrichmentKeys.shodan ? 'bg-green-500' : 'bg-gray-300'}`} />
+                        {enrichmentKeys.shodan ? 'Connected' : 'Not connected'}
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={enrichmentVisible.shodan ? 'text' : 'password'}
+                        id="enrichment-shodan"
+                        placeholder="Shodan API key"
+                        value={enrichmentKeys.shodan}
+                        onChange={(e) => {
+                          setEnrichmentKeys(prev => ({ ...prev, shodan: e.target.value }))
+                          setEnrichmentSaveStatus('idle')
+                        }}
+                        className="w-full px-4 py-2.5 pr-10 border-2 border-gray-200 rounded-lg text-sm focus:border-cisa-navy focus:outline-none transition-colors font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setEnrichmentVisible(prev => ({ ...prev, shodan: !prev.shodan }))}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {enrichmentVisible.shodan ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-400">
+                      Free API key &rarr;{' '}
+                      <a href="https://account.shodan.io" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        account.shodan.io
+                      </a>
+                    </p>
+                  </div>
+
+                  {/* VirusTotal */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label htmlFor="enrichment-virustotal" className="text-sm font-medium text-gray-700">VirusTotal</label>
+                      <span className={`flex items-center gap-1.5 text-xs ${enrichmentKeys.virustotal ? 'text-green-600' : 'text-gray-400'}`}>
+                        <span className={`inline-block w-2 h-2 rounded-full ${enrichmentKeys.virustotal ? 'bg-green-500' : 'bg-gray-300'}`} />
+                        {enrichmentKeys.virustotal ? 'Connected' : 'Not connected'}
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={enrichmentVisible.virustotal ? 'text' : 'password'}
+                        id="enrichment-virustotal"
+                        placeholder="VirusTotal API key"
+                        value={enrichmentKeys.virustotal}
+                        onChange={(e) => {
+                          setEnrichmentKeys(prev => ({ ...prev, virustotal: e.target.value }))
+                          setEnrichmentSaveStatus('idle')
+                        }}
+                        className="w-full px-4 py-2.5 pr-10 border-2 border-gray-200 rounded-lg text-sm focus:border-cisa-navy focus:outline-none transition-colors font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setEnrichmentVisible(prev => ({ ...prev, virustotal: !prev.virustotal }))}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {enrichmentVisible.virustotal ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-400">
+                      Free API key &rarr;{' '}
+                      <a href="https://www.virustotal.com/gui/my-apikey" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        virustotal.com/gui/my-apikey
+                      </a>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Save Enrichment Keys Button */}
+                <button
+                  type="button"
+                  onClick={handleSaveEnrichmentKeys}
+                  className={`mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
+                    enrichmentSaveStatus === 'saved'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-cisa-navy text-white hover:bg-cisa-navy-dark'
+                  }`}
                 >
-                  Slack Webhooks Documentation
-                  <ExternalLink className="h-3 w-3" />
-                </a>
+                  {enrichmentSaveStatus === 'saved' ? (
+                    <>
+                      <CheckCircle className="h-4 w-4" />
+                      Keys Saved!
+                    </>
+                  ) : (
+                    <>
+                      <Key className="h-4 w-4" />
+                      Save Keys
+                    </>
+                  )}
+                </button>
               </div>
             </div>
 

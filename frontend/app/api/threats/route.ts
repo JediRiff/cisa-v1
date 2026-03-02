@@ -1,6 +1,7 @@
 // CAPRI Threat Intelligence API Endpoint
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { fetchAllFeeds, ThreatItem } from '@/lib/feeds'
+import { fetchAllEnrichment, getConfiguredEnrichmentCount, EnrichmentKeys } from '@/lib/enrichment'
 import { calculateEnergyScore } from '@/lib/scoring'
 import { analyzeThreatsWithAI, AIAnalysisResult } from '@/lib/ai-analysis'
 import { detectCampaigns } from '@/lib/campaign-correlation'
@@ -46,9 +47,20 @@ function parseAdvisoryUrl(notes: string): string {
   return urlMatch ? urlMatch[0] : ''
 }
 
-export async function GET() {
-  // Check cache first
-  if (cachedResponse && (Date.now() - cachedResponse.timestamp) < CACHE_TTL_MS) {
+export async function GET(request: NextRequest) {
+  // Read user-provided enrichment API keys from custom headers
+  const userKeys: EnrichmentKeys = {}
+  const abuseKey = request.headers.get('X-AbuseIPDB-Key')
+  const shodanKey = request.headers.get('X-Shodan-Key')
+  const vtKey = request.headers.get('X-VirusTotal-Key')
+  if (abuseKey) userKeys.abuseIPDBKey = abuseKey
+  if (shodanKey) userKeys.shodanKey = shodanKey
+  if (vtKey) userKeys.virusTotalKey = vtKey
+
+  const hasUserKeys = !!(abuseKey || shodanKey || vtKey)
+
+  // Check cache first — skip when user-provided keys are present
+  if (!hasUserKeys && cachedResponse && (Date.now() - cachedResponse.timestamp) < CACHE_TTL_MS) {
     const cacheAge = Math.round((Date.now() - cachedResponse.timestamp) / 1000)
     const response = NextResponse.json({ ...cachedResponse.data, meta: { ...cachedResponse.data.meta, cacheAge } })
     response.headers.set('X-Cache', 'HIT')
@@ -56,8 +68,21 @@ export async function GET() {
   }
 
   try {
-    // Fetch all threat intelligence feeds
-    const feedResult = await fetchAllFeeds()
+    // Fetch feeds and enrichment sources in parallel
+    const [feedResult, enrichmentResult] = await Promise.all([
+      fetchAllFeeds(),
+      fetchAllEnrichment(hasUserKeys ? userKeys : undefined),
+    ])
+
+    // Merge enrichment items into feed items before deduplication
+    if (enrichmentResult.items.length > 0) {
+      feedResult.items.push(...enrichmentResult.items)
+    }
+
+    // Track enrichment errors alongside feed errors
+    if (enrichmentResult.errors.length > 0) {
+      feedResult.errors.push(...enrichmentResult.errors)
+    }
 
     // AI Analysis: Analyze energy-relevant items for severity scoring
     const energyItems = feedResult.items.filter(item => item.isEnergyRelevant)
@@ -199,8 +224,8 @@ export async function GET() {
       trend: weeklyTrend,
       meta: {
         lastUpdated: feedResult.lastUpdated,
-        sourcesOnline: feedResult.sourcesOnline,
-        sourcesTotal: feedResult.sourcesTotal,
+        sourcesOnline: feedResult.sourcesOnline + enrichmentResult.sourcesOnline,
+        sourcesTotal: feedResult.sourcesTotal + enrichmentResult.sourcesTotal,
         totalItems: feedResult.items.length,
         deduplicatedCount: feedResult.deduplicatedCount || 0,
         alertsThisWeek,
@@ -208,11 +233,18 @@ export async function GET() {
         last24h,
         errors: feedResult.errors,
         cacheAge: 0,
+        enrichmentSources: {
+          configured: getConfiguredEnrichmentCount(hasUserKeys ? userKeys : undefined).configured,
+          total: getConfiguredEnrichmentCount(hasUserKeys ? userKeys : undefined).total,
+          online: enrichmentResult.sourcesOnline,
+        },
       }
     }
 
-    // Store in cache
-    cachedResponse = { data: responseData, timestamp: Date.now() }
+    // Store in cache only when not using user-provided keys
+    if (!hasUserKeys) {
+      cachedResponse = { data: responseData, timestamp: Date.now() }
+    }
 
     const response = NextResponse.json(responseData)
     response.headers.set('X-Cache', 'MISS')

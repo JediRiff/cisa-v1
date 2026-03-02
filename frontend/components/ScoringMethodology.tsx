@@ -36,7 +36,7 @@ export default function ScoringMethodology() {
               <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-2">How the Score is Calculated</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 CAPRI starts at 5.0 (Normal) and deducts points based on active threats
-                detected across 12 intelligence sources. Lower scores indicate higher risk.
+                detected across 15+ intelligence sources. Lower scores indicate higher risk.
               </p>
             </div>
 
@@ -55,16 +55,16 @@ export default function ScoringMethodology() {
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
                     <tr className="bg-white dark:bg-slate-900">
-                      <td className="px-3 py-2 font-medium dark:text-gray-200">CISA KEV Entries</td>
-                      <td className="px-3 py-2 text-center dark:text-gray-300">-0.3 each</td>
-                      <td className="px-3 py-2 text-center dark:text-gray-300">-1.2</td>
-                      <td className="px-3 py-2 text-gray-600 dark:text-gray-400">Confirmed exploited. High volume, capped to prevent single-category spikes.</td>
-                    </tr>
-                    <tr className="bg-gray-50 dark:bg-slate-800">
                       <td className="px-3 py-2 font-medium dark:text-gray-200">Nation-State Activity</td>
                       <td className="px-3 py-2 text-center dark:text-gray-300">-0.4 each</td>
                       <td className="px-3 py-2 text-center dark:text-gray-300">-0.8</td>
                       <td className="px-3 py-2 text-gray-600 dark:text-gray-400">Highest weight. Strategic campaigns are rare but critical.</td>
+                    </tr>
+                    <tr className="bg-gray-50 dark:bg-slate-800">
+                      <td className="px-3 py-2 font-medium dark:text-gray-200">CISA KEV Entries</td>
+                      <td className="px-3 py-2 text-center dark:text-gray-300">-0.3 each</td>
+                      <td className="px-3 py-2 text-center dark:text-gray-300">-1.2</td>
+                      <td className="px-3 py-2 text-gray-600 dark:text-gray-400">Confirmed exploited. High volume, capped to prevent single-category spikes.</td>
                     </tr>
                     <tr className="bg-white dark:bg-slate-900">
                       <td className="px-3 py-2 font-medium dark:text-gray-200">ICS/SCADA Vulnerabilities</td>
@@ -73,12 +73,6 @@ export default function ScoringMethodology() {
                       <td className="px-3 py-2 text-gray-600 dark:text-gray-400">Direct operational threat. Lower cap since ICS reports are less frequent.</td>
                     </tr>
                     <tr className="bg-gray-50 dark:bg-slate-800">
-                      <td className="px-3 py-2 font-medium dark:text-gray-200">AI-Assessed Energy Threats</td>
-                      <td className="px-3 py-2 text-center dark:text-gray-300">Variable (-0.1 to -0.4)</td>
-                      <td className="px-3 py-2 text-center dark:text-gray-300">-0.8</td>
-                      <td className="px-3 py-2 text-gray-600 dark:text-gray-400">AI analyzes threats with graduated severity: 9-10 critical (-0.4), 7-8 direct threat (-0.3), 5-6 relevant (-0.2), 3-4 tangential (-0.1). Keywords filter for display only.</td>
-                    </tr>
-                    <tr className="bg-white dark:bg-slate-900">
                       <td className="px-3 py-2 font-medium dark:text-gray-200">Vendor Critical Alerts</td>
                       <td className="px-3 py-2 text-center dark:text-gray-300">-0.15 each</td>
                       <td className="px-3 py-2 text-center dark:text-gray-300">-0.4</td>
@@ -113,7 +107,7 @@ export default function ScoringMethodology() {
 
             {/* Data Sources */}
             <div className="mb-6">
-              <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">Sources (11)</h3>
+              <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">Sources (15+)</h3>
               <div className="grid grid-cols-2 gap-2 text-sm dark:text-gray-300">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
@@ -159,10 +153,28 @@ export default function ScoringMethodology() {
                   <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
                   <span>The DFIR Report</span>
                 </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                  <span>AlienVault OTX</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                  <span>AbuseIPDB</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                  <span>Shodan ICS/SCADA Intel</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                  <span>VirusTotal Threat Categories</span>
+                </div>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                <span className="inline-block w-2 h-2 bg-blue-600 rounded-full mr-1"></span> Government sources
-                <span className="inline-block w-2 h-2 bg-gray-400 rounded-full ml-3 mr-1"></span> Vendor sources
+                <span className="inline-block w-2 h-2 bg-blue-600 rounded-full mr-1"></span> Government
+                <span className="inline-block w-2 h-2 bg-gray-400 rounded-full ml-3 mr-1"></span> Vendor
+                <span className="inline-block w-2 h-2 bg-purple-500 rounded-full ml-3 mr-1"></span> Community
+                <span className="inline-block w-2 h-2 bg-orange-500 rounded-full ml-3 mr-1"></span> Enrichment (API key required)
               </p>
             </div>
 

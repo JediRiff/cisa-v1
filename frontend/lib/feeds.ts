@@ -1,5 +1,5 @@
 // CAPRI Threat Intelligence Feed Aggregator
-// Fetches from 12 verified sources (Tiers 1-3)
+// Fetches from 13+ verified sources (Tiers 1-3)
 
 export interface ThreatItem {
   id: string
@@ -61,6 +61,9 @@ const FEED_SOURCES = [
   { name: 'Mandiant', url: 'https://cloudblog.withgoogle.com/topics/threat-intelligence/rss/', type: 'rss', sourceType: 'vendor' as const },
   { name: 'Google TAG', url: 'https://blog.google/threat-analysis-group/rss/', type: 'rss', sourceType: 'vendor' as const },
   { name: 'DFIR Report', url: 'https://thedfirreport.com/feed/', type: 'rss', sourceType: 'vendor' as const },
+
+  // Tier 3: Community Threat Intelligence
+  { name: 'AlienVault OTX', url: 'https://otx.alienvault.com/api/v1/pulses/activity', type: 'otx', sourceType: 'vendor' as const },
 ]
 
 // Energy sector keywords for relevance detection
@@ -97,10 +100,28 @@ function checkEnergyRelevance(title: string, description: string): boolean {
 
 function extractSeverity(title: string, description: string): ThreatItem['severity'] {
   const text = (title + ' ' + description).toLowerCase()
-  if (text.includes('critical') || text.includes('emergency') || text.includes('actively exploited') || text.includes('zero-day')) return 'critical'
-  if (text.includes('high') || text.includes('urgent') || text.includes('severe')) return 'high'
-  if (text.includes('medium') || text.includes('moderate')) return 'medium'
-  if (text.includes('low') || text.includes('informational')) return 'low'
+
+  // Explicit severity keywords → direct match
+  if (text.includes('critical') || text.includes('emergency') || text.includes('actively exploited') || text.includes('zero-day') || text.includes('0-day')) return 'critical'
+  if (text.includes('high severity') || text.includes('urgent') || text.includes('severe')) return 'high'
+  if (text.includes('medium severity') || text.includes('moderate')) return 'medium'
+  if (text.includes('low severity') || text.includes('informational')) return 'low'
+
+  // Ransomware, active exploitation, RCE → critical
+  if (/\b(ransomware|remote code execution|rce|wiper|destructive|supply.chain.attack|actively.exploit)\b/.test(text)) return 'critical'
+
+  // Nation-state / APT activity → high
+  if (/\b(apt\d+|volt typhoon|sandworm|lazarus|kimsuky|xenotime|chernovite|kamacite|nation.state|state.sponsored|advanced persistent threat)\b/.test(text)) return 'high'
+
+  // ICS/SCADA/OT threats → high
+  if (/\b(scada|plc|hmi|rtu|dcs|modbus|dnp3|iec.61850|industroyer|crashoverride|triton|pipedream|incontroller|frostygoop)\b/.test(text)) return 'high'
+
+  // General threat/vuln indicators → medium (instead of unknown)
+  if (/\b(vulnerability|exploit|attack|malware|threat|breach|backdoor|trojan|phishing|campaign|intrusion|compromise)\b/.test(text)) return 'medium'
+
+  // If from a security vendor and has any content, default to medium rather than unknown
+  if (text.length > 50) return 'medium'
+
   return 'unknown'
 }
 
@@ -140,6 +161,37 @@ function parseRSS(xml: string, sourceName: string, sourceType: ThreatItem['sourc
   return items.slice(0, 15)
 }
 
+function parseOTX(json: any, sourceName: string, sourceType: ThreatItem['sourceType']): ThreatItem[] {
+  const results = json.results || []
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+  return results
+    .filter((pulse: any) => {
+      const created = new Date(pulse.created)
+      return created >= thirtyDaysAgo
+    })
+    .slice(0, 15)
+    .map((pulse: any) => {
+      const title = pulse.name || 'Untitled Pulse'
+      const description = (pulse.description || '').substring(0, 500)
+      const tags = (pulse.tags || []).join(', ')
+      const fullDesc = tags ? `${description} [Tags: ${tags}]` : description
+
+      return {
+        id: 'OTX-' + (pulse.id || Math.random().toString(36).substring(2, 9)),
+        title,
+        description: fullDesc,
+        link: pulse.references?.[0] || `https://otx.alienvault.com/pulse/${pulse.id}`,
+        pubDate: new Date(pulse.created).toISOString(),
+        source: sourceName,
+        sourceType,
+        severity: extractSeverity(title, fullDesc),
+        isEnergyRelevant: checkEnergyRelevance(title, fullDesc),
+      }
+    })
+}
+
 function parseKEV(json: any): ThreatItem[] {
   const vulnerabilities = json.vulnerabilities || []
   const thirtyDaysAgo = new Date()
@@ -173,8 +225,13 @@ export async function fetchAllFeeds(): Promise<FeedResult> {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 10000)
 
+      const headers: Record<string, string> = { 'User-Agent': 'CAPRI/1.0' }
+      if (source.type === 'otx' && process.env.OTX_API_KEY) {
+        headers['X-OTX-API-KEY'] = process.env.OTX_API_KEY
+      }
+
       const response = await fetch(source.url, {
-        headers: { 'User-Agent': 'CAPRI/1.0' },
+        headers,
         cache: 'no-store',
         signal: controller.signal
       })
@@ -207,6 +264,9 @@ export async function fetchAllFeeds(): Promise<FeedResult> {
             knownRansomwareCampaignUse: v.knownRansomwareCampaignUse || 'Unknown'
           }))
         return parseKEV(json)
+      } else if (source.type === 'otx') {
+        const json = JSON.parse(text)
+        return parseOTX(json, source.name, source.sourceType)
       } else {
         return parseRSS(text, source.name, source.sourceType)
       }

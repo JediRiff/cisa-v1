@@ -150,6 +150,92 @@ function isDiscordWebhook(url: string): boolean {
   return url.includes('discord.com/api/webhooks') || url.includes('discordapp.com/api/webhooks')
 }
 
+// Detect if URL is a Telegram bot webhook
+function isTelegramWebhook(url: string): boolean {
+  return url.includes('api.telegram.org/bot')
+}
+
+// Parse Telegram URL to extract bot token and chat_id
+// Expected format: https://api.telegram.org/bot<TOKEN>/sendMessage?chat_id=<CHAT_ID>
+function parseTelegramUrl(url: string): { botToken: string; chatId: string } | null {
+  try {
+    const match = url.match(/api\.telegram\.org\/bot([^/]+)\//)
+    if (!match) return null
+    const botToken = match[1]
+    const urlObj = new URL(url)
+    const chatId = urlObj.searchParams.get('chat_id')
+    if (!chatId) return null
+    return { botToken, chatId }
+  } catch {
+    return null
+  }
+}
+
+// Unicode emoji map — converts Slack shortcodes used in ALERT_TYPE_CONFIG to Unicode
+// Includes standard emoji + country flag characters for nation-state activity context
+const UNICODE_EMOJI: Record<string, string> = {
+  // Alert type emoji
+  ':rotating_light:': '\u{1F6A8}',
+  ':warning:': '\u26A0\uFE0F',
+  ':chart_with_downwards_trend:': '\u{1F4C9}',
+  ':globe_with_meridians:': '\u{1F310}',
+  ':white_check_mark:': '\u2705',
+  ':clock1:': '\u{1F550}',
+  // Country flags for nation-state context
+  ':flag-us:': '\u{1F1FA}\u{1F1F8}',
+  ':flag-ru:': '\u{1F1F7}\u{1F1FA}',
+  ':flag-cn:': '\u{1F1E8}\u{1F1F3}',
+  ':flag-ir:': '\u{1F1EE}\u{1F1F7}',
+  ':flag-kp:': '\u{1F1F0}\u{1F1F5}',
+  ':flag-ua:': '\u{1F1FA}\u{1F1E6}',
+  ':flag-gb:': '\u{1F1EC}\u{1F1E7}',
+  ':flag-il:': '\u{1F1EE}\u{1F1F1}',
+  // Common supplemental
+  ':shield:': '\u{1F6E1}\uFE0F',
+  ':lock:': '\u{1F512}',
+  ':skull:': '\u{1F480}',
+  ':fire:': '\u{1F525}',
+  ':link:': '\u{1F517}',
+}
+
+function slackEmojiToUnicode(text: string): string {
+  return text.replace(/:[a-z0-9_-]+:/gi, match => UNICODE_EMOJI[match] || match)
+}
+
+// Build Telegram-compatible payload with HTML formatting
+function buildTelegramPayload(payload: WebhookPayload): { text: string; parse_mode: string } {
+  const config = ALERT_TYPE_CONFIG[payload.alertType] || ALERT_TYPE_CONFIG.test
+  const emoji = slackEmojiToUnicode(config.emoji)
+
+  let text = `${emoji} <b>CAPRI Alert: ${config.label}</b>\n\n`
+  text += `<b>${escapeHtml(payload.title)}</b>\n\n`
+  text += `${escapeHtml(payload.description)}\n`
+
+  if (payload.details) {
+    text += '\n'
+    for (const [key, value] of Object.entries(payload.details)) {
+      const formattedKey = key
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, str => str.toUpperCase())
+        .trim()
+      text += `<b>${escapeHtml(formattedKey)}:</b> ${escapeHtml(String(value))}\n`
+    }
+  }
+
+  const timestamp = new Date(payload.timestamp).toLocaleString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
+  })
+  text += `\n\u{1F550} ${timestamp}\n`
+  text += `\n<a href="${payload.dashboardUrl}">View Dashboard</a>`
+
+  return { text, parse_mode: 'HTML' }
+}
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 // Build Discord webhook payload
 function buildDiscordPayload(payload: WebhookPayload): object {
   const config = ALERT_TYPE_CONFIG[payload.alertType] || ALERT_TYPE_CONFIG.test
@@ -215,8 +301,22 @@ export async function POST(request: NextRequest) {
 
     // Build appropriate payload based on webhook type
     let webhookPayload: object
+    let targetUrl = webhookUrl
+    let isTelegram = false
 
-    if (isSlackWebhook(webhookUrl)) {
+    if (isTelegramWebhook(webhookUrl)) {
+      const parsed = parseTelegramUrl(webhookUrl)
+      if (!parsed) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid Telegram URL. Expected format: https://api.telegram.org/bot<TOKEN>/sendMessage?chat_id=<CHAT_ID>' },
+          { status: 400 }
+        )
+      }
+      targetUrl = `https://api.telegram.org/bot${parsed.botToken}/sendMessage`
+      const telegramBody = buildTelegramPayload(payload)
+      webhookPayload = { chat_id: parsed.chatId, ...telegramBody }
+      isTelegram = true
+    } else if (isSlackWebhook(webhookUrl)) {
       webhookPayload = buildSlackPayload(payload)
     } else if (isDiscordWebhook(webhookUrl)) {
       webhookPayload = buildDiscordPayload(payload)
@@ -226,7 +326,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Send webhook request
-    const response = await fetch(webhookUrl, {
+    const response = await fetch(targetUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -234,7 +334,23 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(webhookPayload),
     })
 
-    // Check response
+    // Check response — Telegram uses { ok: true/false } format
+    if (isTelegram) {
+      const responseJson = await response.json().catch(() => ({ ok: false, description: 'Failed to parse response' }))
+      if (!responseJson.ok) {
+        console.error(`Telegram delivery failed:`, responseJson)
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Telegram error: ${responseJson.description || 'Unknown error'}`,
+          },
+          { status: 502 }
+        )
+      }
+      return NextResponse.json({ success: true, message: 'Telegram message delivered successfully' })
+    }
+
+    // Check response for non-Telegram webhooks
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error')
       console.error(`Webhook delivery failed: ${response.status} - ${errorText}`)
@@ -270,6 +386,6 @@ export async function GET() {
     status: 'ok',
     endpoint: '/api/webhook',
     description: 'CAPRI webhook notification endpoint',
-    supportedTypes: ['slack', 'discord', 'generic'],
+    supportedTypes: ['slack', 'discord', 'telegram', 'generic'],
   })
 }
