@@ -298,7 +298,7 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
     })
     globeGroup.add(new THREE.Mesh(globeGeo, globeMat))
 
-    // Soft blue atmospheric halo — feathered limb glow (#1A4A8A to #2A6CC4)
+    // Subtle neutral atmospheric halo — feathered white limb glow
     const atmosGeo = new THREE.SphereGeometry(1.06, 64, 64)
     const atmosMat = new THREE.ShaderMaterial({
       vertexShader: `
@@ -313,11 +313,8 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
         void main() {
           float rim = 1.0 - dot(vNormal, vec3(0.0, 0.0, 1.0));
           float intensity = pow(rim, 3.0);
-          // Blend from deep blue (#1A4A8A) at edge to brighter blue (#2A6CC4) at peak
-          vec3 innerColor = vec3(0.102, 0.290, 0.541);
-          vec3 outerColor = vec3(0.165, 0.424, 0.769);
-          vec3 color = mix(innerColor, outerColor, rim);
-          gl_FragColor = vec4(color, intensity * 0.6);
+          vec3 color = vec3(0.6, 0.65, 0.7);
+          gl_FragColor = vec4(color, intensity * 0.35);
         }
       `,
       blending: THREE.AdditiveBlending,
@@ -343,13 +340,11 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
           float dist = length(center) * 2.0;
           if (dist > 1.02) discard;
           float angle = atan(center.y, center.x);
-          // Narrow wedge: ~25 degrees visible, fading trail
           float wedge = smoothstep(0.0, 0.44, angle) * (1.0 - smoothstep(0.44, 0.52, angle));
-          // Also a thin leading-edge line
           float line = (1.0 - smoothstep(0.42, 0.46, angle)) * smoothstep(0.40, 0.42, angle);
           float alpha = (wedge * 0.06 + line * 0.12) * (1.0 - dist * 0.7);
           if (alpha < 0.002) discard;
-          gl_FragColor = vec4(0.25, 0.6, 0.9, alpha);
+          gl_FragColor = vec4(0.5, 0.55, 0.6, alpha);
         }
       `,
       transparent: true,
@@ -459,16 +454,17 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
     globeGroup.add(selectionRing)
     selectionRingRef.current = selectionRing
 
-    // Threat origin markers — constantly highlighted, no pulsing
+    // Threat origin markers — all red, constantly highlighted
     const markers: PulseMarker[] = []
     const actorMarkerRefs: ActorMarkerRef[] = []
     const glowTex = createGlowTexture('rgba(255, 60, 60, 0.6)')
+    const actorRedColor = new THREE.Color('#ff2020')
 
     threatActors.forEach((actor) => {
       const pos = latLngToVector3(actor.origin.lat, actor.origin.lng, 1.015)
       const spriteMat = new THREE.SpriteMaterial({
         map: glowTex,
-        color: new THREE.Color(actor.color),
+        color: actorRedColor,
         transparent: true,
         opacity: 0.85,
         blending: THREE.AdditiveBlending,
@@ -483,13 +479,13 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
     })
     actorMarkersRef.current = actorMarkerRefs
 
-    // Lights
-    const ambientLight = new THREE.AmbientLight(0x335577, 0.6)
+    // Lights — neutral, no blue tint
+    const ambientLight = new THREE.AmbientLight(0x444444, 0.6)
     scene.add(ambientLight)
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.5)
     dirLight.position.set(5, 3, 5)
     scene.add(dirLight)
-    const pointLight = new THREE.PointLight(0x3366ff, 0.3, 10)
+    const pointLight = new THREE.PointLight(0xcccccc, 0.25, 10)
     pointLight.position.set(-3, 2, -3)
     scene.add(pointLight)
 
