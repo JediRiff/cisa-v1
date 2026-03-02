@@ -99,30 +99,18 @@ function loadCountryOutlines(globeGroup: THREE.Group, radius: number) {
         })
       })
 
-      // US gets bright white border outline + brighter fill
+      // US gets brighter white border outline
       const usBorderMat = new THREE.LineBasicMaterial({
         color: 0xe0e4e8,
         transparent: true,
-        opacity: 0.85,
-      })
-      const usFillMat = new THREE.MeshBasicMaterial({
-        color: 0xd0d4d8,
-        transparent: true,
-        opacity: 0.12,
-        side: THREE.DoubleSide,
+        opacity: 0.7,
       })
 
-      // Other countries get visible border outlines + subtle fill
+      // Other countries get thin, dim white outlines
       const defaultBorderMat = new THREE.LineBasicMaterial({
-        color: 0x4a5568,
+        color: 0x8899aa,
         transparent: true,
-        opacity: 0.45,
-      })
-      const defaultFillMat = new THREE.MeshBasicMaterial({
-        color: 0x1e2a3a,
-        transparent: true,
-        opacity: 0.08,
-        side: THREE.DoubleSide,
+        opacity: 0.25,
       })
 
       const US_ID = '840'
@@ -161,7 +149,7 @@ function loadCountryOutlines(globeGroup: THREE.Group, radius: number) {
         polygons.forEach((polygon: number[][]) => {
           const rings = polygon.map((ring: number[]) => decodeRing(ring))
 
-          // Draw border outlines for ALL countries
+          // Draw border outlines for ALL countries — no surface fill
           rings.forEach((coords) => {
             if (coords.length < 2) return
             const points3d = coords.map(([lng, lat]) =>
@@ -170,41 +158,6 @@ function loadCountryOutlines(globeGroup: THREE.Group, radius: number) {
             const geometry = new THREE.BufferGeometry().setFromPoints(points3d)
             globeGroup.add(new THREE.Line(geometry, isUS ? usBorderMat : defaultBorderMat))
           })
-
-          // Fill all countries (US brighter, others subtle)
-          if (rings[0] && rings[0].length >= 3) {
-            try {
-              const contour = rings[0].map(([lng, lat]) => new THREE.Vector2(lng, lat))
-              const holes = rings.slice(1)
-                .filter((r) => r.length >= 3)
-                .map((r) => r.map(([lng, lat]) => new THREE.Vector2(lng, lat)))
-
-              const faces = THREE.ShapeUtils.triangulateShape(contour, holes)
-              const allVerts2D = [...contour]
-              holes.forEach((h) => allVerts2D.push(...h))
-
-              const allVerts3D = allVerts2D.map((v) =>
-                latLngToVector3(v.y, v.x, radius + 0.001)
-              )
-
-              const positions = new Float32Array(faces.length * 9)
-              faces.forEach((face, fi) => {
-                for (let vi = 0; vi < 3; vi++) {
-                  const v = allVerts3D[face[vi]]
-                  positions[fi * 9 + vi * 3] = v.x
-                  positions[fi * 9 + vi * 3 + 1] = v.y
-                  positions[fi * 9 + vi * 3 + 2] = v.z
-                }
-              })
-
-              const fillGeo = new THREE.BufferGeometry()
-              fillGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-              fillGeo.computeVertexNormals()
-              globeGroup.add(new THREE.Mesh(fillGeo, isUS ? usFillMat : defaultFillMat))
-            } catch {
-              // skip
-            }
-          }
         })
       })
     })
@@ -250,8 +203,8 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
     facilityMarkersRef.current.forEach(fm => {
       const score = facilityRiskScoresRef.current[fm.facility.id]
       if (score != null) {
-        const height = 0.02 + (1 - (score - 1) / 4) * 0.15
-        fm.mesh.scale.set(1, height / 0.02, 1)
+        const height = 0.012 + (1 - (score - 1) / 4) * 0.075
+        fm.mesh.scale.set(1, height / 0.012, 1)
       }
     })
   }, [facilityRiskScores])
@@ -302,7 +255,7 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
 
     // Scene
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x030810)
+    scene.background = new THREE.Color(0x050A0F)
 
     // Camera
     const aspect = container.clientWidth / container.clientHeight
@@ -335,24 +288,18 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
     const globeGroup = new THREE.Group()
     scene.add(globeGroup)
 
-    // Main globe sphere
+    // Main globe sphere — near-black, no blue fill
     const globeGeo = new THREE.SphereGeometry(1, 64, 64)
     const globeMat = new THREE.MeshPhongMaterial({
-      color: 0x080e1a,
+      color: 0x050A0F,
       transparent: true,
       opacity: 0.95,
-      shininess: 10,
+      shininess: 5,
     })
     globeGroup.add(new THREE.Mesh(globeGeo, globeMat))
 
-    // Wireframe grid overlay — very subtle
-    const wireGeo = new THREE.SphereGeometry(1.002, 36, 18)
-    const wireEdges = new THREE.EdgesGeometry(wireGeo)
-    const wireMat = new THREE.LineBasicMaterial({ color: 0x101828, transparent: true, opacity: 0.08 })
-    globeGroup.add(new THREE.LineSegments(wireEdges, wireMat))
-
-    // Atmosphere glow ring
-    const atmosGeo = new THREE.SphereGeometry(1.05, 64, 64)
+    // Soft blue atmospheric halo — feathered limb glow (#1A4A8A to #2A6CC4)
+    const atmosGeo = new THREE.SphereGeometry(1.06, 64, 64)
     const atmosMat = new THREE.ShaderMaterial({
       vertexShader: `
         varying vec3 vNormal;
@@ -364,8 +311,13 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       fragmentShader: `
         varying vec3 vNormal;
         void main() {
-          float intensity = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.5);
-          gl_FragColor = vec4(0.15, 0.35, 0.7, 1.0) * intensity * 0.4;
+          float rim = 1.0 - dot(vNormal, vec3(0.0, 0.0, 1.0));
+          float intensity = pow(rim, 3.0);
+          // Blend from deep blue (#1A4A8A) at edge to brighter blue (#2A6CC4) at peak
+          vec3 innerColor = vec3(0.102, 0.290, 0.541);
+          vec3 outerColor = vec3(0.165, 0.424, 0.769);
+          vec3 color = mix(innerColor, outerColor, rim);
+          gl_FragColor = vec4(color, intensity * 0.6);
         }
       `,
       blending: THREE.AdditiveBlending,
@@ -456,10 +408,11 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       const color = sectorColors[facility.sector]
 
       // Compute bar height from risk score (CAPRI 1=tallest/severe, 5=shortest/low)
+      // Reduced ~50% for grounded, proportional look
       const riskScore = facilityRiskScoresRef.current[facility.id]
-      const baseHeight = 0.02
+      const baseHeight = 0.012
       const height = riskScore != null
-        ? 0.02 + (1 - (riskScore - 1) / 4) * 0.15
+        ? 0.012 + (1 - (riskScore - 1) / 4) * 0.075
         : baseHeight
 
       // 3D risk bar (square column)

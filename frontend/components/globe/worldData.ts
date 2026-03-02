@@ -200,12 +200,12 @@ export function createArcCurve(
 
 // Sector display colors for globe markers
 export const sectorColors: Record<Sector, string> = {
-  nuclear: '#b87a08',
-  hydro: '#2563a8',
-  grid: '#187a3b',
-  natural_gas: '#b85412',
-  oil: '#a83232',
-  water: '#0e7d8f',
+  nuclear: '#F5C518',
+  hydro: '#4A90D9',
+  grid: '#4CAF50',
+  natural_gas: '#FF8C00',
+  oil: '#D2691E',
+  water: '#00BCD4',
 }
 
 export const sectorLabels: Record<Sector, string> = {
