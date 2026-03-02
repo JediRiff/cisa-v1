@@ -82,8 +82,8 @@ function buildTargetingMap(): Map<string, EnergyFacility[]> {
   return map
 }
 
-// Load US-only highlight from TopoJSON — no other country borders
-function loadUSHighlight(globeGroup: THREE.Group, radius: number) {
+// Load country outlines from TopoJSON — US highlighted, all others visible
+function loadCountryOutlines(globeGroup: THREE.Group, radius: number) {
   fetch('/countries-110m.json')
     .then((r) => r.json())
     .then((topology) => {
@@ -99,7 +99,7 @@ function loadUSHighlight(globeGroup: THREE.Group, radius: number) {
         })
       })
 
-      // US gets white border outline + brighter fill
+      // US gets bright white border outline + brighter fill
       const usBorderMat = new THREE.LineBasicMaterial({
         color: 0xe0e4e8,
         transparent: true,
@@ -112,11 +112,16 @@ function loadUSHighlight(globeGroup: THREE.Group, radius: number) {
         side: THREE.DoubleSide,
       })
 
-      // Other countries get dim fill only (no border lines)
-      const defaultFillMat = new THREE.MeshBasicMaterial({
-        color: 0x1a2030,
+      // Other countries get visible border outlines + subtle fill
+      const defaultBorderMat = new THREE.LineBasicMaterial({
+        color: 0x4a5568,
         transparent: true,
-        opacity: 0.04,
+        opacity: 0.45,
+      })
+      const defaultFillMat = new THREE.MeshBasicMaterial({
+        color: 0x1e2a3a,
+        transparent: true,
+        opacity: 0.08,
         side: THREE.DoubleSide,
       })
 
@@ -156,19 +161,17 @@ function loadUSHighlight(globeGroup: THREE.Group, radius: number) {
         polygons.forEach((polygon: number[][]) => {
           const rings = polygon.map((ring: number[]) => decodeRing(ring))
 
-          // Only draw border lines for the US
-          if (isUS) {
-            rings.forEach((coords) => {
-              if (coords.length < 2) return
-              const points3d = coords.map(([lng, lat]) =>
-                latLngToVector3(lat, lng, radius)
-              )
-              const geometry = new THREE.BufferGeometry().setFromPoints(points3d)
-              globeGroup.add(new THREE.Line(geometry, usBorderMat))
-            })
-          }
+          // Draw border outlines for ALL countries
+          rings.forEach((coords) => {
+            if (coords.length < 2) return
+            const points3d = coords.map(([lng, lat]) =>
+              latLngToVector3(lat, lng, radius)
+            )
+            const geometry = new THREE.BufferGeometry().setFromPoints(points3d)
+            globeGroup.add(new THREE.Line(geometry, isUS ? usBorderMat : defaultBorderMat))
+          })
 
-          // Fill all countries (US brighter, others dim)
+          // Fill all countries (US brighter, others subtle)
           if (rings[0] && rings[0].length >= 3) {
             try {
               const contour = rings[0].map(([lng, lat]) => new THREE.Vector2(lng, lat))
@@ -405,8 +408,8 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
     const sweepMesh = new THREE.Mesh(sweepGeo, sweepMat)
     globeGroup.add(sweepMesh)
 
-    // US-only highlight (loaded async from TopoJSON)
-    loadUSHighlight(globeGroup, 1.005)
+    // Country outlines (loaded async from TopoJSON)
+    loadCountryOutlines(globeGroup, 1.005)
 
     // Declutter overlapping facility positions
     // Detect facilities within MIN_DIST degrees and spread them in a ring
