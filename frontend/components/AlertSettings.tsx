@@ -9,21 +9,24 @@ const ALERT_TRIGGERS_KEY = 'capri-alert-triggers'
 const ENRICHMENT_KEY_ABUSEIPDB = 'capri-api-abuseipdb'
 const ENRICHMENT_KEY_SHODAN = 'capri-api-shodan'
 const ENRICHMENT_KEY_VIRUSTOTAL = 'capri-api-virustotal'
+const ENRICHMENT_KEY_GREYNOISE = 'capri-api-greynoise'
 
-export type EnrichmentSource = 'abuseipdb' | 'shodan' | 'virustotal'
+export type EnrichmentSource = 'abuseipdb' | 'shodan' | 'virustotal' | 'greynoise'
 
 const ENRICHMENT_STORAGE_KEYS: Record<EnrichmentSource, string> = {
   abuseipdb: ENRICHMENT_KEY_ABUSEIPDB,
   shodan: ENRICHMENT_KEY_SHODAN,
   virustotal: ENRICHMENT_KEY_VIRUSTOTAL,
+  greynoise: ENRICHMENT_KEY_GREYNOISE,
 }
 
-export function getStoredEnrichmentKeys(): { abuseIPDBKey: string; shodanKey: string; virusTotalKey: string } {
-  if (typeof window === 'undefined') return { abuseIPDBKey: '', shodanKey: '', virusTotalKey: '' }
+export function getStoredEnrichmentKeys(): { abuseIPDBKey: string; shodanKey: string; virusTotalKey: string; greyNoiseKey: string } {
+  if (typeof window === 'undefined') return { abuseIPDBKey: '', shodanKey: '', virusTotalKey: '', greyNoiseKey: '' }
   return {
     abuseIPDBKey: localStorage.getItem(ENRICHMENT_KEY_ABUSEIPDB) || '',
     shodanKey: localStorage.getItem(ENRICHMENT_KEY_SHODAN) || '',
     virusTotalKey: localStorage.getItem(ENRICHMENT_KEY_VIRUSTOTAL) || '',
+    greyNoiseKey: localStorage.getItem(ENRICHMENT_KEY_GREYNOISE) || '',
   }
 }
 
@@ -153,8 +156,8 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
   const [expandedGuide, setExpandedGuide] = useState<WebhookPlatform | null>(null)
 
   // Enrichment API keys
-  const [enrichmentKeys, setEnrichmentKeys] = useState({ abuseipdb: '', shodan: '', virustotal: '' })
-  const [enrichmentVisible, setEnrichmentVisible] = useState({ abuseipdb: false, shodan: false, virustotal: false })
+  const [enrichmentKeys, setEnrichmentKeys] = useState({ abuseipdb: '', shodan: '', virustotal: '', greynoise: '' })
+  const [enrichmentVisible, setEnrichmentVisible] = useState({ abuseipdb: false, shodan: false, virustotal: false, greynoise: false })
   const [enrichmentSaveStatus, setEnrichmentSaveStatus] = useState<'idle' | 'saved'>('idle')
 
   const detectedPlatform = detectPlatform(webhookUrl)
@@ -173,8 +176,9 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
         abuseipdb: keys.abuseIPDBKey,
         shodan: keys.shodanKey,
         virustotal: keys.virusTotalKey,
+        greynoise: keys.greyNoiseKey,
       })
-      setEnrichmentVisible({ abuseipdb: false, shodan: false, virustotal: false })
+      setEnrichmentVisible({ abuseipdb: false, shodan: false, virustotal: false, greynoise: false })
       setEnrichmentSaveStatus('idle')
     }
   }, [isOpen])
@@ -195,6 +199,7 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
     setStoredEnrichmentKey('abuseipdb', enrichmentKeys.abuseipdb)
     setStoredEnrichmentKey('shodan', enrichmentKeys.shodan)
     setStoredEnrichmentKey('virustotal', enrichmentKeys.virustotal)
+    setStoredEnrichmentKey('greynoise', enrichmentKeys.greynoise)
     setEnrichmentSaveStatus('saved')
     setTimeout(() => setEnrichmentSaveStatus('idle'), 2000)
   }, [enrichmentKeys])
@@ -669,6 +674,43 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                       Free API key &rarr;{' '}
                       <a href="https://www.virustotal.com/gui/my-apikey" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                         virustotal.com/gui/my-apikey
+                      </a>
+                    </p>
+                  </div>
+
+                  {/* GreyNoise */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label htmlFor="enrichment-greynoise" className="text-sm font-medium text-gray-700">GreyNoise</label>
+                      <span className={`flex items-center gap-1.5 text-xs ${enrichmentKeys.greynoise ? 'text-green-600' : 'text-gray-400'}`}>
+                        <span className={`inline-block w-2 h-2 rounded-full ${enrichmentKeys.greynoise ? 'bg-green-500' : 'bg-gray-300'}`} />
+                        {enrichmentKeys.greynoise ? 'Connected' : 'Not connected'}
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={enrichmentVisible.greynoise ? 'text' : 'password'}
+                        id="enrichment-greynoise"
+                        placeholder="GreyNoise Community API key"
+                        value={enrichmentKeys.greynoise}
+                        onChange={(e) => {
+                          setEnrichmentKeys(prev => ({ ...prev, greynoise: e.target.value }))
+                          setEnrichmentSaveStatus('idle')
+                        }}
+                        className="w-full px-4 py-2.5 pr-10 border-2 border-gray-200 rounded-lg text-sm focus:border-cisa-navy focus:outline-none transition-colors font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setEnrichmentVisible(prev => ({ ...prev, greynoise: !prev.greynoise }))}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {enrichmentVisible.greynoise ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-400">
+                      Free API key &rarr;{' '}
+                      <a href="https://viz.greynoise.io/account/api" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        viz.greynoise.io/account/api
                       </a>
                     </p>
                   </div>

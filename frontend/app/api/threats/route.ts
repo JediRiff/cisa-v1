@@ -1,7 +1,7 @@
 // CAPRI Threat Intelligence API Endpoint
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchAllFeeds, ThreatItem } from '@/lib/feeds'
-import { fetchAllEnrichment, getConfiguredEnrichmentCount, EnrichmentKeys } from '@/lib/enrichment'
+import { fetchAllEnrichment, fetchEPSSScores, getConfiguredEnrichmentCount, EnrichmentKeys } from '@/lib/enrichment'
 import { calculateEnergyScore } from '@/lib/scoring'
 import { analyzeThreatsWithAI, AIAnalysisResult } from '@/lib/ai-analysis'
 import { detectCampaigns } from '@/lib/campaign-correlation'
@@ -53,11 +53,13 @@ export async function GET(request: NextRequest) {
   const abuseKey = request.headers.get('X-AbuseIPDB-Key')
   const shodanKey = request.headers.get('X-Shodan-Key')
   const vtKey = request.headers.get('X-VirusTotal-Key')
+  const gnKey = request.headers.get('X-GreyNoise-Key')
   if (abuseKey) userKeys.abuseIPDBKey = abuseKey
   if (shodanKey) userKeys.shodanKey = shodanKey
   if (vtKey) userKeys.virusTotalKey = vtKey
+  if (gnKey) userKeys.greyNoiseKey = gnKey
 
-  const hasUserKeys = !!(abuseKey || shodanKey || vtKey)
+  const hasUserKeys = !!(abuseKey || shodanKey || vtKey || gnKey)
 
   // Check cache first — skip when user-provided keys are present
   if (!hasUserKeys && cachedResponse && (Date.now() - cachedResponse.timestamp) < CACHE_TTL_MS) {
@@ -83,6 +85,22 @@ export async function GET(request: NextRequest) {
     if (enrichmentResult.errors.length > 0) {
       feedResult.errors.push(...enrichmentResult.errors)
     }
+
+    // Enrich KEV items with EPSS scores (free, no key required)
+    const kevCveIds = feedResult.items
+      .filter(item => item.source === 'CISA KEV' && item.id.startsWith('KEV-'))
+      .map(item => item.id.replace('KEV-', ''))
+    const epssScores = await fetchEPSSScores(kevCveIds)
+    feedResult.items = feedResult.items.map(item => {
+      if (item.source === 'CISA KEV' && item.id.startsWith('KEV-')) {
+        const cveId = item.id.replace('KEV-', '')
+        const epss = epssScores.get(cveId)
+        if (epss) {
+          return { ...item, epssScore: epss.epss, epssPercentile: epss.percentile }
+        }
+      }
+      return item
+    })
 
     // AI Analysis: Analyze energy-relevant items for severity scoring
     const energyItems = feedResult.items.filter(item => item.isEnergyRelevant)

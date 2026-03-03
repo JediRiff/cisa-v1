@@ -114,6 +114,7 @@ export default function Dashboard() {
       if (enrichmentKeys.abuseIPDBKey) headers['X-AbuseIPDB-Key'] = enrichmentKeys.abuseIPDBKey
       if (enrichmentKeys.shodanKey) headers['X-Shodan-Key'] = enrichmentKeys.shodanKey
       if (enrichmentKeys.virusTotalKey) headers['X-VirusTotal-Key'] = enrichmentKeys.virusTotalKey
+      if (enrichmentKeys.greyNoiseKey) headers['X-GreyNoise-Key'] = enrichmentKeys.greyNoiseKey
 
       const response = await fetch('/api/threats', {
         headers: Object.keys(headers).length > 0 ? headers : undefined,

@@ -155,7 +155,7 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
     })
   }
 
-  // ── Factor 2: CISA KEV Entries (-0.3 each, max -1.2) ──
+  // ── Factor 2: CISA KEV Entries (-0.3 each, max -1.2, weighted by EPSS) ──
   const recentKEVs = veryRecentItems.filter(item => {
     if (usedItemIds.has(item.id)) return false
     const matches = item.source === 'CISA KEV' && item.severity === 'critical'
@@ -163,14 +163,24 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
     return matches
   })
   {
-    const decayedImpact = recentKEVs.reduce((sum, item) => sum + (0.3 * getTemporalDecay(item.pubDate)), 0)
+    const decayedImpact = recentKEVs.reduce((sum, item) => {
+      const baseWeight = 0.3
+      // Weight by EPSS score: high EPSS = full deduction, low = reduced
+      let epssMultiplier = 1.0 // Default full weight when no EPSS data
+      if (item.epssScore !== undefined) {
+        if (item.epssScore >= 0.5) epssMultiplier = 1.0      // High exploitation probability
+        else if (item.epssScore >= 0.1) epssMultiplier = 0.7  // Moderate probability
+        else epssMultiplier = 0.4                              // Low probability
+      }
+      return sum + (baseWeight * epssMultiplier * getTemporalDecay(item.pubDate))
+    }, 0)
     const impact = Math.min(decayedImpact, 1.2)
     score -= impact
     factors.push({
       name: 'CISA KEV Entries',
       impact: -impact,
       count: recentKEVs.length,
-      description: 'Actively exploited vulnerabilities added to CISA KEV — time-weighted',
+      description: 'Actively exploited vulnerabilities weighted by EPSS exploitation probability — time-weighted',
       weight: SCORING_WEIGHTS.kevEntry.perItem,
       maxImpact: SCORING_WEIGHTS.kevEntry.maxImpact,
       items: mapItems(recentKEVs)
