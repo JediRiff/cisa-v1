@@ -45,9 +45,9 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   // Initialize theme on mount
   useEffect(() => {
-    const stored = localStorage.getItem('capri-theme') as Theme | null
+    const stored = localStorage.getItem('capri-theme')
     // Migrate 'system' to 'dark' for users who had it selected
-    const initialTheme = (stored === 'system' || !stored) ? 'dark' : stored
+    const initialTheme: Theme = (stored === 'light') ? 'light' : 'dark'
     setThemeState(initialTheme)
     applyTheme(initialTheme)
     setMounted(true)
