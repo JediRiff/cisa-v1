@@ -473,18 +473,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Recover: Economic Loss Estimation */}
-      {data && (
-        <div className={`transition-opacity duration-300 ease-in-out ${isRefreshing ? 'opacity-70' : 'opacity-100'}`}>
-          <RecoverEstimate
-            threats={data.threats}
-            kev={data.kev}
-            last24h={data.meta.last24h || { kev: 0, nationState: 0, ics: 0, total: 0 }}
-            score={data.score.score}
-          />
-        </div>
-      )}
-
       {/* Decorative Divider */}
       <div className="govt-top-border"></div>
 
@@ -506,6 +494,22 @@ export default function Dashboard() {
               </ul>
             </details>
           )}
+        </div>
+      </div>
+
+      {/* Configure Enrichment API Banner */}
+      <div className="px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-700/50">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-sm text-amber-800 dark:text-amber-200 font-medium text-center sm:text-left">
+            Connect Shodan, AbuseIPDB, or VirusTotal API keys to enrich threat feeds with additional intelligence.
+          </p>
+          <button
+            onClick={() => setShowAlertSettingsPanel(true)}
+            className="px-5 py-2 bg-amber-600 dark:bg-amber-500 text-white rounded-lg font-medium text-sm hover:bg-amber-700 dark:hover:bg-amber-600 transition-colors whitespace-nowrap flex items-center gap-2"
+          >
+            <Settings className="h-4 w-4" />
+            Configure API Keys
+          </button>
         </div>
       </div>
 
@@ -581,6 +585,18 @@ export default function Dashboard() {
           </div>
         </div>
       </section>
+
+      {/* Recover: Economic Loss Estimation */}
+      {data && (
+        <div className={`transition-opacity duration-300 ease-in-out ${isRefreshing ? 'opacity-70' : 'opacity-100'}`}>
+          <RecoverEstimate
+            threats={data.threats}
+            kev={data.kev}
+            last24h={data.meta.last24h || { kev: 0, nationState: 0, ics: 0, total: 0 }}
+            score={data.score.score}
+          />
+        </div>
+      )}
 
       {/* General Feedback Banner */}
       <section className="py-8 px-4 bg-white dark:bg-slate-900">

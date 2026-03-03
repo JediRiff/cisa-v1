@@ -32,6 +32,17 @@ function checkEnergyRelevance(text: string): boolean {
   return ENERGY_KEYWORDS_RE.test(text)
 }
 
+// Nation-state threat origin countries (energy infrastructure targeting programs)
+const ENERGY_THREAT_NATION_CODES = new Set(['CN', 'RU', 'IR', 'KP'])
+const NATION_CODE_TO_NAME: Record<string, string> = {
+  CN: 'China', RU: 'Russia', IR: 'Iran', KP: 'North Korea',
+}
+
+// VirusTotal category classification for severity upgrade
+const VT_CRITICAL_CATEGORIES = /\b(ransomware|wiper|destructive)\b/i
+const VT_HIGH_CATEGORIES = /\b(trojan|apt|rat|backdoor|exploit|botnet|infostealer|loader|downloader|rootkit)\b/i
+const VT_ENERGY_CATEGORIES = /\b(industrial|scada|ics|plc|energy|critical.infrastructure)\b/i
+
 function extractSeverity(text: string): ThreatItem['severity'] {
   const lower = text.toLowerCase()
   if (lower.includes('critical') || lower.includes('zero-day') || lower.includes('0-day') || lower.includes('actively exploited')) return 'critical'
@@ -77,12 +88,22 @@ async function fetchAbuseIPDBData(apiKey?: string): Promise<ThreatItem[]> {
     return data.map((entry: any) => {
       const ip = entry.ipAddress
       const score = entry.abuseConfidenceScore || 0
+      const totalReports = entry.totalReports || 0
+      const distinctUsers = entry.numDistinctUsers || 0
+      const countryCode = entry.countryCode || 'Unknown'
       let severity: ThreatItem['severity'] = 'medium'
       if (score >= 95) severity = 'critical'
       else if (score >= 90) severity = 'high'
 
-      const title = `Malicious IP: ${ip} (Confidence: ${score}%)`
-      const description = `Reported ${entry.totalReports || 0} times by ${entry.numDistinctUsers || 0} users. Country: ${entry.countryCode || 'Unknown'}.`
+      const isNationState = ENERGY_THREAT_NATION_CODES.has(countryCode)
+      const nationName = NATION_CODE_TO_NAME[countryCode]
+
+      const title = isNationState
+        ? `Malicious IP: ${ip} (Confidence: ${score}%, ${countryCode}) — Nation-State Origin`
+        : `Malicious IP: ${ip} (Confidence: ${score}%)`
+      const description = isNationState
+        ? `High-confidence malicious IP from ${nationName} (${countryCode}), a nation with known energy infrastructure targeting programs. Reported ${totalReports} times by ${distinctUsers} users.`
+        : `Reported ${totalReports} times by ${distinctUsers} users. Country: ${countryCode}.`
 
       return {
         id: `AIPDB-${ip}`,
@@ -93,7 +114,7 @@ async function fetchAbuseIPDBData(apiKey?: string): Promise<ThreatItem[]> {
         source: 'AbuseIPDB',
         sourceType: 'vendor' as const,
         severity,
-        isEnergyRelevant: checkEnergyRelevance(title + ' ' + description),
+        isEnergyRelevant: isNationState || checkEnergyRelevance(title + ' ' + description),
       }
     })
   } catch (error) {
@@ -103,7 +124,7 @@ async function fetchAbuseIPDBData(apiKey?: string): Promise<ThreatItem[]> {
 }
 
 // ─── Shodan ─────────────────────────────────────────────────────────────────────
-// ICS/SCADA exploit disclosures
+// Exposed ICS/SCADA devices via host search (free-tier compatible)
 // Free tier: 1 req/sec
 async function fetchShodanIntelligence(apiKey?: string): Promise<ThreatItem[]> {
   const key = apiKey || process.env.SHODAN_API_KEY
@@ -118,9 +139,10 @@ async function fetchShodanIntelligence(apiKey?: string): Promise<ThreatItem[]> {
   const timeoutId = setTimeout(() => controller.abort(), 10000)
 
   try {
-    const query = encodeURIComponent('scada OR ics OR modbus OR dnp3')
+    // ICS protocol ports: Modbus(502), DNP3(20000), EtherNet/IP(44818), S7comm(102), OPC UA(4840)
+    const query = encodeURIComponent('port:502,20000,44818,102,4840 country:US')
     const response = await fetch(
-      `https://exploits.shodan.io/api/search?query=${query}&key=${key}`,
+      `https://api.shodan.io/shodan/host/search?key=${key}&query=${query}`,
       {
         cache: 'no-store',
         signal: controller.signal,
@@ -133,43 +155,40 @@ async function fetchShodanIntelligence(apiKey?: string): Promise<ThreatItem[]> {
     const json = await response.json()
     const matches = json.matches || []
 
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
     const items: ThreatItem[] = matches
-      .filter((m: any) => {
-        if (!m.date) return true
-        return new Date(m.date) >= thirtyDaysAgo
-      })
       .slice(0, 10)
       .map((m: any) => {
-        const title = m.description || m.title || 'ICS/SCADA Exploit'
+        const ip = m.ip_str || 'unknown'
+        const port = m.port || 0
+        const product = m.product || ''
+        const org = m.org || 'Unknown Org'
+        const vulns = m.vulns ? Object.keys(m.vulns) : []
+
+        // Protocol label from port number
+        const protocolMap: Record<number, string> = { 502: 'Modbus', 20000: 'DNP3', 44818: 'EtherNet/IP', 102: 'S7comm', 4840: 'OPC UA' }
+        const protocol = protocolMap[port] || `port-${port}`
+
+        const severity: ThreatItem['severity'] = vulns.length > 0 ? 'critical' : 'high'
+        const title = `Exposed ICS Device: ${product || protocol} on ${ip}:${port} (${org})`
         const desc = [
-          m.source || '',
-          m.platform ? `Platform: ${m.platform}` : '',
-          m.type ? `Type: ${m.type}` : '',
-          m.cve ? m.cve.join(', ') : '',
-        ].filter(Boolean).join(' | ')
+          `Exposed ${protocol} service detected on ${ip}:${port}`,
+          org !== 'Unknown Org' ? `Organization: ${org}` : '',
+          m.os ? `OS: ${m.os}` : '',
+          vulns.length > 0 ? `Known vulnerabilities: ${vulns.join(', ')}` : '',
+        ].filter(Boolean).join('. ')
 
-        const hashInput = (m._id || m.description || Math.random().toString(36)).toString()
-        const hashId = hashInput.substring(0, 12).replace(/[^a-zA-Z0-9]/g, '')
-
-        let severity: ThreatItem['severity'] = 'high'
-        const lowerTitle = title.toLowerCase()
-        if (lowerTitle.includes('remote code') || lowerTitle.includes('rce') || lowerTitle.includes('critical')) {
-          severity = 'critical'
-        }
+        const hashId = `${ip}-${port}`.replace(/[^a-zA-Z0-9]/g, '').substring(0, 16)
 
         return {
           id: `SHODAN-${hashId}`,
           title: title.substring(0, 200),
-          description: desc.substring(0, 500) || 'ICS/SCADA related exploit disclosure',
-          link: m.source ? `https://www.exploit-db.com/exploits/${m._id}` : `https://exploits.shodan.io/?q=${query}`,
-          pubDate: m.date ? new Date(m.date).toISOString() : new Date().toISOString(),
+          description: desc.substring(0, 500) || 'Exposed ICS/SCADA device',
+          link: `https://www.shodan.io/host/${ip}`,
+          pubDate: m.timestamp ? new Date(m.timestamp).toISOString() : new Date().toISOString(),
           source: 'Shodan',
           sourceType: 'vendor' as const,
           severity,
-          isEnergyRelevant: true, // ICS/SCADA query guarantees relevance
+          isEnergyRelevant: true, // ICS protocol ports guarantee relevance
         }
       })
 
@@ -212,12 +231,20 @@ async function fetchVirusTotalCategories(apiKey?: string): Promise<ThreatItem[]>
     const json = await response.json()
     const categories = json.data || []
 
-    // Map trending categories to informational ThreatItem entries (top 5)
+    // Map trending categories to ThreatItem entries with category-aware severity (top 5)
     return categories.slice(0, 5).map((category: any, index: number) => {
       const name = typeof category === 'string' ? category : (category.id || category.type || `category-${index}`)
       const count = typeof category === 'object' ? (category.attributes?.count || '') : ''
       const title = `Trending Threat Category: ${name}`
       const description = count ? `${name} — ${count} recent detections on VirusTotal` : `${name} is a trending threat category on VirusTotal`
+
+      // Category-aware severity upgrade
+      let severity: ThreatItem['severity'] = 'low'
+      if (VT_CRITICAL_CATEGORIES.test(name)) severity = 'critical'
+      else if (VT_HIGH_CATEGORIES.test(name)) severity = 'high'
+
+      // Energy relevance: ICS/energy categories + ransomware/wiper/destructive (always operationally relevant)
+      const isEnergyRelevant = VT_ENERGY_CATEGORIES.test(name) || VT_CRITICAL_CATEGORIES.test(name) || checkEnergyRelevance(name)
 
       return {
         id: `VT-${name.replace(/[^a-zA-Z0-9]/g, '-').substring(0, 30)}`,
@@ -227,8 +254,8 @@ async function fetchVirusTotalCategories(apiKey?: string): Promise<ThreatItem[]>
         pubDate: new Date().toISOString(),
         source: 'VirusTotal',
         sourceType: 'vendor' as const,
-        severity: 'low' as const,
-        isEnergyRelevant: checkEnergyRelevance(name),
+        severity,
+        isEnergyRelevant,
       }
     })
   } catch (error) {
