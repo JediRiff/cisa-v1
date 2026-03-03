@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import { AlertTriangle, Shield, RefreshCw, Clock, CheckCircle, XCircle, Bell, BellOff, ChevronDown, MessageSquare, ArrowUp, AlertCircle, Settings } from 'lucide-react'
-import { saveScore } from '@/lib/history'
+import { saveScore, saveTrendSnapshot, getMergedTrend } from '@/lib/history'
 import { checkAndTriggerAlerts, requestNotificationPermission, getNotificationPermission, setWebhookUrl, getWebhookUrl } from '@/lib/alerts'
 import ActionableRecommendations, { type KEVAction } from '@/components/ActionableRecommendations'
 import RecoverEstimate from '@/components/RecoverEstimate'
@@ -120,6 +120,11 @@ export default function Dashboard() {
       })
       const json = await response.json()
       if (json.success) {
+        // Save trend snapshot and merge with stored history for real week-over-week variation
+        if (json.trend) {
+          saveTrendSnapshot(json.trend)
+          json.trend = getMergedTrend(json.trend)
+        }
         setData(json)
         setLastRefresh(new Date())
         saveScore(json.score.score, json.score.label)

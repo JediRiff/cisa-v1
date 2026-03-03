@@ -54,6 +54,108 @@ export function getLatestScore(): ScoreSnapshot | null {
   return history.length > 0 ? history[history.length - 1] : null
 }
 
+// ─── Weekly Trend Snapshots ─────────────────────────────────────────────────────
+// Store weekly threat counts so the trend chart shows real historical variation
+// instead of flat re-computed data from current feed items.
+
+export interface TrendSnapshot {
+  weekOf: string // ISO date string for the Monday of the week
+  threats: number
+  energyThreats: number
+  kevCount: number
+}
+
+const TREND_STORAGE_KEY = 'capri-trend-history'
+
+function getWeekMonday(date: Date = new Date()): string {
+  const d = new Date(date)
+  const day = d.getDay()
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1) // Adjust for Sunday
+  d.setDate(diff)
+  d.setHours(0, 0, 0, 0)
+  return d.toISOString().split('T')[0]
+}
+
+export function saveTrendSnapshot(serverTrend: { week: string; threats: number; energyThreats: number; kevCount: number }[]): void {
+  if (typeof window === 'undefined' || !serverTrend || serverTrend.length === 0) return
+
+  const stored = getTrendHistory()
+  const currentWeek = getWeekMonday()
+
+  // The server's most recent week (last element) represents the current week's data
+  const currentData = serverTrend[serverTrend.length - 1]
+  if (!currentData) return
+
+  // Update or insert the current week's snapshot
+  const existingIdx = stored.findIndex(s => s.weekOf === currentWeek)
+  const snapshot: TrendSnapshot = {
+    weekOf: currentWeek,
+    threats: currentData.threats,
+    energyThreats: currentData.energyThreats,
+    kevCount: currentData.kevCount,
+  }
+
+  if (existingIdx >= 0) {
+    // Update with latest data (counts may change as more items arrive during the week)
+    stored[existingIdx] = snapshot
+  } else {
+    stored.push(snapshot)
+  }
+
+  // Keep last 8 weeks
+  const eightWeeksAgo = Date.now() - 8 * 7 * 24 * 60 * 60 * 1000
+  const trimmed = stored.filter(s => new Date(s.weekOf).getTime() > eightWeeksAgo)
+
+  localStorage.setItem(TREND_STORAGE_KEY, JSON.stringify(trimmed))
+}
+
+export function getTrendHistory(): TrendSnapshot[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const stored = localStorage.getItem(TREND_STORAGE_KEY)
+    return stored ? JSON.parse(stored) : []
+  } catch {
+    return []
+  }
+}
+
+// Merge stored historical trend data with server's current-week data
+// Returns 4 weeks of data for the chart, preferring stored snapshots for past weeks
+export function getMergedTrend(serverTrend: { week: string; threats: number; energyThreats: number; kevCount: number }[]): { week: string; threats: number; energyThreats: number; kevCount: number }[] {
+  const stored = getTrendHistory()
+  if (stored.length === 0) return serverTrend // No history yet, use server data as-is
+
+  const weeks: { week: string; threats: number; energyThreats: number; kevCount: number }[] = []
+
+  for (let i = 3; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i * 7)
+    const weekMonday = getWeekMonday(d)
+    const weekLabel = new Date(weekMonday).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+    // Check stored history first
+    const snapshot = stored.find(s => s.weekOf === weekMonday)
+    if (snapshot) {
+      weeks.push({
+        week: weekLabel,
+        threats: snapshot.threats,
+        energyThreats: snapshot.energyThreats,
+        kevCount: snapshot.kevCount,
+      })
+    } else {
+      // Fall back to server data if available for this week
+      const serverWeek = serverTrend.find(s => s.week === weekLabel)
+      if (serverWeek) {
+        weeks.push(serverWeek)
+      } else {
+        weeks.push({ week: weekLabel, threats: 0, energyThreats: 0, kevCount: 0 })
+      }
+    }
+  }
+
+  return weeks
+}
+
 // Get last week's average score (7-14 days ago)
 export function getLastWeekScore(): { score: number; label: string } | null {
   const history = getHistory()

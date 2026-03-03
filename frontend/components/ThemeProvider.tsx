@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { Sun, Moon } from 'lucide-react'
 
-type Theme = 'light' | 'dark' | 'system'
+type Theme = 'light' | 'dark'
 
 interface ThemeContextType {
   theme: Theme
@@ -26,64 +26,32 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<Theme>('system')
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light')
+  const [theme, setThemeState] = useState<Theme>('dark')
   const [mounted, setMounted] = useState(false)
-
-  // Get system preference
-  const getSystemTheme = useCallback((): 'light' | 'dark' => {
-    if (typeof window === 'undefined') return 'light'
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  }, [])
 
   // Apply theme to document
   const applyTheme = useCallback((newTheme: 'light' | 'dark') => {
     const root = document.documentElement
     root.classList.remove('light', 'dark')
     root.classList.add(newTheme)
-    setResolvedTheme(newTheme)
   }, [])
 
   // Set theme and persist to localStorage
   const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme)
     localStorage.setItem('capri-theme', newTheme)
-
-    if (newTheme === 'system') {
-      applyTheme(getSystemTheme())
-    } else {
-      applyTheme(newTheme)
-    }
-  }, [applyTheme, getSystemTheme])
+    applyTheme(newTheme)
+  }, [applyTheme])
 
   // Initialize theme on mount
   useEffect(() => {
     const stored = localStorage.getItem('capri-theme') as Theme | null
-    const initialTheme = stored || 'system'
+    // Migrate 'system' to 'dark' for users who had it selected
+    const initialTheme = (stored === 'system' || !stored) ? 'dark' : stored
     setThemeState(initialTheme)
-
-    if (initialTheme === 'system') {
-      applyTheme(getSystemTheme())
-    } else {
-      applyTheme(initialTheme)
-    }
-
+    applyTheme(initialTheme)
     setMounted(true)
-  }, [applyTheme, getSystemTheme])
-
-  // Listen for system preference changes
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-
-    const handleChange = () => {
-      if (theme === 'system') {
-        applyTheme(getSystemTheme())
-      }
-    }
-
-    mediaQuery.addEventListener('change', handleChange)
-    return () => mediaQuery.removeEventListener('change', handleChange)
-  }, [theme, applyTheme, getSystemTheme])
+  }, [applyTheme])
 
   // Prevent flash of incorrect theme
   if (!mounted) {
@@ -91,7 +59,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, resolvedTheme: theme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   )
@@ -102,26 +70,11 @@ export function ThemeToggle() {
   const { resolvedTheme, setTheme, theme } = useTheme()
 
   const toggleTheme = () => {
-    // Cycle through: light -> dark -> system -> light
-    if (theme === 'light') {
-      setTheme('dark')
-    } else if (theme === 'dark') {
-      setTheme('system')
-    } else {
-      setTheme('light')
-    }
+    setTheme(theme === 'light' ? 'dark' : 'light')
   }
 
   const getIcon = () => {
-    if (theme === 'system') {
-      return (
-        <div className="relative">
-          <Sun className="h-5 w-5 absolute opacity-50" />
-          <Moon className="h-5 w-5 opacity-50" />
-        </div>
-      )
-    }
-    return resolvedTheme === 'dark' ? (
+    return theme === 'dark' ? (
       <Moon className="h-5 w-5" />
     ) : (
       <Sun className="h-5 w-5" />
@@ -129,7 +82,6 @@ export function ThemeToggle() {
   }
 
   const getLabel = () => {
-    if (theme === 'system') return 'System'
     return theme === 'dark' ? 'Dark' : 'Light'
   }
 

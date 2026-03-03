@@ -557,7 +557,7 @@ function FacilityDetailPanel({
   const color = sectorColors[facility.sector]
 
   return (
-    <div className="absolute top-4 left-4 w-[380px] max-h-[calc(100%-2rem)] bg-[#0a1225]/95 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden flex flex-col animate-in fade-in slide-in-from-left-4 duration-200">
+    <div className="absolute top-4 left-4 w-[380px] max-h-[calc(100%-2rem)] bg-[#111d35]/95 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden flex flex-col animate-in fade-in slide-in-from-left-4 duration-200">
       {/* Header */}
       <div className="flex-shrink-0 p-4 border-b border-white/10" style={{ borderTopColor: color, borderTopWidth: 3 }}>
         <div className="flex items-start justify-between">
@@ -828,7 +828,7 @@ function ActorDetailPanel({
   onClose: () => void
 }) {
   return (
-    <div className="absolute top-4 left-4 w-[380px] max-h-[calc(100%-2rem)] bg-[#0a1225]/95 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden flex flex-col animate-in fade-in slide-in-from-left-4 duration-200">
+    <div className="absolute top-4 left-4 w-[380px] max-h-[calc(100%-2rem)] bg-[#111d35]/95 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden flex flex-col animate-in fade-in slide-in-from-left-4 duration-200">
       {/* Header */}
       <div className="flex-shrink-0 p-4 border-b border-white/10" style={{ borderTopColor: actor.color, borderTopWidth: 3 }}>
         <div className="flex items-start justify-between">
