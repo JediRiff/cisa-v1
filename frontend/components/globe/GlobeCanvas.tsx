@@ -106,11 +106,11 @@ function loadCountryOutlines(globeGroup: THREE.Group, radius: number) {
         opacity: 0.7,
       })
 
-      // Other countries get thin, barely-visible outlines
+      // Other countries get thin, faint outlines
       const defaultBorderMat = new THREE.LineBasicMaterial({
-        color: 0x667788,
+        color: 0x8899aa,
         transparent: true,
-        opacity: 0.08,
+        opacity: 0.15,
       })
 
       const US_ID = '840'
