@@ -119,41 +119,37 @@ export function getTrendHistory(): TrendSnapshot[] {
   }
 }
 
-// Merge stored historical trend data with server's current-week data
-// Returns 4 weeks of data for the chart, preferring stored snapshots for past weeks
+// Merge stored historical trend data with server's current-week data.
+// Uses server trend as the base (correct labels/positions), but replaces
+// past weeks with stored snapshots once we have enough history.
 export function getMergedTrend(serverTrend: { week: string; threats: number; energyThreats: number; kevCount: number }[]): { week: string; threats: number; energyThreats: number; kevCount: number }[] {
   const stored = getTrendHistory()
-  if (stored.length === 0) return serverTrend // No history yet, use server data as-is
 
-  const weeks: { week: string; threats: number; energyThreats: number; kevCount: number }[] = []
+  // Need at least 2 stored snapshots (spanning 2+ weeks) before merging is useful.
+  // Until then, the server data is the best we have.
+  if (stored.length < 2) return serverTrend
 
-  for (let i = 3; i >= 0; i--) {
+  // Server trend has 4 entries in chronological order (oldest first).
+  // Map each server week position to a Monday key and check for a stored snapshot.
+  return serverTrend.map((serverWeek, i) => {
+    // Compute the Monday for this position: week 0 = 3 weeks ago, week 3 = this week
+    const weeksAgo = serverTrend.length - 1 - i
     const d = new Date()
-    d.setDate(d.getDate() - i * 7)
+    d.setDate(d.getDate() - weeksAgo * 7)
     const weekMonday = getWeekMonday(d)
-    const weekLabel = new Date(weekMonday).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
-    // Check stored history first
     const snapshot = stored.find(s => s.weekOf === weekMonday)
     if (snapshot) {
-      weeks.push({
-        week: weekLabel,
+      // Use stored snapshot data but keep the server's week label for chart consistency
+      return {
+        week: serverWeek.week,
         threats: snapshot.threats,
         energyThreats: snapshot.energyThreats,
         kevCount: snapshot.kevCount,
-      })
-    } else {
-      // Fall back to server data if available for this week
-      const serverWeek = serverTrend.find(s => s.week === weekLabel)
-      if (serverWeek) {
-        weeks.push(serverWeek)
-      } else {
-        weeks.push({ week: weekLabel, threats: 0, energyThreats: 0, kevCount: 0 })
       }
     }
-  }
-
-  return weeks
+    return serverWeek
+  })
 }
 
 // Get last week's average score (7-14 days ago)
