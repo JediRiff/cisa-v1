@@ -54,33 +54,3 @@ export function getLatestScore(): ScoreSnapshot | null {
   return history.length > 0 ? history[history.length - 1] : null
 }
 
-// Get last week's average score (7-14 days ago)
-export function getLastWeekScore(): { score: number; label: string } | null {
-  const history = getHistory()
-  if (history.length === 0) return null
-
-  const now = Date.now()
-  const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000
-  const twoWeeksAgo = now - 14 * 24 * 60 * 60 * 1000
-
-  // Filter entries from last week (7-14 days ago)
-  const lastWeekEntries = history.filter(h => {
-    const timestamp = new Date(h.timestamp).getTime()
-    return timestamp >= twoWeeksAgo && timestamp < oneWeekAgo
-  })
-
-  if (lastWeekEntries.length === 0) {
-    // No data from 7-14 days ago - return null (don't show misleading fallback)
-    return null
-  }
-
-  // Calculate average score from last week
-  const avgScore = lastWeekEntries.reduce((sum, h) => sum + h.score, 0) / lastWeekEntries.length
-
-  // Determine label based on average
-  let label = 'Normal'
-  if (avgScore <= 2.0) label = 'Severe'
-  else if (avgScore <= 3.0) label = 'Elevated'
-
-  return { score: Math.round(avgScore * 10) / 10, label }
-}

@@ -436,25 +436,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Threat Summary Banner */}
-      {data && (
-        <div className={`transition-opacity duration-300 ease-in-out ${isRefreshing ? 'opacity-70' : 'opacity-100'}`}>
-          <section className="py-8 px-4 bg-cisa-navy dark:bg-slate-800">
-            <div className="max-w-4xl mx-auto flex items-start gap-4">
-              <div className="flex-shrink-0 mt-0.5">
-                <Shield className="h-6 w-6 text-blue-300" />
-              </div>
-              <div>
-                <p className="text-white font-medium leading-relaxed">{data.score.summary}</p>
-                <p className="text-blue-300/60 text-xs mt-2">
-                  {data.meta.sourcesOnline}/{data.meta.sourcesTotal} sources reporting &middot; {data.meta.totalItems} items aggregated
-                </p>
-              </div>
-            </div>
-          </section>
-        </div>
-      )}
-
       {/* Score Breakdown - How It's Calculated */}
       {data && (
         <div className={`transition-opacity duration-300 ease-in-out ${isRefreshing ? 'opacity-70' : 'opacity-100'}`}>
