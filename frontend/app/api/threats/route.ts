@@ -7,6 +7,7 @@ import { analyzeThreatsWithAI, AIAnalysisResult } from '@/lib/ai-analysis'
 import { detectCampaigns } from '@/lib/campaign-correlation'
 import { threatActors } from '@/components/globe/worldData'
 import { NATION_STATE_INDICATORS, matchesIndicator, matchesICSContext, isEnergyRelevantKEV } from '@/lib/indicators'
+import { fetchGridStress } from '@/lib/eia930'
 
 export const revalidate = 0 // No caching - always fetch fresh data
 
@@ -43,13 +44,15 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Fetch feeds and enrichment sources in parallel
-    const [feedResult, enrichmentResult] = await Promise.all([
+    // Fetch feeds, enrichment, and grid stress in parallel
+    const [feedResult, enrichmentResult, gridStressResult] = await Promise.all([
       fetchAllFeeds(),
       fetchAllEnrichment(hasUserKeys ? userKeys : undefined),
+      fetchGridStress(),
     ])
 
     // Merge enrichment items into feed items before deduplication
+    const icsExposureCount = enrichmentResult.items.filter(i => i.source === 'Shodan').length
     if (enrichmentResult.items.length > 0) {
       feedResult.items.push(...enrichmentResult.items)
     }
@@ -175,6 +178,7 @@ export async function GET(request: NextRequest) {
         critical: feedResult.items.filter(item => item.severity === 'critical').slice(0, 20),
       },
       campaigns,
+      gridStress: gridStressResult.entries,
       kev: kevActions,
       meta: {
         lastUpdated: feedResult.lastUpdated,
@@ -191,6 +195,10 @@ export async function GET(request: NextRequest) {
           configured: getConfiguredEnrichmentCount(hasUserKeys ? userKeys : undefined).configured,
           total: getConfiguredEnrichmentCount(hasUserKeys ? userKeys : undefined).total,
           online: enrichmentResult.sourcesOnline,
+        },
+        icsExposure: {
+          count: icsExposureCount,
+          hasShodanKey: !!(shodanKey || process.env.SHODAN_API_KEY),
         },
       }
     }

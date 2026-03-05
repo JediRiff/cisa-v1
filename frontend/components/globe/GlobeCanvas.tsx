@@ -19,6 +19,7 @@ import {
 import {
   createSubmarineCableGroup,
   createGridCorridorGroup,
+  createLngShippingLaneGroup,
 } from './geoLayers'
 
 interface ActiveArc {
@@ -209,6 +210,7 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClu
   const arcGroupRef = useRef<THREE.Group | null>(null)
   const cableGroupRef = useRef<THREE.Group | null>(null)
   const gridCorridorGroupRef = useRef<THREE.Group | null>(null)
+  const lngLaneGroupRef = useRef<THREE.Group | null>(null)
   const currentTierRef = useRef<ZoomTier>('far')
   const tierGroupsRef = useRef<{ far: THREE.Group; medium: THREE.Group; close: THREE.Group } | null>(null)
   const sceneDataRef = useRef<{
@@ -258,6 +260,7 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClu
     // Toggle geo-layer groups
     if (cableGroupRef.current) cableGroupRef.current.visible = lv.submarineCables
     if (gridCorridorGroupRef.current) gridCorridorGroupRef.current.visible = lv.powerGridCorridors
+    if (lngLaneGroupRef.current) lngLaneGroupRef.current.visible = lv.lngShippingLanes
 
     // Toggle per-sector facility visibility across all tiers
     facilityMarkersRef.current.forEach(fm => {
@@ -439,10 +442,15 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClu
     globeGroup.add(gridCorridorGroup)
     gridCorridorGroupRef.current = gridCorridorGroup
 
+    const lngLaneGroup = createLngShippingLaneGroup(1)
+    globeGroup.add(lngLaneGroup)
+    lngLaneGroupRef.current = lngLaneGroup
+
     // Apply initial layer visibility
     const initLV = layerVisibilityRef.current
     cableGroup.visible = initLV.submarineCables
     gridCorridorGroup.visible = initLV.powerGridCorridors
+    lngLaneGroup.visible = initLV.lngShippingLanes
 
     // ============================================================
     // Three-tier facility rendering

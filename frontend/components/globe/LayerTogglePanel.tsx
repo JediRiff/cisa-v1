@@ -16,6 +16,7 @@ const OVERLAY_ITEMS: { key: keyof LayerVisibility; label: string; color: string 
   { key: 'attackArcs', label: 'Attack Arcs', color: '#ff6060' },
   { key: 'submarineCables', label: 'Submarine Cables', color: '#38bdf8' },
   { key: 'powerGridCorridors', label: 'Power Grid Corridors', color: '#4ade80' },
+  { key: 'lngShippingLanes', label: 'LNG Shipping Lanes', color: '#06b6d4' },
 ]
 
 export default function LayerTogglePanel({ layers, onToggle }: LayerTogglePanelProps) {

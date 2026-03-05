@@ -63,6 +63,7 @@ interface ThreatData {
   score: { score: number; label: string; color: string; factors: any[] }
   threats: { all: any[]; energyRelevant: any[]; critical: any[] }
   campaigns?: CampaignCandidate[]
+  gridStress?: { facilityId: string; respondent: string; demandMW: number; peakCapacityMW: number; utilization: number; stressLevel: string; period: string }[]
   kev: any[]
   meta: {
     sourcesOnline: number
@@ -71,6 +72,7 @@ interface ThreatData {
     errors: string[]
     activeCampaigns?: number
     last24h: { kev: number; nationState: number; ics: number; total: number }
+    icsExposure?: { count: number; hasShodanKey: boolean }
   }
 }
 
@@ -212,6 +214,7 @@ export default function GlobePage() {
       selectedFacility,
       data.threats.all || [],
       data.kev || [],
+      data.gridStress,
     )
   }, [selectedFacility, data])
 
@@ -266,7 +269,7 @@ export default function GlobePage() {
     if (!data) return {}
     const scores: Record<string, number> = {}
     for (const facility of energyFacilities) {
-      const risk = calculateFacilityRisk(facility, data.threats.all || [], data.kev || [])
+      const risk = calculateFacilityRisk(facility, data.threats.all || [], data.kev || [], data.gridStress)
       scores[facility.id] = risk.score
     }
     return scores
@@ -344,6 +347,23 @@ export default function GlobePage() {
                 {data?.meta?.activeCampaigns ?? '--'}
               </span>
             </div>
+            {data?.meta?.icsExposure?.hasShodanKey && (
+              <div>
+                <span className="text-gray-500">ICS Exposed: </span>
+                <span className={data.meta.icsExposure.count > 0 ? 'text-red-400' : 'text-emerald-400'}>
+                  {data.meta.icsExposure.count}
+                </span>
+              </div>
+            )}
+            {data?.gridStress && data.gridStress.length > 0 && (() => {
+              const stressedCount = data.gridStress.filter(g => g.stressLevel !== 'normal').length
+              return stressedCount > 0 ? (
+                <div>
+                  <span className="text-gray-500">Grid Stress: </span>
+                  <span className="text-amber-400">{stressedCount} ISO{stressedCount !== 1 ? 's' : ''}</span>
+                </div>
+              ) : null
+            })()}
             <div>
               <span className="text-gray-500">Sources: </span>
               <span className="text-emerald-400">{data?.meta?.sourcesOnline || '--'}/{data?.meta?.sourcesTotal || '--'}</span>
@@ -721,6 +741,34 @@ function FacilityDetailPanel({
                 </p>
               </div>
             </div>
+            {/* Grid Headroom Bar (grid-sector facilities only) */}
+            {risk.gridStressLevel && (
+              <div className="mt-2 pt-2 border-t border-white/5">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-gray-500">Grid Headroom</span>
+                  <span className={`text-[10px] font-bold uppercase ${
+                    risk.gridStressLevel === 'critical' ? 'text-red-400' :
+                    risk.gridStressLevel === 'high' ? 'text-orange-400' :
+                    risk.gridStressLevel === 'elevated' ? 'text-amber-400' :
+                    'text-emerald-400'
+                  }`}>{risk.gridStressLevel}</span>
+                </div>
+                <div className="w-full h-2 bg-white/10 rounded-full">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${((risk.gridHeadroom ?? 1) * 100)}%`,
+                      background: risk.gridStressLevel === 'critical' ? '#ef4444' :
+                        risk.gridStressLevel === 'high' ? '#f97316' :
+                        risk.gridStressLevel === 'elevated' ? '#eab308' : '#22c55e',
+                    }}
+                  />
+                </div>
+                <p className="text-[10px] text-gray-600 mt-0.5">
+                  {risk.gridHeadroom != null ? `${(risk.gridHeadroom * 100).toFixed(0)}%` : '--'} spare capacity (EIA-930)
+                </p>
+              </div>
+            )}
             {/* Transparent Score Computation */}
             <details className="mt-2 pt-2 border-t border-white/5">
               <summary className="text-[10px] text-gray-500 cursor-pointer hover:text-gray-300 transition-colors">
@@ -765,6 +813,18 @@ function FacilityDetailPanel({
                     {risk.relevantKevCount} active KEV{risk.relevantKevCount !== 1 ? 's' : ''} (0.4 ea) + {risk.overdueKevCount} overdue (+0.5 ea) + {risk.ransomwareKevCount} ransomware (+0.3 ea)
                   </p>
                 </div>
+                {/* Factor 4: Grid Stress (grid-sector only) */}
+                {risk.gridStressLevel && (
+                  <div className="bg-white/[0.03] rounded px-2 py-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400">Grid Stress (0-2 pts)</span>
+                      <span className="text-white font-mono font-bold">{risk.gridStressScore.toFixed(1)}</span>
+                    </div>
+                    <p className="text-gray-600 mt-0.5">
+                      EIA-930 demand: {risk.gridStressLevel} stress level, {risk.gridHeadroom != null ? `${(risk.gridHeadroom * 100).toFixed(0)}%` : '--'} headroom
+                    </p>
+                  </div>
+                )}
                 {/* Inversion formula */}
                 <div className="bg-white/[0.05] rounded px-2 py-1.5 border border-white/10">
                   <div className="flex items-center justify-between">

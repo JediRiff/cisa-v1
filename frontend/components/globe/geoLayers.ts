@@ -186,6 +186,124 @@ export function createSubmarineCableGroup(radius: number): THREE.Group {
 // Rendering: Power Grid Corridors
 // ============================================================
 
+// ============================================================
+// Data: LNG Shipping Lanes (US export terminals → major import hubs)
+// ============================================================
+
+export interface LngRoute {
+  name: string
+  color: string
+  waypoints: [number, number][] // [lat, lng]
+}
+
+export const lngShippingLanes: LngRoute[] = [
+  // ── Atlantic routes ──
+  {
+    name: 'Sabine Pass → Rotterdam',
+    color: '#06b6d4',
+    waypoints: [
+      [29.7, -93.9], [27.0, -90.0], [25.0, -85.0],
+      [25.5, -80.0], [30.0, -70.0], [38.0, -55.0],
+      [46.0, -30.0], [50.0, -10.0], [51.9, 4.5],
+    ],
+  },
+  {
+    name: 'Corpus Christi → Barcelona',
+    color: '#22d3ee',
+    waypoints: [
+      [27.8, -97.4], [25.5, -92.0], [24.0, -85.0],
+      [25.0, -78.0], [30.0, -65.0], [35.0, -40.0],
+      [36.0, -15.0], [36.0, -5.5], [41.4, 2.2],
+    ],
+  },
+  {
+    name: 'Cameron LNG → Milford Haven',
+    color: '#67e8f9',
+    waypoints: [
+      [29.8, -93.3], [27.0, -89.0], [25.0, -84.0],
+      [26.0, -78.0], [32.0, -65.0], [40.0, -45.0],
+      [48.0, -20.0], [51.0, -8.0], [51.7, -5.0],
+    ],
+  },
+  // ── Pacific routes (cross antimeridian via Panama) ──
+  {
+    name: 'Sabine Pass → Tokyo',
+    color: '#06b6d4',
+    waypoints: [
+      [29.7, -93.9], [25.0, -88.0], [20.0, -85.0],
+      [12.0, -82.0], [9.0, -79.5], [8.0, -80.0],
+      [5.0, -85.0], [5.0, -105.0], [10.0, -130.0],
+      [18.0, -155.0], [25.0, -170.0], [30.0, 175.0],
+      [33.0, 160.0], [35.0, 145.0], [35.7, 139.7],
+    ],
+  },
+  {
+    name: 'Freeport → Incheon',
+    color: '#22d3ee',
+    waypoints: [
+      [28.9, -95.3], [25.0, -90.0], [20.0, -86.0],
+      [12.0, -82.0], [9.0, -79.5], [8.0, -82.0],
+      [5.0, -90.0], [5.0, -110.0], [10.0, -135.0],
+      [18.0, -158.0], [25.0, -172.0], [30.0, 175.0],
+      [33.0, 155.0], [35.0, 135.0], [37.5, 126.6],
+    ],
+  },
+  // ── Suez route ──
+  {
+    name: 'Cove Point → Mumbai',
+    color: '#67e8f9',
+    waypoints: [
+      [38.4, -76.4], [36.0, -70.0], [35.0, -40.0],
+      [36.0, -10.0], [36.0, -5.5], [36.0, 0.0],
+      [34.0, 12.0], [31.5, 32.3], [28.0, 34.0],
+      [15.0, 42.0], [12.5, 45.0], [15.0, 55.0],
+      [19.1, 72.9],
+    ],
+  },
+]
+
+// ============================================================
+// Rendering: LNG Shipping Lanes (dashed lines)
+// ============================================================
+
+export function createLngShippingLaneGroup(radius: number): THREE.Group {
+  const group = new THREE.Group()
+  const r = radius + 0.005
+
+  lngShippingLanes.forEach((route) => {
+    const points: THREE.Vector3[] = []
+    for (let i = 0; i < route.waypoints.length - 1; i++) {
+      const [lat1, lng1] = route.waypoints[i]
+      const [lat2, lng2] = route.waypoints[i + 1]
+      const steps = 20
+      for (let s = 0; s <= steps; s++) {
+        const t = s / steps
+        const lat = lat1 + (lat2 - lat1) * t
+        const lng = lerpLng(lng1, lng2, t)
+        points.push(latLngToVector3(lat, lng, r))
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry().setFromPoints(points)
+    const material = new THREE.LineDashedMaterial({
+      color: route.color,
+      transparent: true,
+      opacity: 0.35,
+      dashSize: 0.02,
+      gapSize: 0.01,
+    })
+    const line = new THREE.Line(geometry, material)
+    line.computeLineDistances()
+    group.add(line)
+  })
+
+  return group
+}
+
+// ============================================================
+// Rendering: Power Grid Corridors
+// ============================================================
+
 export function createGridCorridorGroup(radius: number): THREE.Group {
   const group = new THREE.Group()
   const r = radius + 0.004

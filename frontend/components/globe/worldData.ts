@@ -51,6 +51,10 @@ export interface FacilityRisk {
   overdueKevCount: number    // Overdue KEVs
   ransomwareKevCount: number // KEVs with known ransomware use
   factors: string[]          // Human-readable risk factors
+  // Grid stress (grid-sector facilities only)
+  gridStressScore: number    // Raw grid stress sub-score (0-2)
+  gridStressLevel?: string   // 'normal' | 'elevated' | 'high' | 'critical'
+  gridHeadroom?: number      // 1 - utilization (0-1)
   // Transparent sub-scores for auditable breakdown
   actorScore: number         // Raw actor sub-score (0-4)
   cveScore: number           // Raw CVE sub-score (0-3)
@@ -63,6 +67,7 @@ export function calculateFacilityRisk(
   facility: EnergyFacility,
   threatItems: any[],
   kevItems: any[],
+  gridStressData?: { facilityId: string; stressLevel: string; utilization: number }[],
 ): FacilityRisk {
   const sector = facility.sector
 
@@ -105,8 +110,26 @@ export function calculateFacilityRisk(
   kevScore += Math.min(ransomwareKevCount * 0.3, 0.5) // Ransomware association
   kevScore = Math.min(kevScore, 3)
 
-  // Raw threat intensity (0-10)
-  const rawScore = actorScore + cveScore + kevScore
+  // 4. Grid stress (0-2 points, grid-sector facilities only)
+  let gridStressScore = 0
+  let gridStressLevel: string | undefined
+  let gridHeadroom: number | undefined
+  if (facility.sector === 'grid' && gridStressData) {
+    const entry = gridStressData.find(e => e.facilityId === facility.id)
+    if (entry) {
+      gridStressLevel = entry.stressLevel
+      gridHeadroom = Math.max(0, 1 - entry.utilization)
+      switch (entry.stressLevel) {
+        case 'critical': gridStressScore = 2.0; break
+        case 'high': gridStressScore = 1.2; break
+        case 'elevated': gridStressScore = 0.5; break
+        default: gridStressScore = 0; break
+      }
+    }
+  }
+
+  // Raw threat intensity (0-10, capped)
+  const rawScore = Math.min(actorScore + cveScore + kevScore + gridStressScore, 10)
 
   // Invert to 1-5 scale matching CAPRI convention: 1 = Severe, 5 = Normal
   // Higher raw threat = lower score number
@@ -129,6 +152,10 @@ export function calculateFacilityRisk(
   }
   if (relevantKevCount > 0 && overdueKevCount === 0) {
     factors.push(`${relevantKevCount} active KEV${relevantKevCount > 1 ? 's' : ''} under remediation deadline`)
+  }
+  if (gridStressLevel && gridStressLevel !== 'normal') {
+    const headroomPct = gridHeadroom != null ? `${(gridHeadroom * 100).toFixed(0)}% headroom` : ''
+    factors.push(`Grid stress: ${gridStressLevel}${headroomPct ? ` (${headroomPct})` : ''}`)
   }
   if (factors.length === 0) {
     factors.push('No specific sector threats detected in current intelligence')
@@ -165,6 +192,9 @@ export function calculateFacilityRisk(
     overdueKevCount,
     ransomwareKevCount,
     factors,
+    gridStressScore,
+    gridStressLevel,
+    gridHeadroom,
     actorScore,
     cveScore,
     kevScore,
@@ -204,6 +234,7 @@ export interface LayerVisibility {
   natural_gas: boolean; oil: boolean; water: boolean
   threatActors: boolean; attackArcs: boolean
   submarineCables: boolean; powerGridCorridors: boolean
+  lngShippingLanes: boolean
 }
 
 export const DEFAULT_LAYER_VISIBILITY: LayerVisibility = {
@@ -211,6 +242,7 @@ export const DEFAULT_LAYER_VISIBILITY: LayerVisibility = {
   natural_gas: true, oil: true, water: true,
   threatActors: true, attackArcs: true,
   submarineCables: true, powerGridCorridors: true,
+  lngShippingLanes: true,
 }
 
 // Sector display colors for globe markers
