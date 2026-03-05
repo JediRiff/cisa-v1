@@ -13,14 +13,11 @@ import {
   EnergyFacility,
   ThreatActor,
   ResolvedCluster,
-  computeResolvedClusters,
-  riskScoreToColor,
   LayerVisibility,
   DEFAULT_LAYER_VISIBILITY,
 } from './worldData'
 import {
   createSubmarineCableGroup,
-  createChokepointGroup,
   createGridCorridorGroup,
 } from './geoLayers'
 
@@ -53,11 +50,6 @@ interface MediumDotRef {
   facility: EnergyFacility
 }
 
-interface ClusterBadgeRef {
-  sprite: THREE.Sprite
-  cluster: ResolvedCluster
-}
-
 interface UnclusteredDotRef {
   mesh: THREE.Mesh
   facility: EnergyFacility
@@ -86,42 +78,6 @@ export interface GlobeCanvasProps {
   activeCampaignActors?: string[]
   facilityRiskScores?: Record<string, number>
   layerVisibility?: LayerVisibility
-}
-
-// Generate a cluster badge texture: risk-colored glow circle with count number
-function createClusterBadgeTexture(count: number, riskColor: string, size = 128): THREE.Texture {
-  const canvas = document.createElement('canvas')
-  canvas.width = size
-  canvas.height = size
-  const ctx = canvas.getContext('2d')!
-  const cx = size / 2
-  const cy = size / 2
-
-  // Radial gradient glow
-  const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, cx)
-  gradient.addColorStop(0, riskColor)
-  gradient.addColorStop(0.35, riskColor)
-  gradient.addColorStop(0.7, riskColor + '40')
-  gradient.addColorStop(1, 'transparent')
-  ctx.fillStyle = gradient
-  ctx.fillRect(0, 0, size, size)
-
-  // Filled center circle
-  ctx.beginPath()
-  ctx.arc(cx, cy, size * 0.22, 0, Math.PI * 2)
-  ctx.fillStyle = riskColor
-  ctx.fill()
-
-  // Count text
-  ctx.fillStyle = '#ffffff'
-  ctx.font = `bold ${size * 0.22}px sans-serif`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(String(count), cx, cy + 1)
-
-  const tex = new THREE.CanvasTexture(canvas)
-  tex.needsUpdate = true
-  return tex
 }
 
 // Generate a circular glow texture via canvas
@@ -246,14 +202,12 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClu
   const layerVisibilityRef = useRef<LayerVisibility>(layerVisibility || DEFAULT_LAYER_VISIBILITY)
   const facilityMarkersRef = useRef<FacilityMarkerRef[]>([])
   const mediumDotsRef = useRef<MediumDotRef[]>([])
-  const clusterBadgesRef = useRef<ClusterBadgeRef[]>([])
   const unclusteredDotsRef = useRef<UnclusteredDotRef[]>([])
   const actorMarkersRef = useRef<ActorMarkerRef[]>([])
   const selectionRingRef = useRef<THREE.Mesh | null>(null)
   const actorGroupRef = useRef<THREE.Group | null>(null)
   const arcGroupRef = useRef<THREE.Group | null>(null)
   const cableGroupRef = useRef<THREE.Group | null>(null)
-  const chokepointGroupRef = useRef<THREE.Group | null>(null)
   const gridCorridorGroupRef = useRef<THREE.Group | null>(null)
   const currentTierRef = useRef<ZoomTier>('far')
   const tierGroupsRef = useRef<{ far: THREE.Group; medium: THREE.Group; close: THREE.Group } | null>(null)
@@ -290,20 +244,6 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClu
         fm.mesh.scale.set(1, height / 0.012, 1)
       }
     })
-    // Recompute cluster badges with updated risk scores
-    if (clusterBadgesRef.current.length > 0) {
-      const { clusters } = computeResolvedClusters(energyFacilities, facilityRiskScoresRef.current)
-      clusterBadgesRef.current.forEach(cb => {
-        const updated = clusters.find(c => c.cluster.id === cb.cluster.cluster.id)
-        if (updated) {
-          cb.cluster = updated
-          const mat = cb.sprite.material as THREE.SpriteMaterial
-          mat.map?.dispose()
-          mat.map = createClusterBadgeTexture(updated.facilities.length, riskScoreToColor(updated.worstRisk))
-          mat.needsUpdate = true
-        }
-      })
-    }
   }, [facilityRiskScores])
 
   // Keep layer visibility ref up to date and toggle groups
@@ -317,7 +257,6 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClu
 
     // Toggle geo-layer groups
     if (cableGroupRef.current) cableGroupRef.current.visible = lv.submarineCables
-    if (chokepointGroupRef.current) chokepointGroupRef.current.visible = lv.maritimeChokepoints
     if (gridCorridorGroupRef.current) gridCorridorGroupRef.current.visible = lv.powerGridCorridors
 
     // Toggle per-sector facility visibility across all tiers
@@ -331,10 +270,6 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClu
     })
     unclusteredDotsRef.current.forEach(ud => {
       ud.mesh.visible = lv[ud.facility.sector]
-    })
-    // Cluster badges: visible if any member sector is visible
-    clusterBadgesRef.current.forEach(cb => {
-      cb.sprite.visible = cb.cluster.facilities.some(f => lv[f.sector])
     })
   }, [layerVisibility])
 
@@ -500,10 +435,6 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClu
     globeGroup.add(cableGroup)
     cableGroupRef.current = cableGroup
 
-    const chokepointGroup = createChokepointGroup(1)
-    globeGroup.add(chokepointGroup)
-    chokepointGroupRef.current = chokepointGroup
-
     const gridCorridorGroup = createGridCorridorGroup(1)
     globeGroup.add(gridCorridorGroup)
     gridCorridorGroupRef.current = gridCorridorGroup
@@ -511,7 +442,6 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClu
     // Apply initial layer visibility
     const initLV = layerVisibilityRef.current
     cableGroup.visible = initLV.submarineCables
-    chokepointGroup.visible = initLV.maritimeChokepoints
     gridCorridorGroup.visible = initLV.powerGridCorridors
 
     // ============================================================
@@ -625,35 +555,10 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClu
     })
     mediumDotsRef.current = mediumDots
 
-    // ── FAR TIER: cluster badges + unclustered individual dots ──
-    const resolvedData = computeResolvedClusters(energyFacilities, facilityRiskScoresRef.current)
-    const clusterBadges: ClusterBadgeRef[] = []
+    // ── FAR TIER: individual dots for all facilities (no clustering) ──
     const unclusteredDots: UnclusteredDotRef[] = []
-
-    // Cluster badge sprites
-    resolvedData.clusters.forEach((rc) => {
-      const pos = latLngToVector3(rc.cluster.centerLat, rc.cluster.centerLng, 1.02)
-      const riskColor = riskScoreToColor(rc.worstRisk)
-      const tex = createClusterBadgeTexture(rc.facilities.length, riskColor)
-
-      const spriteMat = new THREE.SpriteMaterial({
-        map: tex,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthTest: false,
-      })
-      const sprite = new THREE.Sprite(spriteMat)
-      sprite.position.copy(pos)
-      sprite.scale.set(0.12, 0.12, 1)
-      sprite.userData = { type: 'cluster', cluster: rc }
-      farGroup.add(sprite)
-      clusterBadges.push({ sprite, cluster: rc })
-    })
-    clusterBadgesRef.current = clusterBadges
-
-    // Unclustered facility dots (singletons that don't belong to any cluster)
     const smallDotGeo = new THREE.SphereGeometry(0.006, 6, 6)
-    resolvedData.unclustered.forEach((facility) => {
+    energyFacilities.forEach((facility) => {
       const pos = latLngToVector3(facility.lat, facility.lng, 1.01)
       const color = sectorColors[facility.sector]
       const dotMat = new THREE.MeshBasicMaterial({
@@ -745,14 +650,13 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClu
     // Collect clickable objects per tier
     const clickableCloseMeshes = facilityMarkers.map((m) => m.mesh)
     const clickableMediumMeshes = mediumDots.map((m) => m.mesh)
-    const clickableClusterSprites = clusterBadges.map((m) => m.sprite)
     const clickableUnclusteredDots = unclusteredDots.map((m) => m.mesh)
     const clickableActorSprites = actorMarkerRefs.map((m) => m.mesh)
 
     function getClickableForTier(): THREE.Object3D[] {
       const tier = currentTierRef.current
       switch (tier) {
-        case 'far':   return [...clickableClusterSprites, ...clickableUnclusteredDots, ...clickableActorSprites]
+        case 'far':   return [...clickableUnclusteredDots, ...clickableActorSprites]
         case 'medium': return [...clickableMediumMeshes, ...clickableActorSprites]
         case 'close':  return [...clickableCloseMeshes, ...clickableActorSprites]
       }
