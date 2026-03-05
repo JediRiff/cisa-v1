@@ -41,6 +41,8 @@ import {
   DEFAULT_LAYER_VISIBILITY,
 } from '@/components/globe/worldData'
 import type { CampaignCandidate } from '@/lib/campaign-correlation'
+import type { VendorAlert } from '@/lib/supply-chain'
+import { getVendorDependencies } from '@/lib/supply-chain'
 import LayerTogglePanel from '@/components/globe/LayerTogglePanel'
 import AlertSettingsPanel from '@/components/AlertSettingsPanel'
 import { AlertConfig, loadAlertConfig, saveAlertConfig } from '@/lib/alertRules'
@@ -65,12 +67,14 @@ interface ThreatData {
   campaigns?: CampaignCandidate[]
   gridStress?: { facilityId: string; respondent: string; demandMW: number; peakCapacityMW: number; utilization: number; stressLevel: string; period: string }[]
   kev: any[]
+  vendorAlerts?: VendorAlert[]
   meta: {
     sourcesOnline: number
     sourcesTotal: number
     totalItems: number
     errors: string[]
     activeCampaigns?: number
+    vendorAlertCount?: number
     last24h: { kev: number; nationState: number; ics: number; total: number }
     icsExposure?: { count: number; hasShodanKey: boolean }
   }
@@ -109,6 +113,26 @@ function getSectorIcon(sector: Sector) {
     case 'oil': return Fuel
     case 'water': return Waves
   }
+}
+
+// ASCII art digit glyphs (5 rows each) in the same ██╗ box-drawing style as the CAPRI banner
+const ASCII_DIGITS: Record<string, string[]> = {
+  '0': [' ██████╗ ','██╔═══██╗','██║   ██║','╚██████╔╝',' ╚═════╝ '],
+  '1': [' ██╗','███║','╚██║',' ██║',' ╚═╝'],
+  '2': ['██████╗ ','╚════██╗',' █████╔╝','██╔═══╝ ','███████╗'],
+  '3': ['██████╗ ','╚════██╗',' █████╔╝','██╔══██║','╚█████╔╝'],
+  '4': ['██╗██╗','██║██║','╚████║',' ╚═██║','   ╚═╝'],
+  '5': ['███████╗','██╔════╝','███████╗','╚════██║','██████╔╝'],
+  '.': ['   ','   ','   ','██╗','╚═╝'],
+}
+
+function scoreToAscii(score: number): string {
+  const chars = score.toFixed(1).split('')
+  const rows: string[] = []
+  for (let row = 0; row < 5; row++) {
+    rows.push(chars.map(ch => ASCII_DIGITS[ch]?.[row] ?? '').join(' '))
+  }
+  return rows.join('\n')
 }
 
 // Filter threats by sector keywords (word-boundary matching)
@@ -215,6 +239,7 @@ export default function GlobePage() {
       data.threats.all || [],
       data.kev || [],
       data.gridStress,
+      data.vendorAlerts,
     )
   }, [selectedFacility, data])
 
@@ -269,7 +294,7 @@ export default function GlobePage() {
     if (!data) return {}
     const scores: Record<string, number> = {}
     for (const facility of energyFacilities) {
-      const risk = calculateFacilityRisk(facility, data.threats.all || [], data.kev || [], data.gridStress)
+      const risk = calculateFacilityRisk(facility, data.threats.all || [], data.kev || [], data.gridStress, data.vendorAlerts)
       scores[facility.id] = risk.score
     }
     return scores
@@ -364,6 +389,12 @@ export default function GlobePage() {
                 </div>
               ) : null
             })()}
+            {(data?.meta?.vendorAlertCount ?? 0) > 0 && (
+              <div>
+                <span className="text-gray-500">Vendor Alerts: </span>
+                <span className="text-orange-400">{data!.meta.vendorAlertCount}</span>
+              </div>
+            )}
             <div>
               <span className="text-gray-500">Sources: </span>
               <span className="text-emerald-400">{data?.meta?.sourcesOnline || '--'}/{data?.meta?.sourcesTotal || '--'}</span>
@@ -420,18 +451,18 @@ export default function GlobePage() {
             layerVisibility={layerVisibility}
           />
 
-          {/* Overlay: Score Badge */}
+          {/* Overlay: Score Badge — ASCII art digits matching CAPRI banner style */}
           {data?.score && !selectedFacility && !selectedActor && !selectedCluster && (
             <div className="absolute top-4 left-4 z-20 bg-[#060d1a]/90 backdrop-blur-md border border-white/[0.08] rounded-lg px-4 py-3">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">CAPRI Score</p>
-              <div className="flex items-baseline gap-2">
-                <span className={`text-3xl font-bold font-mono ${getScoreColor(data.score.score)}`}>
-                  {data.score.score.toFixed(1)}
-                </span>
-                <span className={`text-sm font-semibold ${getScoreColor(data.score.score)}`}>
-                  {data.score.label}
-                </span>
-              </div>
+              <pre
+                className={`text-[7px] leading-[1.15] font-mono select-none ${getScoreColor(data.score.score)}`}
+                aria-hidden="true"
+              >{scoreToAscii(data.score.score)}</pre>
+              <span className="sr-only">{data.score.score.toFixed(1)}</span>
+              <p className={`text-[10px] font-bold uppercase tracking-wider mt-1 ${getScoreColor(data.score.score)}`}>
+                [ {data.score.label} ]
+              </p>
             </div>
           )}
 
@@ -443,6 +474,7 @@ export default function GlobePage() {
               actors={targetingActors}
               risk={facilityRisk}
               campaigns={facilityCampaigns}
+              vendorAlerts={data?.vendorAlerts || []}
               onClose={() => setSelectedFacility(null)}
             />
           )}
@@ -468,15 +500,30 @@ export default function GlobePage() {
             />
           )}
 
-          {/* Overlay: Attack Counter */}
-          <div className="absolute bottom-4 left-4 z-20 bg-[#060d1a]/90 backdrop-blur-md border border-white/[0.08] rounded-lg px-4 py-3">
-            <div className="flex items-center gap-3">
-              <Activity className="w-4 h-4 text-red-400 animate-pulse" />
-              <div>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider">Observed Attacks</p>
-                <p className="text-lg font-bold font-mono text-red-400">{attackCount.toLocaleString()}</p>
+          {/* Overlay: Bottom-left status widgets */}
+          <div className="absolute bottom-4 left-4 z-20 flex items-end gap-2">
+            {/* Attack Counter */}
+            <div className="bg-[#060d1a]/90 backdrop-blur-md border border-white/[0.08] rounded-lg px-4 py-3">
+              <div className="flex items-center gap-3">
+                <Activity className="w-4 h-4 text-red-400 animate-pulse" />
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">Observed Attacks</p>
+                  <p className="text-lg font-bold font-mono text-red-400">{attackCount.toLocaleString()}</p>
+                </div>
               </div>
             </div>
+            {/* Active KEVs */}
+            {data?.kev && data.kev.length > 0 && (
+              <div className="bg-[#060d1a]/90 backdrop-blur-md border border-red-500/20 rounded-lg px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <Zap className="w-4 h-4 text-red-400" />
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">Active KEVs</p>
+                    <p className="text-lg font-bold font-mono text-red-300">{data.kev.length}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Overlay: Layer Toggle Panel (replaces static sector legend) */}
@@ -594,19 +641,6 @@ export default function GlobePage() {
               )}
             </div>
 
-            {/* KEV Quick Count */}
-            {data?.kev && data.kev.length > 0 && (
-              <div className="flex-shrink-0 p-3 border-t border-white/10">
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Zap className="w-3.5 h-3.5 text-red-400" />
-                    <span className="text-[10px] font-bold text-red-400 uppercase">Active KEVs</span>
-                  </div>
-                  <p className="text-lg font-bold font-mono text-red-300">{data.kev.length}</p>
-                  <p className="text-[10px] text-gray-500">Known Exploited Vulnerabilities</p>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -642,6 +676,7 @@ function FacilityDetailPanel({
   actors,
   risk,
   campaigns,
+  vendorAlerts,
   onClose,
 }: {
   facility: EnergyFacility
@@ -649,6 +684,7 @@ function FacilityDetailPanel({
   actors: ThreatActor[]
   risk: FacilityRisk | null
   campaigns: CampaignCandidate[]
+  vendorAlerts: VendorAlert[]
   onClose: () => void
 }) {
   const SectorIcon = getSectorIcon(facility.sector)
@@ -776,7 +812,7 @@ function FacilityDetailPanel({
               </summary>
               <div className="mt-2 space-y-2 text-[10px] leading-relaxed">
                 <p className="text-gray-500">
-                  CAPRI scale: <strong className="text-white">1 = Severe</strong>, <strong className="text-white">5 = Normal</strong>. Score is computed from three weighted factors for the <strong className="text-white">{sectorLabels[facility.sector]}</strong> sector:
+                  CAPRI scale: <strong className="text-white">1 = Severe</strong>, <strong className="text-white">5 = Normal</strong>. Score is computed from weighted factors for the <strong className="text-white">{sectorLabels[facility.sector]}</strong> sector:
                 </p>
                 {/* Factor 1: Actors */}
                 <div className="bg-white/[0.03] rounded px-2 py-1.5">
@@ -825,6 +861,18 @@ function FacilityDetailPanel({
                     </p>
                   </div>
                 )}
+                {/* Factor 5: Vendor Exposure */}
+                {risk.vendorExposureScore > 0 && (
+                  <div className="bg-white/[0.03] rounded px-2 py-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400">Vendor Exposure (0-2 pts)</span>
+                      <span className="text-white font-mono font-bold">{risk.vendorExposureScore.toFixed(1)}</span>
+                    </div>
+                    <p className="text-gray-600 mt-0.5">
+                      Active alerts for: {risk.exposedVendors.join(', ')}
+                    </p>
+                  </div>
+                )}
                 {/* Inversion formula */}
                 <div className="bg-white/[0.05] rounded px-2 py-1.5 border border-white/10">
                   <div className="flex items-center justify-between">
@@ -845,6 +893,65 @@ function FacilityDetailPanel({
             </details>
           </div>
         )}
+
+        {/* Supply Chain Dependencies */}
+        {(() => {
+          const deps = getVendorDependencies(facility)
+          if (deps.length === 0) return null
+          // Build a lookup of active alerts by vendor name
+          const alertsByVendor = new Map(vendorAlerts.map(a => [a.vendor, a]))
+          return (
+            <div>
+              <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Factory className="w-3 h-3 text-cyan-400" />
+                Supply Chain Dependencies
+              </h4>
+              <div className="space-y-1">
+                {deps.map((dep, i) => {
+                  const alert = alertsByVendor.get(dep.vendor)
+                  const hasAlert = alert && (alert.kevCount > 0 || alert.cveCount > 0)
+                  return (
+                    <div
+                      key={`${dep.vendor}-${dep.system}-${i}`}
+                      className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 ${
+                        hasAlert ? 'bg-red-500/10 border border-red-500/20' : 'bg-white/[0.03]'
+                      }`}
+                    >
+                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                        hasAlert ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-gray-200 capitalize">{dep.vendor}</span>
+                          <span className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded ${
+                            dep.criticality === 'critical' ? 'text-red-400 bg-red-500/20' :
+                            dep.criticality === 'high' ? 'text-orange-400 bg-orange-500/20' :
+                            'text-blue-400 bg-blue-500/20'
+                          }`}>{dep.criticality}</span>
+                        </div>
+                        <p className="text-[10px] text-gray-500 truncate">{dep.system}</p>
+                      </div>
+                      {hasAlert && (
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {alert!.kevCount > 0 && (
+                            <span className="text-[9px] font-bold text-red-400 bg-red-500/20 px-1.5 py-0.5 rounded">
+                              {alert!.kevCount} KEV{alert!.kevCount !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {alert!.cveCount > 0 && (
+                            <span className="text-[9px] font-bold text-orange-400 bg-orange-500/20 px-1.5 py-0.5 rounded">
+                              {alert!.cveCount} CVE{alert!.cveCount !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Campaign Exposure */}
         {campaigns.length > 0 && (

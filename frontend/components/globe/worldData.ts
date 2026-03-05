@@ -1,4 +1,6 @@
 import * as THREE from 'three'
+import type { VendorAlert } from '@/lib/supply-chain'
+import { matchVendorToFacility } from '@/lib/supply-chain'
 
 export interface GeoPoint {
   lat: number
@@ -59,6 +61,9 @@ export interface FacilityRisk {
   actorScore: number         // Raw actor sub-score (0-4)
   cveScore: number           // Raw CVE sub-score (0-3)
   kevScore: number           // Raw KEV sub-score (0-3)
+  // Vendor supply chain exposure (0-2)
+  vendorExposureScore: number
+  exposedVendors: string[]   // Vendor names with active alerts affecting this facility
   rawTotal: number           // Sum of sub-scores before inversion (0-10)
 }
 
@@ -68,6 +73,7 @@ export function calculateFacilityRisk(
   threatItems: any[],
   kevItems: any[],
   gridStressData?: { facilityId: string; stressLevel: string; utilization: number }[],
+  vendorAlerts?: VendorAlert[],
 ): FacilityRisk {
   const sector = facility.sector
 
@@ -128,8 +134,24 @@ export function calculateFacilityRisk(
     }
   }
 
+  // 5. Vendor supply chain exposure (0-2 points)
+  let vendorExposureScore = 0
+  const exposedVendors: string[] = []
+  if (vendorAlerts && vendorAlerts.length > 0) {
+    for (const alert of vendorAlerts) {
+      const dep = matchVendorToFacility(alert.vendor, facility)
+      if (!dep) continue
+      const critWeight = dep.criticality === 'critical' ? 1.0 : dep.criticality === 'high' ? 0.6 : 0.3
+      const kevPortion = Math.min(alert.kevCount * 0.4, 0.8)
+      const cvePortion = Math.min(alert.cveCount * 0.1, 0.4)
+      vendorExposureScore += critWeight * (kevPortion + cvePortion)
+      exposedVendors.push(alert.vendor)
+    }
+    vendorExposureScore = Math.min(vendorExposureScore, 2)
+  }
+
   // Raw threat intensity (0-10, capped)
-  const rawScore = Math.min(actorScore + cveScore + kevScore + gridStressScore, 10)
+  const rawScore = Math.min(actorScore + cveScore + kevScore + gridStressScore + vendorExposureScore, 10)
 
   // Invert to 1-5 scale matching CAPRI convention: 1 = Severe, 5 = Normal
   // Higher raw threat = lower score number
@@ -156,6 +178,9 @@ export function calculateFacilityRisk(
   if (gridStressLevel && gridStressLevel !== 'normal') {
     const headroomPct = gridHeadroom != null ? `${(gridHeadroom * 100).toFixed(0)}% headroom` : ''
     factors.push(`Grid stress: ${gridStressLevel}${headroomPct ? ` (${headroomPct})` : ''}`)
+  }
+  if (exposedVendors.length > 0) {
+    factors.push(`Supply chain exposure: active alerts for ${exposedVendors.join(', ')}`)
   }
   if (factors.length === 0) {
     factors.push('No specific sector threats detected in current intelligence')
@@ -198,6 +223,8 @@ export function calculateFacilityRisk(
     actorScore,
     cveScore,
     kevScore,
+    vendorExposureScore,
+    exposedVendors,
     rawTotal: rawScore,
   }
 }

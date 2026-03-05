@@ -8,6 +8,7 @@ import { detectCampaigns } from '@/lib/campaign-correlation'
 import { threatActors } from '@/components/globe/worldData'
 import { NATION_STATE_INDICATORS, matchesIndicator, matchesICSContext, isEnergyRelevantKEV } from '@/lib/indicators'
 import { fetchGridStress } from '@/lib/eia930'
+import { buildVendorAlerts } from '@/lib/supply-chain'
 
 export const revalidate = 0 // No caching - always fetch fresh data
 
@@ -168,6 +169,9 @@ export async function GET(request: NextRequest) {
         ransomwareUse: kev.knownRansomwareCampaignUse === 'Known'
       }))
 
+    // Build per-vendor alert aggregation from KEVs + AI-extracted vendor mentions
+    const vendorAlerts = buildVendorAlerts(kevActions, feedResult.items)
+
     // Build response data
     const responseData = {
       success: true,
@@ -180,6 +184,7 @@ export async function GET(request: NextRequest) {
       campaigns,
       gridStress: gridStressResult.entries,
       kev: kevActions,
+      vendorAlerts,
       meta: {
         lastUpdated: feedResult.lastUpdated,
         sourcesOnline: feedResult.sourcesOnline + enrichmentResult.sourcesOnline,
@@ -190,6 +195,7 @@ export async function GET(request: NextRequest) {
         activeCampaigns: activeCampaignCount,
         last24h,
         errors: feedResult.errors,
+        vendorAlertCount: vendorAlerts.filter(v => v.kevCount > 0).length,
         cacheAge: 0,
         enrichmentSources: {
           configured: getConfiguredEnrichmentCount(hasUserKeys ? userKeys : undefined).configured,
