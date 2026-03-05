@@ -9,34 +9,6 @@ import { threatActors } from '@/components/globe/worldData'
 
 export const revalidate = 0 // No caching - always fetch fresh data
 
-// Calculate weekly threat activity for trend visualization
-// Returns threat counts per week for the last 4 weeks
-function calculateWeeklyTrend(items: ThreatItem[]): { week: string; threats: number; energyThreats: number; kevCount: number }[] {
-  const now = Date.now()
-  const weeks: { week: string; threats: number; energyThreats: number; kevCount: number }[] = []
-
-  for (let i = 3; i >= 0; i--) {
-    const weekStart = now - (i + 1) * 7 * 24 * 60 * 60 * 1000
-    const weekEnd = now - i * 7 * 24 * 60 * 60 * 1000
-
-    const weekItems = items.filter(item => {
-      const itemDate = new Date(item.pubDate).getTime()
-      return itemDate >= weekStart && itemDate < weekEnd
-    })
-
-    const weekLabel = new Date(weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-
-    weeks.push({
-      week: weekLabel,
-      threats: weekItems.length,
-      energyThreats: weekItems.filter(item => item.isEnergyRelevant).length,
-      kevCount: weekItems.filter(item => item.source === 'CISA KEV').length,
-    })
-  }
-
-  return weeks
-}
-
 // In-memory cache with 1-minute TTL
 let cachedResponse: { data: any; timestamp: number } | null = null
 const CACHE_TTL_MS = 60 * 1000 // 1 minute
@@ -225,9 +197,6 @@ export async function GET(request: NextRequest) {
       ransomwareUse: kev.knownRansomwareCampaignUse === 'Known'
     }))
 
-    // Calculate weekly trend for visualization
-    const weeklyTrend = calculateWeeklyTrend(feedResult.items)
-
     // Build response data
     const responseData = {
       success: true,
@@ -239,7 +208,6 @@ export async function GET(request: NextRequest) {
       },
       campaigns,
       kev: kevActions,
-      trend: weeklyTrend,
       meta: {
         lastUpdated: feedResult.lastUpdated,
         sourcesOnline: feedResult.sourcesOnline + enrichmentResult.sourcesOnline,

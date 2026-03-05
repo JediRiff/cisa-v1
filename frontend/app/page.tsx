@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import { AlertTriangle, Shield, RefreshCw, Clock, CheckCircle, XCircle, Bell, BellOff, ChevronDown, MessageSquare, ArrowUp, AlertCircle, Settings } from 'lucide-react'
-import { saveScore, saveTrendSnapshot, getMergedTrend } from '@/lib/history'
+import { saveScore } from '@/lib/history'
 import { checkAndTriggerAlerts, requestNotificationPermission, getNotificationPermission, setWebhookUrl, getWebhookUrl } from '@/lib/alerts'
 import ActionableRecommendations, { type KEVAction } from '@/components/ActionableRecommendations'
 import RecoverEstimate from '@/components/RecoverEstimate'
@@ -11,7 +11,6 @@ import ScoreBreakdown from '@/components/ScoreBreakdown'
 import ScoringMethodology from '@/components/ScoringMethodology'
 import KeyMetrics from '@/components/KeyMetrics'
 import SkeletonLoader from '@/components/SkeletonLoader'
-import ScoreTrend from '@/components/ScoreTrend'
 import ThreatCard, { type ThreatItem } from '@/components/ThreatCard'
 import AlertSettings, { isWebhookConfigured, getStoredEnrichmentKeys } from '@/components/AlertSettings'
 
@@ -38,13 +37,6 @@ interface ScoringWeight {
   rationale: string
 }
 
-interface WeeklyTrend {
-  week: string
-  threats: number
-  energyThreats: number
-  kevCount: number
-}
-
 interface ApiResponse {
   success: boolean
   score: {
@@ -62,7 +54,6 @@ interface ApiResponse {
     critical: ThreatItem[]
   }
   kev: KEVAction[]
-  trend: WeeklyTrend[]
   meta: {
     lastUpdated: string
     sourcesOnline: number
@@ -121,11 +112,6 @@ export default function Dashboard() {
       })
       const json = await response.json()
       if (json.success) {
-        // Save trend snapshot and merge with stored history for real week-over-week variation
-        if (json.trend) {
-          saveTrendSnapshot(json.trend)
-          json.trend = getMergedTrend(json.trend)
-        }
         setData(json)
         setLastRefresh(new Date())
         saveScore(json.score.score, json.score.label)
@@ -450,10 +436,22 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Score Trend Chart */}
+      {/* Threat Summary Banner */}
       {data && (
         <div className={`transition-opacity duration-300 ease-in-out ${isRefreshing ? 'opacity-70' : 'opacity-100'}`}>
-          <ScoreTrend trend={data.trend || []} currentScore={data.score.score} />
+          <section className="py-8 px-4 bg-cisa-navy dark:bg-slate-800">
+            <div className="max-w-4xl mx-auto flex items-start gap-4">
+              <div className="flex-shrink-0 mt-0.5">
+                <Shield className="h-6 w-6 text-blue-300" />
+              </div>
+              <div>
+                <p className="text-white font-medium leading-relaxed">{data.score.summary}</p>
+                <p className="text-blue-300/60 text-xs mt-2">
+                  {data.meta.sourcesOnline}/{data.meta.sourcesTotal} sources reporting &middot; {data.meta.totalItems} items aggregated
+                </p>
+              </div>
+            </div>
+          </section>
         </div>
       )}
 
