@@ -20,6 +20,7 @@ import {
   Factory,
   Waves,
   Crosshair,
+  Bell,
 } from 'lucide-react'
 import {
   EnergyFacility,
@@ -27,6 +28,7 @@ import {
   Sector,
   FacilityRisk,
   MitreTTP,
+  ResolvedCluster,
   sectorColors,
   sectorLabels,
   sectorKeywords,
@@ -34,8 +36,15 @@ import {
   threatActors as allThreatActors,
   energyFacilities,
   calculateFacilityRisk,
+  riskScoreToColor,
+  LayerVisibility,
+  DEFAULT_LAYER_VISIBILITY,
 } from '@/components/globe/worldData'
 import type { CampaignCandidate } from '@/lib/campaign-correlation'
+import LayerTogglePanel from '@/components/globe/LayerTogglePanel'
+import AlertSettingsPanel from '@/components/AlertSettingsPanel'
+import { AlertConfig, loadAlertConfig, saveAlertConfig } from '@/lib/alertRules'
+import { evaluateAlertRules, dispatchAlerts, AlertContext } from '@/lib/alertEvaluator'
 
 // Dynamic import for Three.js (no SSR)
 const GlobeCanvas = dynamic(() => import('@/components/globe/GlobeCanvas'), {
@@ -115,6 +124,30 @@ export default function GlobePage() {
   const [attackCount, setAttackCount] = useState(0)
   const [selectedFacility, setSelectedFacility] = useState<EnergyFacility | null>(null)
   const [selectedActor, setSelectedActor] = useState<ThreatActor | null>(null)
+  const [selectedCluster, setSelectedCluster] = useState<ResolvedCluster | null>(null)
+
+  // Layer visibility state — persisted to localStorage
+  const [layerVisibility, setLayerVisibility] = useState<LayerVisibility>(() => {
+    if (typeof window === 'undefined') return DEFAULT_LAYER_VISIBILITY
+    try {
+      const saved = localStorage.getItem('capri-layer-visibility')
+      return saved ? { ...DEFAULT_LAYER_VISIBILITY, ...JSON.parse(saved) } : DEFAULT_LAYER_VISIBILITY
+    } catch {
+      return DEFAULT_LAYER_VISIBILITY
+    }
+  })
+
+  // Alert configuration state
+  const [alertSettingsOpen, setAlertSettingsOpen] = useState(false)
+  const [alertConfig, setAlertConfig] = useState<AlertConfig>(() => loadAlertConfig())
+
+  function handleLayerToggle(key: keyof LayerVisibility) {
+    setLayerVisibility(prev => {
+      const next = { ...prev, [key]: !prev[key] }
+      try { localStorage.setItem('capri-layer-visibility', JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
 
   const fetchData = useCallback(async () => {
     try {
@@ -239,19 +272,46 @@ export default function GlobePage() {
     return scores
   }, [data])
 
+  // Evaluate alert rules when data changes
+  useEffect(() => {
+    if (!data || !alertConfig.webhookUrl) return
+    const context: AlertContext = {
+      capriScore: data.score?.score ?? 5,
+      kevItems: data.kev || [],
+      threatItems: data.threats?.all || [],
+      facilityRiskScores,
+    }
+    const alerts = evaluateAlertRules(alertConfig, context)
+    if (alerts.length > 0) {
+      dispatchAlerts(alertConfig, alerts).then(() => {
+        // Reload config to get updated cooldown timestamps
+        setAlertConfig(loadAlertConfig())
+      })
+    }
+  }, [data, facilityRiskScores]) // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleFacilityClick(facility: EnergyFacility) {
     setSelectedActor(null)
+    setSelectedCluster(null)
     setSelectedFacility(facility)
   }
 
   function handleActorClick(actor: ThreatActor) {
     setSelectedFacility(null)
+    setSelectedCluster(null)
     setSelectedActor(actor)
+  }
+
+  function handleClusterClick(cluster: ResolvedCluster) {
+    setSelectedFacility(null)
+    setSelectedActor(null)
+    setSelectedCluster(cluster)
   }
 
   function handleEmptyClick() {
     setSelectedFacility(null)
     setSelectedActor(null)
+    setSelectedCluster(null)
   }
 
   return (
@@ -297,6 +357,16 @@ export default function GlobePage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setAlertSettingsOpen(true)}
+            className="text-gray-400 hover:text-amber-400 transition-colors relative"
+            title="Alert Settings"
+          >
+            <Bell className="w-4 h-4" />
+            {alertConfig.webhookUrl && alertConfig.rules.some(r => r.enabled) && (
+              <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400" />
+            )}
+          </button>
           <button onClick={fetchData} className="text-gray-400 hover:text-white transition-colors">
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -321,15 +391,17 @@ export default function GlobePage() {
           <GlobeCanvas
             onFacilityClick={handleFacilityClick}
             onThreatActorClick={handleActorClick}
+            onClusterClick={handleClusterClick}
             onEmptyClick={handleEmptyClick}
             selectedFacilityId={selectedFacility?.id || null}
             selectedActorName={selectedActor?.name || null}
             activeCampaignActors={activeCampaignActors}
             facilityRiskScores={facilityRiskScores}
+            layerVisibility={layerVisibility}
           />
 
           {/* Overlay: Score Badge */}
-          {data?.score && !selectedFacility && !selectedActor && (
+          {data?.score && !selectedFacility && !selectedActor && !selectedCluster && (
             <div className="absolute top-4 left-4 z-20 bg-[#060d1a]/90 backdrop-blur-md border border-white/[0.08] rounded-lg px-4 py-3">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">CAPRI Score</p>
               <div className="flex items-baseline gap-2">
@@ -366,6 +438,16 @@ export default function GlobePage() {
             />
           )}
 
+          {/* Overlay: Cluster Detail Panel */}
+          {selectedCluster && (
+            <ClusterDetailPanel
+              cluster={selectedCluster}
+              facilityRiskScores={facilityRiskScores}
+              onFacilityClick={handleFacilityClick}
+              onClose={() => setSelectedCluster(null)}
+            />
+          )}
+
           {/* Overlay: Attack Counter */}
           <div className="absolute bottom-4 left-4 z-20 bg-[#060d1a]/90 backdrop-blur-md border border-white/[0.08] rounded-lg px-4 py-3">
             <div className="flex items-center gap-3">
@@ -377,24 +459,8 @@ export default function GlobePage() {
             </div>
           </div>
 
-          {/* Overlay: Sector Legend */}
-          <div className="absolute bottom-4 right-4 z-20 bg-[#060d1a]/90 backdrop-blur-md border border-white/[0.08] rounded-lg px-3 py-2 hidden lg:block">
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Infrastructure Sectors</p>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
-              {(Object.entries(sectorColors) as [Sector, string][]).map(([sector, color]) => (
-                <div key={sector} className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />
-                  <span className="text-gray-300">{sectorLabels[sector]}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-2 pt-1.5 border-t border-white/5">
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-gray-300 text-[10px]">Threat Actor Origin</span>
-              </div>
-            </div>
-          </div>
+          {/* Overlay: Layer Toggle Panel (replaces static sector legend) */}
+          <LayerTogglePanel layers={layerVisibility} onToggle={handleLayerToggle} />
         </div>
 
         {/* Right Sidebar: Threat Feed */}
@@ -534,6 +600,15 @@ export default function GlobePage() {
           </button>
         )}
       </div>
+
+      {/* Alert Settings Modal */}
+      {alertSettingsOpen && (
+        <AlertSettingsPanel
+          config={alertConfig}
+          onConfigChange={setAlertConfig}
+          onClose={() => setAlertSettingsOpen(false)}
+        />
+      )}
     </div>
   )
 }
@@ -809,6 +884,90 @@ function FacilityDetailPanel({
             </div>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================
+// Cluster Detail Panel Component
+// ============================================================
+function ClusterDetailPanel({
+  cluster,
+  facilityRiskScores,
+  onFacilityClick,
+  onClose,
+}: {
+  cluster: ResolvedCluster
+  facilityRiskScores: Record<string, number>
+  onFacilityClick: (facility: EnergyFacility) => void
+  onClose: () => void
+}) {
+  const worstColor = riskScoreToColor(cluster.worstRisk)
+  const riskLabel = cluster.worstRisk <= 1.5 ? 'Severe'
+    : cluster.worstRisk <= 2.5 ? 'High'
+    : cluster.worstRisk <= 3.5 ? 'Elevated'
+    : cluster.worstRisk <= 4.5 ? 'Guarded'
+    : 'Low'
+
+  return (
+    <div className="absolute top-4 left-4 w-[340px] max-h-[calc(100%-2rem)] bg-[#111d35]/95 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden flex flex-col animate-in fade-in slide-in-from-left-4 duration-200" style={{ borderTopColor: worstColor, borderTopWidth: 3 }}>
+      {/* Header */}
+      <div className="flex-shrink-0 p-4 border-b border-white/10">
+        <div className="flex items-start justify-between">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Region Cluster</p>
+            <h3 className="text-sm font-bold text-white">{cluster.cluster.label}</h3>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors p-1 flex-shrink-0">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="mt-2 flex items-center gap-4 text-[11px]">
+          <div>
+            <span className="text-gray-500">Facilities: </span>
+            <span className="text-white font-bold">{cluster.facilities.length}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-gray-500">Worst Risk: </span>
+            <span className="font-bold font-mono" style={{ color: worstColor }}>
+              {cluster.worstRisk.toFixed(1)}
+            </span>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ color: worstColor, background: `${worstColor}20` }}>
+              {riskLabel}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Scrollable facility list */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-thin">
+        {cluster.facilities
+          .slice()
+          .sort((a, b) => (facilityRiskScores[a.id] ?? 5) - (facilityRiskScores[b.id] ?? 5))
+          .map((facility) => {
+            const SIcon = getSectorIcon(facility.sector)
+            const score = facilityRiskScores[facility.id]
+            const scoreColor = score != null ? riskScoreToColor(score) : '#6b7280'
+            return (
+              <button
+                key={facility.id}
+                onClick={() => onFacilityClick(facility)}
+                className="w-full flex items-center gap-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-lg px-2.5 py-2 transition-colors text-left group"
+              >
+                <SIcon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: sectorColors[facility.sector] }} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] text-gray-300 group-hover:text-white truncate transition-colors">{facility.name}</p>
+                  <p className="text-[10px] text-gray-500 truncate">{facility.operator}</p>
+                </div>
+                {score != null && (
+                  <span className="text-[11px] font-bold font-mono flex-shrink-0" style={{ color: scoreColor }}>
+                    {score.toFixed(1)}
+                  </span>
+                )}
+              </button>
+            )
+          })}
       </div>
     </div>
   )

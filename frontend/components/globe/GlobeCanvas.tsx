@@ -12,7 +12,17 @@ import {
   sectorColors,
   EnergyFacility,
   ThreatActor,
+  ResolvedCluster,
+  computeResolvedClusters,
+  riskScoreToColor,
+  LayerVisibility,
+  DEFAULT_LAYER_VISIBILITY,
 } from './worldData'
+import {
+  createSubmarineCableGroup,
+  createChokepointGroup,
+  createGridCorridorGroup,
+} from './geoLayers'
 
 interface ActiveArc {
   line: THREE.Line
@@ -38,19 +48,80 @@ interface FacilityMarkerRef {
   glowSprite: THREE.Sprite
 }
 
+interface MediumDotRef {
+  mesh: THREE.Mesh
+  facility: EnergyFacility
+}
+
+interface ClusterBadgeRef {
+  sprite: THREE.Sprite
+  cluster: ResolvedCluster
+}
+
+interface UnclusteredDotRef {
+  mesh: THREE.Mesh
+  facility: EnergyFacility
+}
+
 interface ActorMarkerRef {
   mesh: THREE.Sprite
   actor: ThreatActor
 }
 
+type ZoomTier = 'far' | 'medium' | 'close'
+
+function getZoomTier(cameraDistance: number): ZoomTier {
+  if (cameraDistance < 2.0) return 'close'
+  if (cameraDistance <= 3.0) return 'medium'
+  return 'far'
+}
+
 export interface GlobeCanvasProps {
   onFacilityClick?: (facility: EnergyFacility) => void
   onThreatActorClick?: (actor: ThreatActor) => void
+  onClusterClick?: (cluster: ResolvedCluster) => void
   onEmptyClick?: () => void
   selectedFacilityId?: string | null
   selectedActorName?: string | null
   activeCampaignActors?: string[]
   facilityRiskScores?: Record<string, number>
+  layerVisibility?: LayerVisibility
+}
+
+// Generate a cluster badge texture: risk-colored glow circle with count number
+function createClusterBadgeTexture(count: number, riskColor: string, size = 128): THREE.Texture {
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  const cx = size / 2
+  const cy = size / 2
+
+  // Radial gradient glow
+  const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, cx)
+  gradient.addColorStop(0, riskColor)
+  gradient.addColorStop(0.35, riskColor)
+  gradient.addColorStop(0.7, riskColor + '40')
+  gradient.addColorStop(1, 'transparent')
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, size, size)
+
+  // Filled center circle
+  ctx.beginPath()
+  ctx.arc(cx, cy, size * 0.22, 0, Math.PI * 2)
+  ctx.fillStyle = riskColor
+  ctx.fill()
+
+  // Count text
+  ctx.fillStyle = '#ffffff'
+  ctx.font = `bold ${size * 0.22}px sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(String(count), cx, cy + 1)
+
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.needsUpdate = true
+  return tex
 }
 
 // Generate a circular glow texture via canvas
@@ -166,15 +237,26 @@ function loadCountryOutlines(globeGroup: THREE.Group, radius: number) {
     })
 }
 
-export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmptyClick, selectedFacilityId, selectedActorName, activeCampaignActors, facilityRiskScores }: GlobeCanvasProps) {
+export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClusterClick, onEmptyClick, selectedFacilityId, selectedActorName, activeCampaignActors, facilityRiskScores, layerVisibility }: GlobeCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const callbacksRef = useRef({ onFacilityClick, onThreatActorClick, onEmptyClick })
+  const callbacksRef = useRef({ onFacilityClick, onThreatActorClick, onClusterClick, onEmptyClick })
   const activeCampaignActorsRef = useRef<string[]>(activeCampaignActors || [])
   const facilityRiskScoresRef = useRef<Record<string, number>>(facilityRiskScores || {})
   const selectionRef = useRef({ selectedFacilityId, selectedActorName })
+  const layerVisibilityRef = useRef<LayerVisibility>(layerVisibility || DEFAULT_LAYER_VISIBILITY)
   const facilityMarkersRef = useRef<FacilityMarkerRef[]>([])
+  const mediumDotsRef = useRef<MediumDotRef[]>([])
+  const clusterBadgesRef = useRef<ClusterBadgeRef[]>([])
+  const unclusteredDotsRef = useRef<UnclusteredDotRef[]>([])
   const actorMarkersRef = useRef<ActorMarkerRef[]>([])
   const selectionRingRef = useRef<THREE.Mesh | null>(null)
+  const actorGroupRef = useRef<THREE.Group | null>(null)
+  const arcGroupRef = useRef<THREE.Group | null>(null)
+  const cableGroupRef = useRef<THREE.Group | null>(null)
+  const chokepointGroupRef = useRef<THREE.Group | null>(null)
+  const gridCorridorGroupRef = useRef<THREE.Group | null>(null)
+  const currentTierRef = useRef<ZoomTier>('far')
+  const tierGroupsRef = useRef<{ far: THREE.Group; medium: THREE.Group; close: THREE.Group } | null>(null)
   const sceneDataRef = useRef<{
     scene: THREE.Scene
     camera: THREE.PerspectiveCamera
@@ -189,7 +271,7 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
 
   // Keep callbacks ref up to date without triggering re-render
   useEffect(() => {
-    callbacksRef.current = { onFacilityClick, onThreatActorClick, onEmptyClick }
+    callbacksRef.current = { onFacilityClick, onThreatActorClick, onClusterClick, onEmptyClick }
   })
 
   // Keep activeCampaignActors ref up to date
@@ -197,9 +279,10 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
     activeCampaignActorsRef.current = activeCampaignActors || []
   }, [activeCampaignActors])
 
-  // Keep facilityRiskScores ref up to date and update bar heights
+  // Keep facilityRiskScores ref up to date, update bar heights + cluster badges
   useEffect(() => {
     facilityRiskScoresRef.current = facilityRiskScores || {}
+    // Update close-layer bar heights
     facilityMarkersRef.current.forEach(fm => {
       const score = facilityRiskScoresRef.current[fm.facility.id]
       if (score != null) {
@@ -207,7 +290,53 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
         fm.mesh.scale.set(1, height / 0.012, 1)
       }
     })
+    // Recompute cluster badges with updated risk scores
+    if (clusterBadgesRef.current.length > 0) {
+      const { clusters } = computeResolvedClusters(energyFacilities, facilityRiskScoresRef.current)
+      clusterBadgesRef.current.forEach(cb => {
+        const updated = clusters.find(c => c.cluster.id === cb.cluster.cluster.id)
+        if (updated) {
+          cb.cluster = updated
+          const mat = cb.sprite.material as THREE.SpriteMaterial
+          mat.map?.dispose()
+          mat.map = createClusterBadgeTexture(updated.facilities.length, riskScoreToColor(updated.worstRisk))
+          mat.needsUpdate = true
+        }
+      })
+    }
   }, [facilityRiskScores])
+
+  // Keep layer visibility ref up to date and toggle groups
+  useEffect(() => {
+    const lv = layerVisibility || DEFAULT_LAYER_VISIBILITY
+    layerVisibilityRef.current = lv
+
+    // Toggle actor/arc groups
+    if (actorGroupRef.current) actorGroupRef.current.visible = lv.threatActors
+    if (arcGroupRef.current) arcGroupRef.current.visible = lv.attackArcs
+
+    // Toggle geo-layer groups
+    if (cableGroupRef.current) cableGroupRef.current.visible = lv.submarineCables
+    if (chokepointGroupRef.current) chokepointGroupRef.current.visible = lv.maritimeChokepoints
+    if (gridCorridorGroupRef.current) gridCorridorGroupRef.current.visible = lv.powerGridCorridors
+
+    // Toggle per-sector facility visibility across all tiers
+    facilityMarkersRef.current.forEach(fm => {
+      const vis = lv[fm.facility.sector]
+      fm.mesh.visible = vis
+      fm.glowSprite.visible = vis
+    })
+    mediumDotsRef.current.forEach(md => {
+      md.mesh.visible = lv[md.facility.sector]
+    })
+    unclusteredDotsRef.current.forEach(ud => {
+      ud.mesh.visible = lv[ud.facility.sector]
+    })
+    // Cluster badges: visible if any member sector is visible
+    clusterBadgesRef.current.forEach(cb => {
+      cb.sprite.visible = cb.cluster.facilities.some(f => lv[f.sector])
+    })
+  }, [layerVisibility])
 
   // Keep selection ref up to date and update selection ring
   useEffect(() => {
@@ -288,15 +417,23 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
     const globeGroup = new THREE.Group()
     scene.add(globeGroup)
 
-    // Main globe sphere — near-black, no blue fill
+    // Main globe sphere — night-lights texture (NASA Black Marble)
     const globeGeo = new THREE.SphereGeometry(1, 64, 64)
     const globeMat = new THREE.MeshPhongMaterial({
-      color: 0x050A0F,
+      color: 0x888888,
+      emissive: 0x111111,
       transparent: true,
       opacity: 0.95,
       shininess: 5,
     })
     globeGroup.add(new THREE.Mesh(globeGeo, globeMat))
+
+    // Async-load night-lights texture (progressive enhancement — dark sphere until loaded)
+    new THREE.TextureLoader().load('/textures/earth-night-2k.jpg', (texture) => {
+      texture.colorSpace = THREE.SRGBColorSpace
+      globeMat.map = texture
+      globeMat.needsUpdate = true
+    })
 
     // Subtle neutral atmospheric halo — feathered white limb glow
     const atmosGeo = new THREE.SphereGeometry(1.06, 64, 64)
@@ -358,32 +495,51 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
     // Country outlines (loaded async from TopoJSON)
     loadCountryOutlines(globeGroup, 1.005)
 
-    // Declutter overlapping facility positions
-    // Detect facilities within MIN_DIST degrees and spread them in a ring
-    const MIN_DIST = 0.35 // ~25 miles at US latitudes
-    const declutteredCoords: Map<string, { lat: number; lng: number }> = new Map()
+    // Static geographic data layers
+    const cableGroup = createSubmarineCableGroup(1)
+    globeGroup.add(cableGroup)
+    cableGroupRef.current = cableGroup
 
-    // Group facilities that are too close together
+    const chokepointGroup = createChokepointGroup(1)
+    globeGroup.add(chokepointGroup)
+    chokepointGroupRef.current = chokepointGroup
+
+    const gridCorridorGroup = createGridCorridorGroup(1)
+    globeGroup.add(gridCorridorGroup)
+    gridCorridorGroupRef.current = gridCorridorGroup
+
+    // Apply initial layer visibility
+    const initLV = layerVisibilityRef.current
+    cableGroup.visible = initLV.submarineCables
+    chokepointGroup.visible = initLV.maritimeChokepoints
+    gridCorridorGroup.visible = initLV.powerGridCorridors
+
+    // ============================================================
+    // Three-tier facility rendering
+    // ============================================================
+
+    // Declutter overlapping facility positions (used by medium + close tiers)
+    const MIN_DIST = 0.35
+    const declutteredCoords: Map<string, { lat: number; lng: number }> = new Map()
     const processed = new Set<string>()
     energyFacilities.forEach((f) => {
       if (processed.has(f.id)) return
-      const cluster = energyFacilities.filter(
+      const nearby = energyFacilities.filter(
         (other) =>
           !processed.has(other.id) &&
           Math.abs(f.lat - other.lat) < MIN_DIST &&
           Math.abs(f.lng - other.lng) < MIN_DIST
       )
-      if (cluster.length <= 1) {
+      if (nearby.length <= 1) {
         declutteredCoords.set(f.id, { lat: f.lat, lng: f.lng })
         processed.add(f.id)
         return
       }
-      // Spread cluster members in a small ring around their centroid
-      const cLat = cluster.reduce((s, c) => s + c.lat, 0) / cluster.length
-      const cLng = cluster.reduce((s, c) => s + c.lng, 0) / cluster.length
-      const spreadRadius = 0.25 + cluster.length * 0.06
-      cluster.forEach((member, i) => {
-        const angle = (i / cluster.length) * Math.PI * 2
+      const cLat = nearby.reduce((s, c) => s + c.lat, 0) / nearby.length
+      const cLng = nearby.reduce((s, c) => s + c.lng, 0) / nearby.length
+      const spreadRadius = 0.25 + nearby.length * 0.06
+      nearby.forEach((member, i) => {
+        const angle = (i / nearby.length) * Math.PI * 2
         declutteredCoords.set(member.id, {
           lat: cLat + Math.sin(angle) * spreadRadius,
           lng: cLng + Math.cos(angle) * spreadRadius,
@@ -392,25 +548,33 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       })
     })
 
-    // Energy facility markers - sector-colored, clickable
-    const facilityMarkers: FacilityMarkerRef[] = []
-    const facilityMeshGroup = new THREE.Group()
-    globeGroup.add(facilityMeshGroup)
+    // Create three tier groups
+    const farGroup = new THREE.Group()
+    const mediumGroup = new THREE.Group()
+    const closeGroup = new THREE.Group()
+    globeGroup.add(farGroup)
+    globeGroup.add(mediumGroup)
+    globeGroup.add(closeGroup)
 
+    // Start with far visible (default zoom)
+    farGroup.visible = true
+    mediumGroup.visible = false
+    closeGroup.visible = false
+    tierGroupsRef.current = { far: farGroup, medium: mediumGroup, close: closeGroup }
+
+    // ── CLOSE TIER: 3D bars + glow sprites (existing behavior) ──
+    const facilityMarkers: FacilityMarkerRef[] = []
     energyFacilities.forEach((facility) => {
       const coords = declutteredCoords.get(facility.id) || { lat: facility.lat, lng: facility.lng }
       const pos = latLngToVector3(coords.lat, coords.lng, 1.012)
       const color = sectorColors[facility.sector]
 
-      // Compute bar height from risk score (CAPRI 1=tallest/severe, 5=shortest/low)
-      // Reduced ~50% for grounded, proportional look
       const riskScore = facilityRiskScoresRef.current[facility.id]
       const baseHeight = 0.012
       const height = riskScore != null
         ? 0.012 + (1 - (riskScore - 1) / 4) * 0.075
         : baseHeight
 
-      // 3D risk bar (square column)
       const markerGeo = new THREE.BoxGeometry(0.018, height, 0.018)
       markerGeo.translate(0, height / 2, 0)
       const markerMat = new THREE.MeshBasicMaterial({
@@ -423,9 +587,8 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       const outward = pos.clone().normalize()
       marker.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), outward)
       marker.userData = { type: 'facility', facility }
-      facilityMeshGroup.add(marker)
+      closeGroup.add(marker)
 
-      // Subtle glow sprite behind bar
       const glowMat = new THREE.SpriteMaterial({
         map: createGlowTexture(color, 32),
         transparent: true,
@@ -435,11 +598,76 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       const glow = new THREE.Sprite(glowMat)
       glow.position.copy(pos)
       glow.scale.set(0.05, 0.05, 1)
-      facilityMeshGroup.add(glow)
+      closeGroup.add(glow)
 
       facilityMarkers.push({ mesh: marker, facility, glowSprite: glow })
     })
     facilityMarkersRef.current = facilityMarkers
+
+    // ── MEDIUM TIER: sector-colored small spheres for all 75 facilities ──
+    const mediumDots: MediumDotRef[] = []
+    const dotGeo = new THREE.SphereGeometry(0.008, 8, 8)
+    energyFacilities.forEach((facility) => {
+      const coords = declutteredCoords.get(facility.id) || { lat: facility.lat, lng: facility.lng }
+      const pos = latLngToVector3(coords.lat, coords.lng, 1.01)
+      const color = sectorColors[facility.sector]
+
+      const dotMat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(color),
+        transparent: true,
+        opacity: 0.9,
+      })
+      const dot = new THREE.Mesh(dotGeo, dotMat)
+      dot.position.copy(pos)
+      dot.userData = { type: 'facility', facility }
+      mediumGroup.add(dot)
+      mediumDots.push({ mesh: dot, facility })
+    })
+    mediumDotsRef.current = mediumDots
+
+    // ── FAR TIER: cluster badges + unclustered individual dots ──
+    const resolvedData = computeResolvedClusters(energyFacilities, facilityRiskScoresRef.current)
+    const clusterBadges: ClusterBadgeRef[] = []
+    const unclusteredDots: UnclusteredDotRef[] = []
+
+    // Cluster badge sprites
+    resolvedData.clusters.forEach((rc) => {
+      const pos = latLngToVector3(rc.cluster.centerLat, rc.cluster.centerLng, 1.02)
+      const riskColor = riskScoreToColor(rc.worstRisk)
+      const tex = createClusterBadgeTexture(rc.facilities.length, riskColor)
+
+      const spriteMat = new THREE.SpriteMaterial({
+        map: tex,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthTest: false,
+      })
+      const sprite = new THREE.Sprite(spriteMat)
+      sprite.position.copy(pos)
+      sprite.scale.set(0.12, 0.12, 1)
+      sprite.userData = { type: 'cluster', cluster: rc }
+      farGroup.add(sprite)
+      clusterBadges.push({ sprite, cluster: rc })
+    })
+    clusterBadgesRef.current = clusterBadges
+
+    // Unclustered facility dots (singletons that don't belong to any cluster)
+    const smallDotGeo = new THREE.SphereGeometry(0.006, 6, 6)
+    resolvedData.unclustered.forEach((facility) => {
+      const pos = latLngToVector3(facility.lat, facility.lng, 1.01)
+      const color = sectorColors[facility.sector]
+      const dotMat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(color),
+        transparent: true,
+        opacity: 0.85,
+      })
+      const dot = new THREE.Mesh(smallDotGeo, dotMat)
+      dot.position.copy(pos)
+      dot.userData = { type: 'facility', facility }
+      farGroup.add(dot)
+      unclusteredDots.push({ mesh: dot, facility })
+    })
+    unclusteredDotsRef.current = unclusteredDots
 
     // Selection ring (torus around selected marker)
     const ringGeo = new THREE.RingGeometry(0.025, 0.032, 32)
@@ -455,6 +683,15 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
     selectionRingRef.current = selectionRing
 
     // Threat origin markers — all red, constantly highlighted
+    const actorGroup = new THREE.Group()
+    globeGroup.add(actorGroup)
+    actorGroupRef.current = actorGroup
+
+    // Arc group for attack arcs (layer toggle)
+    const arcGroup = new THREE.Group()
+    globeGroup.add(arcGroup)
+    arcGroupRef.current = arcGroup
+
     const markers: PulseMarker[] = []
     const actorMarkerRefs: ActorMarkerRef[] = []
     const glowTex = createGlowTexture('rgba(255, 60, 60, 0.6)')
@@ -473,7 +710,7 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       sprite.position.copy(pos)
       sprite.scale.set(0.08, 0.08, 1)
       sprite.userData = { type: 'actor', actor }
-      globeGroup.add(sprite)
+      actorGroup.add(sprite)
       markers.push({ mesh: sprite, phase: 0, baseScale: 0.08, actorName: actor.name })
       actorMarkerRefs.push({ mesh: sprite, actor })
     })
@@ -500,14 +737,26 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
     controls.autoRotate = true
     controls.autoRotateSpeed = 0.3
 
-    // Raycaster for click/hover detection
+    // Raycaster for click/hover detection — tier-aware
     const raycaster = new THREE.Raycaster()
     const mouse = new THREE.Vector2()
     let mouseDownPos = { x: 0, y: 0 }
 
-    // Collect all clickable objects
-    const clickableFacilityMeshes = facilityMarkers.map((m) => m.mesh)
+    // Collect clickable objects per tier
+    const clickableCloseMeshes = facilityMarkers.map((m) => m.mesh)
+    const clickableMediumMeshes = mediumDots.map((m) => m.mesh)
+    const clickableClusterSprites = clusterBadges.map((m) => m.sprite)
+    const clickableUnclusteredDots = unclusteredDots.map((m) => m.mesh)
     const clickableActorSprites = actorMarkerRefs.map((m) => m.mesh)
+
+    function getClickableForTier(): THREE.Object3D[] {
+      const tier = currentTierRef.current
+      switch (tier) {
+        case 'far':   return [...clickableClusterSprites, ...clickableUnclusteredDots, ...clickableActorSprites]
+        case 'medium': return [...clickableMediumMeshes, ...clickableActorSprites]
+        case 'close':  return [...clickableCloseMeshes, ...clickableActorSprites]
+      }
+    }
 
     function onMouseDown(event: MouseEvent) {
       mouseDownPos = { x: event.clientX, y: event.clientY }
@@ -516,7 +765,6 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
     function onMouseUp(event: MouseEvent) {
       const dx = event.clientX - mouseDownPos.x
       const dy = event.clientY - mouseDownPos.y
-      // Only treat as click if mouse didn't move much (not a drag/rotate)
       if (Math.sqrt(dx * dx + dy * dy) > 5) return
 
       const rect = container.getBoundingClientRect()
@@ -525,25 +773,24 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
 
       raycaster.setFromCamera(mouse, camera)
 
-      // Check facility markers first
-      const facilityHits = raycaster.intersectObjects(clickableFacilityMeshes)
-      if (facilityHits.length > 0) {
-        const hit = facilityHits[0].object
-        const data = hit.userData as { type: string; facility: EnergyFacility }
-        callbacksRef.current.onFacilityClick?.(data.facility)
-        return
+      const clickable = getClickableForTier()
+      const hits = raycaster.intersectObjects(clickable)
+      if (hits.length > 0) {
+        const ud = hits[0].object.userData
+        if (ud.type === 'cluster') {
+          callbacksRef.current.onClusterClick?.(ud.cluster as ResolvedCluster)
+          return
+        }
+        if (ud.type === 'facility') {
+          callbacksRef.current.onFacilityClick?.(ud.facility as EnergyFacility)
+          return
+        }
+        if (ud.type === 'actor') {
+          callbacksRef.current.onThreatActorClick?.(ud.actor as ThreatActor)
+          return
+        }
       }
 
-      // Check threat actor sprites
-      const actorHits = raycaster.intersectObjects(clickableActorSprites)
-      if (actorHits.length > 0) {
-        const hit = actorHits[0].object
-        const data = hit.userData as { type: string; actor: ThreatActor }
-        callbacksRef.current.onThreatActorClick?.(data.actor)
-        return
-      }
-
-      // Clicked on empty space
       callbacksRef.current.onEmptyClick?.()
     }
 
@@ -554,8 +801,8 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
 
       raycaster.setFromCamera(mouse, camera)
 
-      const allClickable = [...clickableFacilityMeshes, ...clickableActorSprites]
-      const hits = raycaster.intersectObjects(allClickable)
+      const clickable = getClickableForTier()
+      const hits = raycaster.intersectObjects(clickable)
       container.style.cursor = hits.length > 0 ? 'pointer' : 'grab'
     }
 
@@ -590,7 +837,7 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       })
 
       const line = new THREE.Line(geometry, material)
-      globeGroup.add(line)
+      arcGroup.add(line)
 
       // Glowing head sprite
       const headMat = new THREE.SpriteMaterial({
@@ -602,7 +849,7 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       const head = new THREE.Sprite(headMat)
       head.scale.set(0.04, 0.04, 1)
       head.position.copy(points[0])
-      globeGroup.add(head)
+      arcGroup.add(head)
 
       arcs.push({
         line,
@@ -632,6 +879,18 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       const elapsed = clock.getElapsedTime()
 
       controls.update()
+
+      // Zoom-tier detection: toggle group visibility on tier change
+      const camDist = camera.position.length()
+      const newTier = getZoomTier(camDist)
+      if (newTier !== currentTierRef.current) {
+        currentTierRef.current = newTier
+        if (tierGroupsRef.current) {
+          tierGroupsRef.current.far.visible = newTier === 'far'
+          tierGroupsRef.current.medium.visible = newTier === 'medium'
+          tierGroupsRef.current.close.visible = newTier === 'close'
+        }
+      }
 
       // Threat actor markers — constant (no pulsing)
 
@@ -689,8 +948,8 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
             arc.head.material.opacity = Math.max(0, arc.opacity)
           }
           if (arc.opacity <= 0) {
-            globeGroup.remove(arc.line)
-            globeGroup.remove(arc.head)
+            arcGroup.remove(arc.line)
+            arcGroup.remove(arc.head)
             arc.line.geometry.dispose()
             ;(arc.line.material as THREE.Material).dispose()
             ;(arc.head.material as THREE.Material).dispose()

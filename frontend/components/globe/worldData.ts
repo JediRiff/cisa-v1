@@ -198,6 +198,21 @@ export function createArcCurve(
   return new THREE.QuadraticBezierCurve3(start, mid, end)
 }
 
+// Layer visibility state for globe toggles
+export interface LayerVisibility {
+  nuclear: boolean; hydro: boolean; grid: boolean
+  natural_gas: boolean; oil: boolean; water: boolean
+  threatActors: boolean; attackArcs: boolean
+  submarineCables: boolean; maritimeChokepoints: boolean; powerGridCorridors: boolean
+}
+
+export const DEFAULT_LAYER_VISIBILITY: LayerVisibility = {
+  nuclear: true, hydro: true, grid: true,
+  natural_gas: true, oil: true, water: true,
+  threatActors: true, attackArcs: true,
+  submarineCables: true, maritimeChokepoints: true, powerGridCorridors: true,
+}
+
 // Sector display colors for globe markers
 export const sectorColors: Record<Sector, string> = {
   nuclear: '#F5C518',
@@ -736,6 +751,96 @@ export const energyFacilities: EnergyFacility[] = [
   { id: 'wtr-southeast', lat: 37.75, lng: -122.39, name: 'Southeast Water Pollution Control Plant', sector: 'water', operator: 'SFPUC', capacity: '85M gallons/day' },
   { id: 'wtr-detroit', lat: 42.29, lng: -83.09, name: 'Great Lakes Water Authority WTP', sector: 'water', operator: 'GLWA', capacity: '720M gallons/day' },
 ]
+
+// ============================================================
+// Facility Clustering — Pre-defined geographic regions
+// ============================================================
+
+export interface FacilityCluster {
+  id: string
+  label: string
+  centerLat: number
+  centerLng: number
+  radiusDeg: number
+}
+
+export interface ResolvedCluster {
+  cluster: FacilityCluster
+  facilities: EnergyFacility[]
+  worstRisk: number  // 1=severe, 5=low
+}
+
+export const facilityClusters: FacilityCluster[] = [
+  { id: 'tx-gulf',       label: 'Texas Gulf Coast',      centerLat: 29.3,  centerLng: -95.2,  radiusDeg: 2.0 },
+  { id: 'la-corridor',   label: 'Louisiana Corridor',    centerLat: 30.1,  centerLng: -92.0,  radiusDeg: 1.8 },
+  { id: 'pnw',           label: 'Pacific Northwest',     centerLat: 46.3,  centerLng: -120.5, radiusDeg: 2.5 },
+  { id: 'tva',           label: 'Tennessee Valley',      centerLat: 35.1,  centerLng: -85.5,  radiusDeg: 1.5 },
+  { id: 'mid-atlantic',  label: 'Mid-Atlantic',          centerLat: 39.9,  centerLng: -75.8,  radiusDeg: 1.2 },
+  { id: 'carolinas',     label: 'Carolinas',             centerLat: 35.0,  centerLng: -81.5,  radiusDeg: 1.2 },
+  { id: 'va-chesapeake', label: 'Virginia / Chesapeake', centerLat: 38.0,  centerLng: -77.0,  radiusDeg: 1.2 },
+  { id: 'california',    label: 'California',            centerLat: 36.5,  centerLng: -120.5, radiusDeg: 3.5 },
+  { id: 'il-in',         label: 'Illinois / Indiana',    centerLat: 41.6,  centerLng: -87.8,  radiusDeg: 1.5 },
+  { id: 'ny-ne',         label: 'New York / New England', centerLat: 42.5, centerLng: -74.5,  radiusDeg: 2.5 },
+  { id: 'n-plains',      label: 'Northern Plains',       centerLat: 47.8,  centerLng: -104.0, radiusDeg: 3.5 },
+]
+
+/** Assign each facility to its nearest qualifying cluster; singletons stay unclustered. */
+export function computeResolvedClusters(
+  facilities: EnergyFacility[],
+  riskScores: Record<string, number>,
+): { clusters: ResolvedCluster[]; unclustered: EnergyFacility[] } {
+  // Assign each facility to the nearest cluster whose radius it falls within
+  const assignments = new Map<string, EnergyFacility[]>()
+  const unclustered: EnergyFacility[] = []
+
+  for (const f of facilities) {
+    let bestCluster: FacilityCluster | null = null
+    let bestDist = Infinity
+    for (const c of facilityClusters) {
+      const dLat = f.lat - c.centerLat
+      const dLng = f.lng - c.centerLng
+      const dist = Math.sqrt(dLat * dLat + dLng * dLng)
+      if (dist <= c.radiusDeg && dist < bestDist) {
+        bestDist = dist
+        bestCluster = c
+      }
+    }
+    if (bestCluster) {
+      const list = assignments.get(bestCluster.id) || []
+      list.push(f)
+      assignments.set(bestCluster.id, list)
+    } else {
+      unclustered.push(f)
+    }
+  }
+
+  // Build resolved clusters; singletons (1 member) get moved to unclustered
+  const clusters: ResolvedCluster[] = []
+  for (const c of facilityClusters) {
+    const members = assignments.get(c.id)
+    if (!members || members.length === 0) continue
+    if (members.length === 1) {
+      unclustered.push(members[0])
+      continue
+    }
+    const worstRisk = members.reduce((worst, f) => {
+      const s = riskScores[f.id] ?? 5
+      return s < worst ? s : worst
+    }, 5)
+    clusters.push({ cluster: c, facilities: members, worstRisk })
+  }
+
+  return { clusters, unclustered }
+}
+
+/** Map a 1-5 CAPRI risk score to a CSS color (reusable across components). */
+export function riskScoreToColor(score: number): string {
+  if (score <= 1.5) return '#ef4444'  // red — severe
+  if (score <= 2.5) return '#f97316'  // orange — high
+  if (score <= 3.5) return '#eab308'  // yellow — elevated
+  if (score <= 4.5) return '#3b82f6'  // blue — guarded
+  return '#22c55e'                     // green — low
+}
 
 // Region color mapping for the globe land dots
 export const regionColors: Record<string, string> = {
