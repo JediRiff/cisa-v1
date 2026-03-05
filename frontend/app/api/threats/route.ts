@@ -125,24 +125,26 @@ export async function GET(request: NextRequest) {
       return itemDate >= oneWeekAgo
     }).length
 
-    // Count last 24h alerts by category — energy-relevant only
+    // Count last 24h alerts by category
+    // Nation-state and ICS count from all items (those indicators ARE energy-relevant)
+    // KEV and total count only energy-flagged items
     const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000
-    const last24hItems = feedResult.items.filter(item => {
-      const itemDate = new Date(item.pubDate).getTime()
-      return itemDate >= oneDayAgo && item.isEnergyRelevant
+    const last24hAll = feedResult.items.filter(item => {
+      return new Date(item.pubDate).getTime() >= oneDayAgo
     })
+    const last24hEnergy = last24hAll.filter(item => item.isEnergyRelevant)
 
     const last24h = {
-      kev: last24hItems.filter(item => item.source === 'CISA KEV').length,
-      nationState: last24hItems.filter(item => {
+      kev: last24hEnergy.filter(item => item.source === 'CISA KEV').length,
+      nationState: last24hAll.filter(item => {
         const text = item.title + ' ' + item.description
         return NATION_STATE_INDICATORS.some(indicator => matchesIndicator(text, indicator))
       }).length,
-      ics: last24hItems.filter(item => {
+      ics: last24hAll.filter(item => {
         const text = item.title + ' ' + item.description
         return matchesICSContext(text)
       }).length,
-      total: last24hItems.length
+      total: last24hEnergy.length
     }
 
     // Process KEV items — filtered to energy-relevant vendors/descriptions only

@@ -95,12 +95,9 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
-  // ENERGY RELEVANCE GATE: Only score items flagged as energy-relevant
-  const energyItems = items.filter(item => item.isEnergyRelevant)
-
-  // Filter to recent energy-relevant items
-  const recentItems = energyItems.filter(item => new Date(item.pubDate) >= thirtyDaysAgo)
-  const veryRecentItems = energyItems.filter(item => new Date(item.pubDate) >= sevenDaysAgo)
+  // Time-window filters (energy relevance applied per-factor, not globally)
+  const recentItems = items.filter(item => new Date(item.pubDate) >= thirtyDaysAgo)
+  const veryRecentItems = items.filter(item => new Date(item.pubDate) >= sevenDaysAgo)
 
   // Helper to map items for factor output
   const mapItems = (items: ThreatItem[]) => items.slice(0, 10).map(item => ({
@@ -109,8 +106,14 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
 
   // Process factors in priority order (highest per-item impact first)
   // Items are assigned to their highest-impact category via usedItemIds
+  // Energy relevance is enforced per-factor:
+  //   - Nation-state: indicators ARE energy-targeting groups, always relevant
+  //   - KEV: filtered by energy vendor/keyword via isEnergyRelevant flag
+  //   - ICS/SCADA: ICS content IS energy-relevant by definition
+  //   - Vendor alerts: only if flagged isEnergyRelevant
 
   // ── Factor 1: Nation-State Activity (-0.4 each, max -0.8) ──
+  // These indicators are energy-targeting APTs — always score matches
   const nationStateThreats = recentItems.filter(item => {
     if (usedItemIds.has(item.id)) return false
     const text = item.title + ' ' + item.description
@@ -134,9 +137,10 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
   }
 
   // ── Factor 2: CISA KEV Entries (-0.3 each, max -1.2, weighted by EPSS) ──
+  // Only energy-relevant KEVs (filtered by vendor/keyword at feed parse time)
   const recentKEVs = veryRecentItems.filter(item => {
     if (usedItemIds.has(item.id)) return false
-    const matches = item.source === 'CISA KEV' && item.severity === 'critical'
+    const matches = item.source === 'CISA KEV' && item.severity === 'critical' && item.isEnergyRelevant
     if (matches) usedItemIds.add(item.id)
     return matches
   })
@@ -190,9 +194,10 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
   }
 
   // ── Factor 4: Vendor Critical Alerts (-0.15 each, max -0.4) ──
+  // Only vendor alerts flagged as energy-relevant
   const criticalVendorItems = recentItems.filter(item => {
     if (usedItemIds.has(item.id)) return false
-    const matches = item.sourceType === 'vendor' && (item.severity === 'critical' || item.severity === 'high')
+    const matches = item.sourceType === 'vendor' && (item.severity === 'critical' || item.severity === 'high') && item.isEnergyRelevant
     if (matches) usedItemIds.add(item.id)
     return matches
   })
@@ -230,8 +235,9 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
     color = '#16a34a'
   }
 
-  // Generate summary (all recentItems are already energy-relevant)
-  const summary = generateSummary(score, recentItems.length, recentKEVs.length)
+  // Generate summary
+  const energyRelevantCount = recentItems.filter(item => item.isEnergyRelevant).length
+  const summary = generateSummary(score, energyRelevantCount, recentKEVs.length)
 
   return {
     score,

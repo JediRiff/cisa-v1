@@ -15,9 +15,8 @@ export async function GET() {
   const now = new Date()
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-  const energyItems = items.filter(item => item.isEnergyRelevant)
-  const recentItems = energyItems.filter(item => new Date(item.pubDate) >= thirtyDaysAgo)
-  const veryRecentItems = energyItems.filter(item => new Date(item.pubDate) >= sevenDaysAgo)
+  const recentItems = items.filter(item => new Date(item.pubDate) >= thirtyDaysAgo)
+  const veryRecentItems = items.filter(item => new Date(item.pubDate) >= sevenDaysAgo)
 
   // Detect double-counted items (items that match multiple factor categories)
   const doubleCountedItems: { id: string; title: string; factors: string[] }[] = []
