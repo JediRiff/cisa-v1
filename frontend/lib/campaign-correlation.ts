@@ -4,7 +4,7 @@
 
 import { ThreatItem } from '@/lib/feeds'
 import { ThreatActor, Sector } from '@/components/globe/worldData'
-import { NATION_STATE_INDICATORS, ICS_INDICATORS, matchesIndicator } from '@/lib/indicators'
+import { NATION_STATE_INDICATORS, ICS_INDICATORS, matchesIndicator, matchesICSContext } from '@/lib/indicators'
 
 // ===== Interfaces =====
 
@@ -59,7 +59,7 @@ function computeItemSeverity(item: ThreatItem): number {
 }
 
 function hasIcsRelevance(item: ThreatItem): boolean {
-  // Check AI-populated fields first
+  // Check AI-populated fields first (these are already contextualized by AI)
   if (item.aiAffectedSystems && item.aiAffectedSystems.length > 0) {
     const systemsText = item.aiAffectedSystems.join(' ').toLowerCase()
     if (ICS_INDICATORS.some(term => systemsText.includes(term))) return true
@@ -68,9 +68,9 @@ function hasIcsRelevance(item: ThreatItem): boolean {
     const protocolsText = item.aiAffectedProtocols.join(' ').toLowerCase()
     if (ICS_INDICATORS.some(term => protocolsText.includes(term))) return true
   }
-  // Fallback: check title + description
+  // Fallback: context-aware matching (vendor names require ICS co-occurrence)
   const text = `${item.title} ${item.description}`
-  return ICS_INDICATORS.some(term => matchesIndicator(text, term))
+  return matchesICSContext(text)
 }
 
 function isNationStateItem(item: ThreatItem): boolean {

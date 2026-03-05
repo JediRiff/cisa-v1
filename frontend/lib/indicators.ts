@@ -27,19 +27,43 @@ export const NATION_STATE_INDICATORS = [
   'nation-state', 'state-sponsored',
 ] as const
 
-// ICS/SCADA/OT terms for industrial control system relevance detection
-export const ICS_INDICATORS = [
-  // Protocols
-  'scada', 'ics', 'plc', 'hmi', 'rtu', 'dcs',
+// ── ICS/SCADA Indicators (split for context-aware matching) ──
+
+// Terms that directly indicate ICS/SCADA/OT context (always match on their own)
+export const ICS_TERMS = [
+  // Protocols & technologies
+  'scada', 'plc', 'hmi', 'rtu', 'dcs',
   'modbus', 'dnp3', 'iec 61850', 'iec 104', 'iec 60870',
-  'opc', 'opc ua', 'bacnet', 'profinet', 'ethernet/ip',
+  'opc ua', 'bacnet', 'profinet', 'ethernet/ip',
   // Generic terms
   'industrial control', 'operational technology',
-  // Major ICS vendors
-  'siemens', 'schneider electric', 'rockwell', 'honeywell', 'unitronics',
   // ICS-targeted malware families
   'industroyer', 'crashoverride', 'havex', 'pipedream', 'incontroller',
   'frostygoop', 'cosmicenergy', 'triton', 'trisis',
+] as const
+
+// Vendor names that only indicate ICS context when paired with an ICS term
+export const ICS_VENDORS = [
+  'siemens', 'schneider electric', 'rockwell', 'honeywell',
+  'unitronics', 'abb', 'emerson', 'yokogawa', 'ge vernova',
+  'eaton', 'mitsubishi electric',
+] as const
+
+// Combined list for backward-compat (used where context matching isn't needed)
+export const ICS_INDICATORS = [...ICS_TERMS, ...ICS_VENDORS] as const
+
+// Energy sector vendors whose KEVs/CVEs are relevant to the energy score
+export const ENERGY_SECTOR_VENDORS = [
+  // ICS/OT vendors
+  'siemens', 'schneider electric', 'rockwell', 'rockwell automation',
+  'honeywell', 'unitronics', 'abb', 'emerson', 'yokogawa',
+  'ge vernova', 'ge digital', 'eaton', 'mitsubishi electric',
+  // SCADA/DCS software vendors
+  'inductive automation', 'ignition', 'wonderware', 'aveva',
+  'opto 22', 'kepware', 'moxa', 'phoenix contact',
+  // Energy-adjacent networking/infrastructure
+  'cisco', 'fortinet', 'palo alto', 'juniper',
+  'lantronix', 'digi international', 'sierra wireless',
 ] as const
 
 // Energy sector keywords for relevance detection
@@ -67,4 +91,33 @@ export function matchesIndicator(text: string, indicator: string): boolean {
     _regexCache.set(indicator, regex)
   }
   return regex.test(text)
+}
+
+/**
+ * Context-aware ICS matching: direct ICS terms always match,
+ * but vendor names only match if an ICS context term also appears in the text.
+ * Prevents "Siemens earnings report" from triggering ICS classification.
+ */
+export function matchesICSContext(text: string): boolean {
+  const lower = text.toLowerCase()
+  // Direct ICS terms — always match
+  if (ICS_TERMS.some(term => matchesIndicator(lower, term))) return true
+  // Vendor names — only match if an ICS context term is also present
+  if (ICS_VENDORS.some(vendor => matchesIndicator(lower, vendor))) {
+    return ICS_TERMS.some(term => matchesIndicator(lower, term))
+  }
+  return false
+}
+
+/**
+ * Check if a KEV entry is relevant to the energy sector.
+ * Matches if the vendor is an energy/ICS vendor OR the description contains energy keywords.
+ */
+export function isEnergyRelevantKEV(vendor: string, description: string): boolean {
+  const vendorLower = vendor.toLowerCase()
+  // Check if vendor is an energy sector vendor
+  if (ENERGY_SECTOR_VENDORS.some(v => vendorLower.includes(v))) return true
+  // Check if description mentions energy/ICS keywords
+  const text = vendor + ' ' + description
+  return ENERGY_KEYWORDS.some(kw => matchesIndicator(text, kw))
 }

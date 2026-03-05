@@ -70,7 +70,7 @@ const FEED_SOURCES = [
   { name: 'AlienVault OTX', url: 'https://otx.alienvault.com/api/v1/pulses/activity', type: 'otx', sourceType: 'vendor' as const },
 ]
 
-import { ENERGY_KEYWORDS, matchesIndicator } from './indicators'
+import { ENERGY_KEYWORDS, matchesIndicator, isEnergyRelevantKEV } from './indicators'
 
 // djb2 hash for deterministic RSS item IDs (stable across fetches)
 function hashString(str: string): string {
@@ -197,7 +197,7 @@ function parseKEV(json: any): ThreatItem[] {
       source: 'CISA KEV',
       sourceType: 'government' as const,
       severity: 'critical' as const,
-      isEnergyRelevant: checkEnergyRelevance(vuln.vendorProject || '', vuln.shortDescription || '')
+      isEnergyRelevant: isEnergyRelevantKEV(vuln.vendorProject || '', vuln.shortDescription || '')
     }))
 }
 

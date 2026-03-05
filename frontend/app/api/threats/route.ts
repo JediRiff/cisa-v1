@@ -6,7 +6,7 @@ import { calculateEnergyScore } from '@/lib/scoring'
 import { analyzeThreatsWithAI, AIAnalysisResult } from '@/lib/ai-analysis'
 import { detectCampaigns } from '@/lib/campaign-correlation'
 import { threatActors } from '@/components/globe/worldData'
-import { NATION_STATE_INDICATORS, ICS_INDICATORS, matchesIndicator } from '@/lib/indicators'
+import { NATION_STATE_INDICATORS, matchesIndicator, matchesICSContext, isEnergyRelevantKEV } from '@/lib/indicators'
 
 export const revalidate = 0 // No caching - always fetch fresh data
 
@@ -125,11 +125,11 @@ export async function GET(request: NextRequest) {
       return itemDate >= oneWeekAgo
     }).length
 
-    // Count last 24h alerts by category
+    // Count last 24h alerts by category — energy-relevant only
     const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000
     const last24hItems = feedResult.items.filter(item => {
       const itemDate = new Date(item.pubDate).getTime()
-      return itemDate >= oneDayAgo
+      return itemDate >= oneDayAgo && item.isEnergyRelevant
     })
 
     const last24h = {
@@ -140,26 +140,28 @@ export async function GET(request: NextRequest) {
       }).length,
       ics: last24hItems.filter(item => {
         const text = item.title + ' ' + item.description
-        return ICS_INDICATORS.some(indicator => matchesIndicator(text, indicator))
+        return matchesICSContext(text)
       }).length,
       total: last24hItems.length
     }
 
-    // Process KEV items for actionable recommendations
+    // Process KEV items — filtered to energy-relevant vendors/descriptions only
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    const kevActions = feedResult.kevItems.map(kev => ({
-      cveId: kev.cveID,
-      vendor: kev.vendorProject,
-      product: kev.product,
-      dueDate: kev.dueDate,
-      dateAdded: kev.dateAdded,
-      description: kev.shortDescription,
-      advisoryUrl: parseAdvisoryUrl(kev.notes),
-      nvdUrl: `https://nvd.nist.gov/vuln/detail/${kev.cveID}`,
-      isOverdue: new Date(kev.dueDate) < today,
-      ransomwareUse: kev.knownRansomwareCampaignUse === 'Known'
-    }))
+    const kevActions = feedResult.kevItems
+      .filter(kev => isEnergyRelevantKEV(kev.vendorProject, kev.shortDescription || ''))
+      .map(kev => ({
+        cveId: kev.cveID,
+        vendor: kev.vendorProject,
+        product: kev.product,
+        dueDate: kev.dueDate,
+        dateAdded: kev.dateAdded,
+        description: kev.shortDescription,
+        advisoryUrl: parseAdvisoryUrl(kev.notes),
+        nvdUrl: `https://nvd.nist.gov/vuln/detail/${kev.cveID}`,
+        isOverdue: new Date(kev.dueDate) < today,
+        ransomwareUse: kev.knownRansomwareCampaignUse === 'Known'
+      }))
 
     // Build response data
     const responseData = {

@@ -3,7 +3,7 @@
 // OPEN SOURCE: All weights and methodology are transparent
 
 import { ThreatItem } from './feeds'
-import { NATION_STATE_INDICATORS, ICS_INDICATORS, matchesIndicator } from './indicators'
+import { NATION_STATE_INDICATORS, matchesIndicator, matchesICSContext } from './indicators'
 
 // ============================================
 // SCORING WEIGHTS - OPEN SOURCE & TRANSPARENT
@@ -95,9 +95,12 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
-  // Filter to recent items
-  const recentItems = items.filter(item => new Date(item.pubDate) >= thirtyDaysAgo)
-  const veryRecentItems = items.filter(item => new Date(item.pubDate) >= sevenDaysAgo)
+  // ENERGY RELEVANCE GATE: Only score items flagged as energy-relevant
+  const energyItems = items.filter(item => item.isEnergyRelevant)
+
+  // Filter to recent energy-relevant items
+  const recentItems = energyItems.filter(item => new Date(item.pubDate) >= thirtyDaysAgo)
+  const veryRecentItems = energyItems.filter(item => new Date(item.pubDate) >= sevenDaysAgo)
 
   // Helper to map items for factor output
   const mapItems = (items: ThreatItem[]) => items.slice(0, 10).map(item => ({
@@ -163,10 +166,11 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
   }
 
   // ── Factor 3: ICS/SCADA Vulnerabilities (-0.3 each, max -0.6) ──
+  // Context-aware: vendor names only match when paired with ICS terms
   const icsThreats = recentItems.filter(item => {
     if (usedItemIds.has(item.id)) return false
     const text = item.title + ' ' + item.description
-    const matches = ICS_INDICATORS.some(indicator => matchesIndicator(text, indicator))
+    const matches = matchesICSContext(text)
     if (matches) usedItemIds.add(item.id)
     return matches
   })
@@ -226,9 +230,8 @@ export function calculateEnergyScore(items: ThreatItem[]): ScoreResult {
     color = '#16a34a'
   }
 
-  // Generate summary
-  const energyRelevantCount = recentItems.filter(item => item.isEnergyRelevant).length
-  const summary = generateSummary(score, energyRelevantCount, recentKEVs.length)
+  // Generate summary (all recentItems are already energy-relevant)
+  const summary = generateSummary(score, recentItems.length, recentKEVs.length)
 
   return {
     score,

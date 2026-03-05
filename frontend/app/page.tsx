@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { AlertTriangle, Shield, RefreshCw, Clock, CheckCircle, XCircle, Bell, BellOff, ChevronDown, MessageSquare, ArrowUp, AlertCircle, Settings, Search } from 'lucide-react'
 import { saveScore } from '@/lib/history'
 import { checkAndTriggerAlerts, requestNotificationPermission, getNotificationPermission, setWebhookUrl, getWebhookUrl } from '@/lib/alerts'
-import { NATION_STATE_INDICATORS, ICS_INDICATORS, matchesIndicator } from '@/lib/indicators'
+import { NATION_STATE_INDICATORS, matchesIndicator, matchesICSContext } from '@/lib/indicators'
 import ActionableRecommendations, { type KEVAction } from '@/components/ActionableRecommendations'
 import ScoreBreakdown from '@/components/ScoreBreakdown'
 import ScoringMethodology from '@/components/ScoringMethodology'
@@ -207,7 +207,7 @@ export default function Dashboard() {
       case 'ics-ot':
         return items.filter(item => {
           const text = item.title + ' ' + item.description
-          return ICS_INDICATORS.some(ind => matchesIndicator(text, ind))
+          return matchesICSContext(text)
         })
       default:
         return items
@@ -228,7 +228,7 @@ export default function Dashboard() {
       }).length,
       icsOt: items.filter(item => {
         const text = item.title + ' ' + item.description
-        return ICS_INDICATORS.some(ind => matchesIndicator(text, ind))
+        return matchesICSContext(text)
       }).length
     }
   }, [data?.threats.all])

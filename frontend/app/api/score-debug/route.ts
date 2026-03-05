@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { fetchAllFeeds } from '@/lib/feeds'
 import { calculateEnergyScore } from '@/lib/scoring'
-import { NATION_STATE_INDICATORS, ICS_INDICATORS, matchesIndicator } from '@/lib/indicators'
+import { NATION_STATE_INDICATORS, matchesIndicator, matchesICSContext } from '@/lib/indicators'
 
 export const revalidate = 0
 
@@ -15,8 +15,9 @@ export async function GET() {
   const now = new Date()
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-  const recentItems = items.filter(item => new Date(item.pubDate) >= thirtyDaysAgo)
-  const veryRecentItems = items.filter(item => new Date(item.pubDate) >= sevenDaysAgo)
+  const energyItems = items.filter(item => item.isEnergyRelevant)
+  const recentItems = energyItems.filter(item => new Date(item.pubDate) >= thirtyDaysAgo)
+  const veryRecentItems = energyItems.filter(item => new Date(item.pubDate) >= sevenDaysAgo)
 
   // Detect double-counted items (items that match multiple factor categories)
   const doubleCountedItems: { id: string; title: string; factors: string[] }[] = []
@@ -26,7 +27,7 @@ export async function GET() {
 
     if (item.source === 'CISA KEV') factors.push('KEV')
     if (NATION_STATE_INDICATORS.some(i => matchesIndicator(text, i))) factors.push('Nation-State')
-    if (ICS_INDICATORS.some(i => matchesIndicator(text, i))) factors.push('ICS')
+    if (matchesICSContext(text)) factors.push('ICS')
     if (item.sourceType === 'vendor' && (item.severity === 'critical' || item.severity === 'high')) factors.push('Vendor-Critical')
 
     if (factors.length > 1) {
