@@ -243,6 +243,30 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
     }
   }, [webhookUrl, currentScore, currentLabel])
 
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onClose])
+
+  // Track unsaved changes
+  const [initialWebhookUrl, setInitialWebhookUrl] = useState('')
+  const [initialTriggers, setInitialTriggers] = useState<AlertTriggers>(DEFAULT_TRIGGERS)
+  useEffect(() => {
+    if (isOpen) {
+      const url = getStoredWebhookUrl()
+      const trigs = getStoredAlertTriggers()
+      setInitialWebhookUrl(url)
+      setInitialTriggers(trigs)
+    }
+  }, [isOpen])
+  const hasUnsavedChanges = webhookUrl !== initialWebhookUrl ||
+    JSON.stringify(triggers) !== JSON.stringify(initialTriggers)
+
   if (!isOpen) return null
 
   const isConfigured = !!getStoredWebhookUrl()
@@ -250,14 +274,14 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="alert-settings-title" role="dialog" aria-modal="true">
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose} />
+      <div className="fixed inset-0 bg-gray-500/75 dark:bg-black/60 transition-opacity" onClick={onClose} />
 
       {/* Panel */}
       <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
         <div className="w-screen max-w-md transform transition-all">
-          <div className="flex h-full flex-col bg-white shadow-xl">
+          <div className="flex h-full flex-col bg-white dark:bg-slate-900 shadow-xl">
             {/* Header */}
-            <div className="bg-cisa-navy px-6 py-5">
+            <div className="bg-cisa-navy dark:bg-slate-800 px-6 py-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Bell className="h-6 w-6 text-white" />
@@ -283,24 +307,24 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
             <div className="flex-1 overflow-y-auto px-6 py-6">
               {/* Webhook Status */}
               <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
-                isConfigured ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'
+                isConfigured ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
               }`}>
                 {isConfigured ? (
                   <>
-                    <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                    <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
                     <div>
-                      <p className="font-medium text-green-800">Webhook Configured</p>
-                      <p className="text-sm text-green-600 truncate max-w-[280px]">
+                      <p className="font-medium text-green-800 dark:text-green-300">Webhook Configured</p>
+                      <p className="text-sm text-green-600 dark:text-green-400 truncate max-w-[280px]">
                         {getStoredWebhookUrl().replace(/^(https?:\/\/[^/]+).*/, '$1/...')}
                       </p>
                     </div>
                   </>
                 ) : (
                   <>
-                    <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
                     <div>
-                      <p className="font-medium text-amber-800">No Webhook Configured</p>
-                      <p className="text-sm text-amber-600">Add a webhook URL to receive alerts</p>
+                      <p className="font-medium text-amber-800 dark:text-amber-300">No Webhook Configured</p>
+                      <p className="text-sm text-amber-600 dark:text-amber-400">Add a webhook URL to receive alerts</p>
                     </div>
                   </>
                 )}
@@ -308,7 +332,7 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
 
               {/* Webhook URL Input */}
               <div className="mb-6">
-                <label htmlFor="webhook-url" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="webhook-url" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Webhook URL
                 </label>
                 <input
@@ -320,7 +344,7 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                     setWebhookUrl(e.target.value)
                     setSaveStatus('idle')
                   }}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-sm focus:border-cisa-navy focus:outline-none transition-colors"
+                  className="w-full px-4 py-3 border-2 border-gray-200 dark:border-slate-600 rounded-lg text-sm focus:border-cisa-navy dark:focus:border-blue-500 focus:outline-none transition-colors bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100"
                 />
                 {webhookUrl.trim() && (
                   <div className="mt-2 flex items-center gap-2">
@@ -373,14 +397,14 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
 
               {/* Alert Triggers */}
               <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Alert Triggers</h3>
-                <p className="text-xs text-gray-500 mb-4">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Alert Triggers</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
                   Choose which events should trigger webhook notifications.
                 </p>
 
                 <div className="space-y-3">
                   {/* Critical Threats */}
-                  <label className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                  <label className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
                     <input
                       type="checkbox"
                       checked={triggers.criticalThreats}
@@ -388,15 +412,15 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                       className="mt-0.5 h-5 w-5 rounded border-gray-300 text-cisa-navy focus:ring-cisa-navy"
                     />
                     <div>
-                      <span className="block font-medium text-gray-900">Critical threats detected</span>
-                      <span className="text-sm text-gray-500">
+                      <span className="block font-medium text-gray-900 dark:text-gray-100">Critical threats detected</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
                         Alert when new critical-severity threats are identified
                       </span>
                     </div>
                   </label>
 
                   {/* New KEV Entries */}
-                  <label className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                  <label className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
                     <input
                       type="checkbox"
                       checked={triggers.newKevEntries}
@@ -404,15 +428,15 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                       className="mt-0.5 h-5 w-5 rounded border-gray-300 text-cisa-navy focus:ring-cisa-navy"
                     />
                     <div>
-                      <span className="block font-medium text-gray-900">New KEV entries added</span>
-                      <span className="text-sm text-gray-500">
+                      <span className="block font-medium text-gray-900 dark:text-gray-100">New KEV entries added</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
                         Alert when CISA adds new Known Exploited Vulnerabilities
                       </span>
                     </div>
                   </label>
 
                   {/* Score Changes */}
-                  <label className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                  <label className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
                     <input
                       type="checkbox"
                       checked={triggers.scoreElevatedOrSevere}
@@ -420,15 +444,15 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                       className="mt-0.5 h-5 w-5 rounded border-gray-300 text-cisa-navy focus:ring-cisa-navy"
                     />
                     <div>
-                      <span className="block font-medium text-gray-900">Score reaches Elevated or Severe</span>
-                      <span className="text-sm text-gray-500">
+                      <span className="block font-medium text-gray-900 dark:text-gray-100">Score reaches Elevated or Severe</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
                         Alert when CAPRI score drops to 3.0 (Elevated) or 2.0 (Severe)
                       </span>
                     </div>
                   </label>
 
                   {/* Nation-State Activity */}
-                  <label className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                  <label className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
                     <input
                       type="checkbox"
                       checked={triggers.nationStateActivity}
@@ -436,8 +460,8 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                       className="mt-0.5 h-5 w-5 rounded border-gray-300 text-cisa-navy focus:ring-cisa-navy"
                     />
                     <div>
-                      <span className="block font-medium text-gray-900">Nation-state actor activity</span>
-                      <span className="text-sm text-gray-500">
+                      <span className="block font-medium text-gray-900 dark:text-gray-100">Nation-state actor activity</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
                         Alert when APT or nation-state threats are detected
                       </span>
                     </div>
@@ -447,10 +471,10 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
 
               {/* Platform Setup Guides */}
               <div className="mb-6 space-y-2">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Setup Guides</h4>
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Setup Guides</h4>
 
                 {/* Slack Guide */}
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
                   <button
                     onClick={() => setExpandedGuide(expandedGuide === 'slack' ? null : 'slack')}
                     className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-left transition-colors ${detectedPlatform === 'slack' ? 'bg-green-50 text-green-900' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}
@@ -476,7 +500,7 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                 </div>
 
                 {/* Discord Guide */}
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
                   <button
                     onClick={() => setExpandedGuide(expandedGuide === 'discord' ? null : 'discord')}
                     className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-left transition-colors ${detectedPlatform === 'discord' ? 'bg-purple-50 text-purple-900' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}
@@ -502,7 +526,7 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                 </div>
 
                 {/* Telegram Guide */}
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
                   <button
                     onClick={() => setExpandedGuide(expandedGuide === 'telegram' ? null : 'telegram')}
                     className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-left transition-colors ${detectedPlatform === 'telegram' ? 'bg-blue-50 text-blue-900' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}
@@ -527,7 +551,7 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                 </div>
 
                 {/* Generic Guide */}
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
                   <button
                     onClick={() => setExpandedGuide(expandedGuide === 'generic' ? null : 'generic')}
                     className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-left transition-colors ${detectedPlatform === 'generic' && webhookUrl.trim() ? 'bg-gray-200 text-gray-900' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}
@@ -562,7 +586,7 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                   <Key className="h-4 w-4 text-gray-500" />
                   <h3 className="text-sm font-medium text-gray-700">Enrichment Sources</h3>
                 </div>
-                <p className="text-xs text-gray-500 mb-4">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
                   Connect your own API keys to enable additional threat intelligence sources. All keys are stored locally in your browser.
                 </p>
 
@@ -570,7 +594,7 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                   {/* AbuseIPDB */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label htmlFor="enrichment-abuseipdb" className="text-sm font-medium text-gray-700">AbuseIPDB</label>
+                      <label htmlFor="enrichment-abuseipdb" className="text-sm font-medium text-gray-700 dark:text-gray-300">AbuseIPDB</label>
                       <span className={`flex items-center gap-1.5 text-xs ${enrichmentKeys.abuseipdb ? 'text-green-600' : 'text-gray-400'}`}>
                         <span className={`inline-block w-2 h-2 rounded-full ${enrichmentKeys.abuseipdb ? 'bg-green-500' : 'bg-gray-300'}`} />
                         {enrichmentKeys.abuseipdb ? 'Connected' : 'Not connected'}
@@ -586,7 +610,7 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                           setEnrichmentKeys(prev => ({ ...prev, abuseipdb: e.target.value }))
                           setEnrichmentSaveStatus('idle')
                         }}
-                        className="w-full px-4 py-2.5 pr-10 border-2 border-gray-200 rounded-lg text-sm focus:border-cisa-navy focus:outline-none transition-colors font-mono"
+                        className="w-full px-4 py-2.5 pr-10 border-2 border-gray-200 dark:border-slate-600 rounded-lg text-sm focus:border-cisa-navy dark:focus:border-blue-500 focus:outline-none transition-colors font-mono bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100"
                       />
                       <button
                         type="button"
@@ -607,7 +631,7 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                   {/* Shodan */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label htmlFor="enrichment-shodan" className="text-sm font-medium text-gray-700">Shodan</label>
+                      <label htmlFor="enrichment-shodan" className="text-sm font-medium text-gray-700 dark:text-gray-300">Shodan</label>
                       <span className={`flex items-center gap-1.5 text-xs ${enrichmentKeys.shodan ? 'text-green-600' : 'text-gray-400'}`}>
                         <span className={`inline-block w-2 h-2 rounded-full ${enrichmentKeys.shodan ? 'bg-green-500' : 'bg-gray-300'}`} />
                         {enrichmentKeys.shodan ? 'Connected' : 'Not connected'}
@@ -623,7 +647,7 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                           setEnrichmentKeys(prev => ({ ...prev, shodan: e.target.value }))
                           setEnrichmentSaveStatus('idle')
                         }}
-                        className="w-full px-4 py-2.5 pr-10 border-2 border-gray-200 rounded-lg text-sm focus:border-cisa-navy focus:outline-none transition-colors font-mono"
+                        className="w-full px-4 py-2.5 pr-10 border-2 border-gray-200 dark:border-slate-600 rounded-lg text-sm focus:border-cisa-navy dark:focus:border-blue-500 focus:outline-none transition-colors font-mono bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100"
                       />
                       <button
                         type="button"
@@ -644,7 +668,7 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                   {/* VirusTotal */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label htmlFor="enrichment-virustotal" className="text-sm font-medium text-gray-700">VirusTotal</label>
+                      <label htmlFor="enrichment-virustotal" className="text-sm font-medium text-gray-700 dark:text-gray-300">VirusTotal</label>
                       <span className={`flex items-center gap-1.5 text-xs ${enrichmentKeys.virustotal ? 'text-green-600' : 'text-gray-400'}`}>
                         <span className={`inline-block w-2 h-2 rounded-full ${enrichmentKeys.virustotal ? 'bg-green-500' : 'bg-gray-300'}`} />
                         {enrichmentKeys.virustotal ? 'Connected' : 'Not connected'}
@@ -660,7 +684,7 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                           setEnrichmentKeys(prev => ({ ...prev, virustotal: e.target.value }))
                           setEnrichmentSaveStatus('idle')
                         }}
-                        className="w-full px-4 py-2.5 pr-10 border-2 border-gray-200 rounded-lg text-sm focus:border-cisa-navy focus:outline-none transition-colors font-mono"
+                        className="w-full px-4 py-2.5 pr-10 border-2 border-gray-200 dark:border-slate-600 rounded-lg text-sm focus:border-cisa-navy dark:focus:border-blue-500 focus:outline-none transition-colors font-mono bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100"
                       />
                       <button
                         type="button"
@@ -681,7 +705,7 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                   {/* GreyNoise */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label htmlFor="enrichment-greynoise" className="text-sm font-medium text-gray-700">GreyNoise</label>
+                      <label htmlFor="enrichment-greynoise" className="text-sm font-medium text-gray-700 dark:text-gray-300">GreyNoise</label>
                       <span className={`flex items-center gap-1.5 text-xs ${enrichmentKeys.greynoise ? 'text-green-600' : 'text-gray-400'}`}>
                         <span className={`inline-block w-2 h-2 rounded-full ${enrichmentKeys.greynoise ? 'bg-green-500' : 'bg-gray-300'}`} />
                         {enrichmentKeys.greynoise ? 'Connected' : 'Not connected'}
@@ -697,7 +721,7 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                           setEnrichmentKeys(prev => ({ ...prev, greynoise: e.target.value }))
                           setEnrichmentSaveStatus('idle')
                         }}
-                        className="w-full px-4 py-2.5 pr-10 border-2 border-gray-200 rounded-lg text-sm focus:border-cisa-navy focus:outline-none transition-colors font-mono"
+                        className="w-full px-4 py-2.5 pr-10 border-2 border-gray-200 dark:border-slate-600 rounded-lg text-sm focus:border-cisa-navy dark:focus:border-blue-500 focus:outline-none transition-colors font-mono bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100"
                       />
                       <button
                         type="button"
@@ -742,12 +766,15 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
             </div>
 
             {/* Footer */}
-            <div className="border-t border-gray-200 px-6 py-4">
+            <div className="border-t border-gray-200 dark:border-slate-700 px-6 py-4">
               <div className="flex items-center justify-between gap-3">
+                {hasUnsavedChanges && (
+                  <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">Unsaved changes</span>
+                )}
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                   Cancel
                 </button>

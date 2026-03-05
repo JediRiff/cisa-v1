@@ -128,7 +128,7 @@ export default function ScoreBreakdown({ score, label, color, factors }: ScoreBr
                         href={item.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 hover:text-cisa-navy dark:hover:text-blue-400 py-1"
+                        className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 hover:text-cisa-navy dark:hover:text-blue-400 py-1 rounded focus-visible:ring-2 focus-visible:ring-cisa-navy dark:focus-visible:ring-blue-400 focus-visible:ring-offset-1"
                       >
                         <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full flex-shrink-0" />
                         <span className="truncate flex-1">{item.title.substring(0, 60)}{item.title.length > 60 ? '...' : ''}</span>

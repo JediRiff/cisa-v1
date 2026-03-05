@@ -33,6 +33,17 @@ const formatDate = (dateStr: string) => {
   })
 }
 
+const getFreshness = (dateStr: string): { label: string; className: string } => {
+  const ageMs = Date.now() - new Date(dateStr).getTime()
+  const ageHours = ageMs / (1000 * 60 * 60)
+  if (ageHours < 1) return { label: 'Just now', className: 'text-green-600 dark:text-green-400' }
+  if (ageHours < 24) return { label: `${Math.floor(ageHours)}h ago`, className: 'text-green-600 dark:text-green-400' }
+  const ageDays = Math.floor(ageHours / 24)
+  if (ageDays <= 3) return { label: `${ageDays}d ago`, className: 'text-blue-600 dark:text-blue-400' }
+  if (ageDays <= 7) return { label: `${ageDays}d ago`, className: 'text-amber-600 dark:text-amber-400' }
+  return { label: `${ageDays}d ago`, className: 'text-gray-500 dark:text-gray-400' }
+}
+
 const getSeverityStyle = (severity: string) => {
   const styles: Record<string, string> = {
     critical: 'bg-red-100 text-red-800 border-red-200',
@@ -103,12 +114,12 @@ export default function ThreatCard({ item, showExtendedDetails = false }: Threat
   return (
     <div className="p-3 sm:p-4 border border-gray-100 dark:border-slate-700 rounded-xl hover:bg-cisa-light dark:hover:bg-slate-700/50 transition-colors">
       <a href={item.link} target="_blank" rel="noopener noreferrer"
-        className="font-medium text-gray-900 dark:text-gray-100 hover:text-cisa-navy dark:hover:text-blue-400 flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 mb-2">
+        className="font-medium text-gray-900 dark:text-gray-100 hover:text-cisa-navy dark:hover:text-blue-400 flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 mb-2 focus-visible:ring-2 focus-visible:ring-cisa-navy dark:focus-visible:ring-blue-400 focus-visible:ring-offset-1 rounded">
         <div className="flex items-start gap-2 min-w-0 flex-1">
           {item.aiSeverityScore && (
             <span title="AI Analyzed"><Sparkles className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" /></span>
           )}
-          <span className="line-clamp-2 sm:line-clamp-none break-words">{item.title}</span>
+          <span className="break-words">{item.title}</span>
         </div>
         <ExternalLink className="h-4 w-4 flex-shrink-0 mt-1 hidden sm:block" />
       </a>
@@ -123,11 +134,11 @@ export default function ThreatCard({ item, showExtendedDetails = false }: Threat
               {getUrgencyLabel(item.aiUrgency)}
             </span>
           )}
-          {item.aiAffectedVendors?.slice(0, showExtendedDetails ? 3 : 2).map((vendor, i) => (
-            <span key={i} className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 rounded truncate max-w-[120px] sm:max-w-none">{vendor}</span>
+          {item.aiAffectedVendors?.slice(0, showExtendedDetails ? 3 : 1).map((vendor, i) => (
+            <span key={i} className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 rounded truncate max-w-[100px] sm:max-w-none hidden sm:inline-flex first:inline-flex">{vendor}</span>
           ))}
           {showExtendedDetails && item.aiAffectedSystems?.slice(0, 2).map((system, i) => (
-            <span key={i} className="text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-600 text-slate-600 dark:text-slate-300 rounded truncate max-w-[120px] sm:max-w-none">{system}</span>
+            <span key={i} className="text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-600 text-slate-600 dark:text-slate-300 rounded truncate max-w-[100px] sm:max-w-none hidden sm:inline-flex">{system}</span>
           ))}
         </div>
       )}
@@ -144,7 +155,9 @@ export default function ThreatCard({ item, showExtendedDetails = false }: Threat
         )}
         <span className={'text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full font-medium truncate max-w-[100px] sm:max-w-none ' + getSourceStyle(item.sourceType)}>{item.source}</span>
         <span className={'text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border font-medium whitespace-nowrap ' + getSeverityStyle(item.severity)}>{item.severity}</span>
-        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDate(item.pubDate)}</span>
+        <span className={`text-xs font-medium whitespace-nowrap ${getFreshness(item.pubDate).className}`} title={formatDate(item.pubDate)}>
+          {getFreshness(item.pubDate).label}
+        </span>
       </div>
     </div>
   )

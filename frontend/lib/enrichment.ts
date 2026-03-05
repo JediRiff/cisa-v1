@@ -3,6 +3,7 @@
 // All sources are optional — gracefully skipped when API keys are absent
 
 import { ThreatItem } from './feeds'
+import { ENERGY_KEYWORDS, matchesIndicator } from './indicators'
 
 export interface EnrichmentKeys {
   abuseIPDBKey?: string
@@ -26,11 +27,8 @@ const ENRICHMENT_CACHE_TTL = 5 * 60 * 1000
 let shodanCache: { items: ThreatItem[]; timestamp: number } | null = null
 const SHODAN_CACHE_TTL = 10 * 60 * 1000
 
-// Energy sector keyword check (simplified version — main one lives in feeds.ts)
-const ENERGY_KEYWORDS_RE = /\b(energy|power|grid|electric|scada|ics|modbus|dnp3|pipeline|oil|gas|nuclear|substation|critical infrastructure)\b/i
-
 function checkEnergyRelevance(text: string): boolean {
-  return ENERGY_KEYWORDS_RE.test(text)
+  return ENERGY_KEYWORDS.some(kw => matchesIndicator(text, kw))
 }
 
 // Nation-state threat origin countries (energy infrastructure targeting programs)
@@ -252,7 +250,7 @@ async function fetchVirusTotalCategories(apiKey?: string): Promise<ThreatItem[]>
         title,
         description,
         link: 'https://www.virustotal.com',
-        pubDate: new Date().toISOString(),
+        pubDate: new Date(new Date().setHours(0, 0, 0, 0)).toISOString(),
         source: 'VirusTotal',
         sourceType: 'vendor' as const,
         severity,

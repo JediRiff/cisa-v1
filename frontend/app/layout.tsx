@@ -75,20 +75,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="bg-white dark:bg-slate-900 transition-colors duration-300">
         <ThemeProvider>
+          {/* Skip to main content link for keyboard/screen reader users */}
+          <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-white focus:text-cisa-navy focus:rounded-lg focus:shadow-lg focus:text-sm focus:font-medium">
+            Skip to main content
+          </a>
+
           {/* Government-style red-white-blue top border */}
           <div className="govt-top-border" />
 
-          <header className="bg-cisa-navy dark:bg-slate-800 text-white py-5 px-6 shadow-lg transition-colors duration-300">
+          <header className="bg-cisa-navy dark:bg-slate-800 text-white py-3 sm:py-5 px-4 sm:px-6 shadow-lg transition-colors duration-300">
             <div className="max-w-7xl mx-auto flex items-center justify-between">
               <div className="flex items-center gap-4 md:gap-6">
                 {/* Official CISA Logo - white background for visibility */}
-                <div className="bg-white rounded-lg px-3 py-2">
+                <div className="bg-white rounded-lg px-2 py-1.5 sm:px-3 sm:py-2">
                   <Image
                     src="/cisa-logo.svg"
                     alt="CISA - Cybersecurity and Infrastructure Security Agency"
                     width={160}
                     height={32}
-                    className="h-8 w-auto"
+                    className="h-6 sm:h-8 w-auto"
                     priority
                   />
                 </div>
@@ -114,17 +119,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <h1 className="sr-only">CAPRI</h1>
                   <p className="text-[10px] md:text-xs text-blue-200 dark:text-blue-300 tracking-wide mt-0.5">Cyber Alert Prioritization &amp; Readiness Index</p>
                 </div>
+                {/* Mobile: show CAPRI text instead of ASCII art */}
+                <div className="sm:hidden border-l border-white/30 pl-3">
+                  <h1 className="text-sm font-bold tracking-wide">CAPRI</h1>
+                  <p className="text-[9px] text-blue-200">Threat Intelligence</p>
+                </div>
               </div>
-              <div className="flex items-center gap-4">
-                {/* Navigation Tabs */}
+              <div className="flex items-center gap-2 sm:gap-4">
+                {/* Navigation Tabs - visible on sm+ */}
                 <nav className="hidden sm:flex items-center gap-1 mr-2">
-                  <Link href="/" className="px-3 py-1.5 text-sm rounded-lg text-blue-200 hover:text-white hover:bg-white/10 transition-colors">
+                  <Link href="/" className="px-3 py-1.5 text-sm rounded-lg text-blue-200 hover:text-white hover:bg-white/10 transition-colors focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-cisa-navy">
                     Dashboard
                   </Link>
-                  <Link href="/globe" className="px-3 py-1.5 text-sm rounded-lg text-blue-200 hover:text-white hover:bg-white/10 transition-colors">
+                  <Link href="/globe" className="px-3 py-1.5 text-sm rounded-lg text-blue-200 hover:text-white hover:bg-white/10 transition-colors focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-cisa-navy">
                     Threat Map
                   </Link>
                 </nav>
+                {/* Mobile nav: globe link */}
+                <Link href="/globe" className="sm:hidden px-2.5 py-1.5 text-xs rounded-lg text-blue-200 hover:text-white hover:bg-white/10 transition-colors" aria-label="Threat Map">
+                  Map
+                </Link>
                 {/* Theme Toggle Button */}
                 <ThemeToggle />
                 <div className="text-right hidden md:block">
@@ -134,7 +148,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </div>
           </header>
-          <main>{children}</main>
+          <main id="main-content">{children}</main>
         </ThemeProvider>
       </body>
     </html>

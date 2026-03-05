@@ -40,10 +40,29 @@ export default function ScoringMethodology() {
               </p>
             </div>
 
-            {/* Scoring Factors Table */}
+            {/* Scoring Factors — table on md+, cards on mobile */}
             <div className="mb-6">
               <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">Scoring Factors</h3>
-              <div className="overflow-x-auto">
+              {/* Mobile: stacked cards */}
+              <div className="md:hidden space-y-3">
+                {[
+                  { name: 'Nation-State Activity', weight: '-0.4 each', max: '-0.8', why: 'Highest weight. Strategic campaigns are rare but critical.' },
+                  { name: 'CISA KEV Entries', weight: '-0.3 each', max: '-1.2', why: 'Confirmed exploited. High volume, capped to prevent single-category spikes.' },
+                  { name: 'ICS/SCADA Vulnerabilities', weight: '-0.3 each', max: '-0.6', why: 'Direct operational threat. Lower cap since ICS reports are less frequent.' },
+                  { name: 'Vendor Critical Alerts', weight: '-0.15 each', max: '-0.4', why: 'High publication volume with variable quality.' },
+                ].map((f) => (
+                  <div key={f.name} className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-700">
+                    <p className="font-medium text-gray-900 dark:text-gray-200 mb-1">{f.name}</p>
+                    <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-400 mb-1">
+                      <span>Weight: <strong className="text-gray-800 dark:text-gray-200">{f.weight}</strong></span>
+                      <span>Max: <strong className="text-gray-800 dark:text-gray-200">{f.max}</strong></span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{f.why}</p>
+                  </div>
+                ))}
+              </div>
+              {/* Desktop: table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-cisa-navy dark:bg-blue-600 text-white">
                     <tr>

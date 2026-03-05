@@ -3,7 +3,8 @@
 // using AI severity scores, KEV status, ICS/SCADA indicators, and nation-state activity
 
 import { ThreatItem } from '@/lib/feeds'
-import { ThreatActor, Sector, matchesKeyword } from '@/components/globe/worldData'
+import { ThreatActor, Sector } from '@/components/globe/worldData'
+import { NATION_STATE_INDICATORS, ICS_INDICATORS, matchesIndicator } from '@/lib/indicators'
 
 // ===== Interfaces =====
 
@@ -25,33 +26,6 @@ export interface CampaignCandidate {
   affectedSectors: Sector[]
   rationale: string                 // Auditable explanation
 }
-
-// ===== ICS/SCADA terms for relevance check =====
-
-const ICS_TERMS = [
-  'scada', 'ics', 'plc', 'hmi', 'rtu', 'dcs',
-  'modbus', 'dnp3', 'iec 61850', 'iec 104', 'iec 60870', 'opc', 'opc ua',
-  'bacnet', 'profinet', 'ethernet/ip',
-  'industrial control', 'operational technology',
-  'siemens', 'schneider electric', 'rockwell', 'honeywell', 'unitronics',
-  'industroyer', 'crashoverride', 'havex', 'pipedream', 'incontroller',
-  'frostygoop', 'cosmicenergy', 'triton', 'trisis',
-]
-
-const NATION_STATE_INDICATORS = [
-  'volt typhoon', 'salt typhoon', 'flax typhoon', 'brass typhoon',
-  'sandworm', 'dragonfly', 'energetic bear', 'turla', 'fancy bear', 'cozy bear',
-  'xenotime', 'chernovite', 'kamacite', 'winnti',
-  'apt28', 'apt29', 'apt33', 'apt34', 'apt35', 'apt41',
-  'lazarus', 'kimsuky', 'andariel',
-  'cyberav3ngers', 'muddywater', 'oilrig', 'charming kitten',
-  'temp.veles', 'mango sandstorm', 'hazel sandstorm',
-  'seashell blizzard', 'forest blizzard', 'midnight blizzard',
-  'diamond sleet', 'peach sandstorm', 'mint sandstorm',
-  'secret blizzard', 'emerald sleet', 'ghost blizzard',
-  'onyx sleet', 'ethereal panda',
-  'nation-state', 'state-sponsored',
-]
 
 // ===== Phase A: Per-item severity score (0.0–1.0) =====
 
@@ -88,20 +62,20 @@ function hasIcsRelevance(item: ThreatItem): boolean {
   // Check AI-populated fields first
   if (item.aiAffectedSystems && item.aiAffectedSystems.length > 0) {
     const systemsText = item.aiAffectedSystems.join(' ').toLowerCase()
-    if (ICS_TERMS.some(term => systemsText.includes(term))) return true
+    if (ICS_INDICATORS.some(term => systemsText.includes(term))) return true
   }
   if (item.aiAffectedProtocols && item.aiAffectedProtocols.length > 0) {
     const protocolsText = item.aiAffectedProtocols.join(' ').toLowerCase()
-    if (ICS_TERMS.some(term => protocolsText.includes(term))) return true
+    if (ICS_INDICATORS.some(term => protocolsText.includes(term))) return true
   }
   // Fallback: check title + description
   const text = `${item.title} ${item.description}`
-  return ICS_TERMS.some(term => matchesKeyword(text, term))
+  return ICS_INDICATORS.some(term => matchesIndicator(text, term))
 }
 
 function isNationStateItem(item: ThreatItem): boolean {
   const text = `${item.title} ${item.description}`
-  return NATION_STATE_INDICATORS.some(indicator => matchesKeyword(text, indicator))
+  return NATION_STATE_INDICATORS.some(indicator => matchesIndicator(text, indicator))
 }
 
 function computeTemporalDecay(pubDate: string): number {
@@ -126,7 +100,7 @@ function scoreActorItem(
   let directNameMatch = false
   const namesToCheck = [actor.name, ...(actor.aliases || [])]
   for (const name of namesToCheck) {
-    if (matchesKeyword(text, name)) {
+    if (matchesIndicator(text, name)) {
       directNameMatch = true
       break
     }
@@ -138,10 +112,10 @@ function scoreActorItem(
   // Sector overlap bonus
   const sectorBonus = actor.targetSectors.some(s => {
     const sectorText = item.title + ' ' + item.description
-    return matchesKeyword(sectorText, s) ||
-           (s === 'grid' && matchesKeyword(sectorText, 'power grid')) ||
-           (s === 'oil' && matchesKeyword(sectorText, 'petroleum')) ||
-           (s === 'natural_gas' && matchesKeyword(sectorText, 'natural gas'))
+    return matchesIndicator(sectorText, s) ||
+           (s === 'grid' && matchesIndicator(sectorText, 'power grid')) ||
+           (s === 'oil' && matchesIndicator(sectorText, 'petroleum')) ||
+           (s === 'natural_gas' && matchesIndicator(sectorText, 'natural gas'))
   }) ? 0.1 : 0
 
   const pairScore = Math.min(baseScore + sectorBonus, 1.0)

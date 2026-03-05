@@ -6,6 +6,7 @@ import { calculateEnergyScore } from '@/lib/scoring'
 import { analyzeThreatsWithAI, AIAnalysisResult } from '@/lib/ai-analysis'
 import { detectCampaigns } from '@/lib/campaign-correlation'
 import { threatActors } from '@/components/globe/worldData'
+import { NATION_STATE_INDICATORS, ICS_INDICATORS, matchesIndicator } from '@/lib/indicators'
 
 export const revalidate = 0 // No caching - always fetch fresh data
 
@@ -130,43 +131,6 @@ export async function GET(request: NextRequest) {
       const itemDate = new Date(item.pubDate).getTime()
       return itemDate >= oneDayAgo
     })
-
-    const NATION_STATE_INDICATORS = [
-      'volt typhoon', 'salt typhoon', 'flax typhoon', 'brass typhoon',
-      'sandworm', 'dragonfly', 'energetic bear', 'turla', 'fancy bear', 'cozy bear',
-      'xenotime', 'chernovite', 'kamacite', 'winnti',
-      'apt28', 'apt29', 'apt33', 'apt34', 'apt35', 'apt41',
-      'lazarus', 'kimsuky', 'andariel',
-      'cyberav3ngers', 'muddywater', 'oilrig', 'charming kitten',
-      'temp.veles', 'mango sandstorm', 'hazel sandstorm',
-      // Microsoft naming convention aliases
-      'seashell blizzard', 'forest blizzard', 'midnight blizzard',
-      'diamond sleet', 'peach sandstorm', 'mint sandstorm',
-      'secret blizzard', 'emerald sleet', 'ghost blizzard',
-      'onyx sleet', 'ethereal panda',
-      'china', 'russia', 'iran', 'north korea', 'dprk'
-    ]
-    const ICS_INDICATORS = [
-      'scada', 'ics', 'plc', 'hmi', 'rtu', 'dcs',
-      'modbus', 'dnp3', 'iec 61850', 'iec 104', 'iec 60870', 'opc', 'opc ua',
-      'bacnet', 'profinet', 'ethernet/ip',
-      'industrial control', 'operational technology',
-      'siemens', 'schneider electric', 'rockwell', 'honeywell', 'unitronics',
-      'industroyer', 'crashoverride', 'havex', 'pipedream', 'incontroller',
-      'frostygoop', 'cosmicenergy', 'triton', 'trisis'
-    ]
-
-    // Word-boundary matching to prevent false positives
-    const indicatorRegexCache = new Map<string, RegExp>()
-    const matchesIndicator = (text: string, indicator: string): boolean => {
-      let regex = indicatorRegexCache.get(indicator)
-      if (!regex) {
-        const escaped = indicator.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        regex = new RegExp(`\\b${escaped}\\b`, 'i')
-        indicatorRegexCache.set(indicator, regex)
-      }
-      return regex.test(text)
-    }
 
     const last24h = {
       kev: last24hItems.filter(item => item.source === 'CISA KEV').length,

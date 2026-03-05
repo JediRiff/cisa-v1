@@ -227,18 +227,10 @@ export const sectorKeywords: Record<Sector, string[]> = {
   water: ['water treatment', 'water utility', 'wastewater', 'drinking water', 'chlorination', 'water system', 'water infrastructure', 'water plant', 'sewage', 'water purification', 'Unitronics', 'Vision PLC'],
 }
 
-// Word-boundary keyword matching to prevent false positives
-// e.g., 'oil' won't match 'soil'/'foil', 'OT' won't match 'other'/'bot'
-const _keywordRegexCache = new Map<string, RegExp>()
-export function matchesKeyword(text: string, keyword: string): boolean {
-  let regex = _keywordRegexCache.get(keyword)
-  if (!regex) {
-    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    regex = new RegExp(`\\b${escaped}\\b`, 'i')
-    _keywordRegexCache.set(keyword, regex)
-  }
-  return regex.test(text)
-}
+import { matchesIndicator } from '@/lib/indicators'
+
+// Backward-compatible re-export
+export const matchesKeyword = matchesIndicator
 
 export function matchesSectorKeywords(text: string, sector: Sector): boolean {
   return sectorKeywords[sector].some((kw) => matchesKeyword(text, kw))

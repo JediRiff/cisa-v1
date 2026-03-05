@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Image from 'next/image'
-import { AlertTriangle, Shield, RefreshCw, Clock, CheckCircle, XCircle, Bell, BellOff, ChevronDown, MessageSquare, ArrowUp, AlertCircle, Settings } from 'lucide-react'
+import { AlertTriangle, Shield, RefreshCw, Clock, CheckCircle, XCircle, Bell, BellOff, ChevronDown, MessageSquare, ArrowUp, AlertCircle, Settings, Search } from 'lucide-react'
 import { saveScore } from '@/lib/history'
 import { checkAndTriggerAlerts, requestNotificationPermission, getNotificationPermission, setWebhookUrl, getWebhookUrl } from '@/lib/alerts'
+import { NATION_STATE_INDICATORS, ICS_INDICATORS, matchesIndicator } from '@/lib/indicators'
 import ActionableRecommendations, { type KEVAction } from '@/components/ActionableRecommendations'
-import RecoverEstimate from '@/components/RecoverEstimate'
 import ScoreBreakdown from '@/components/ScoreBreakdown'
 import ScoringMethodology from '@/components/ScoringMethodology'
 import KeyMetrics from '@/components/KeyMetrics'
@@ -71,9 +71,6 @@ interface ApiResponse {
 }
 
 type ThreatFilter = 'all' | 'energy' | 'critical' | 'nation-state' | 'ics-ot'
-
-const NATION_STATE_KEYWORDS = ['volt typhoon', 'sandworm', 'xenotime', 'chernovite', 'kamacite', 'apt28', 'apt29', 'lazarus', 'kimsuky', 'china', 'russia', 'iran', 'north korea', 'dprk']
-const ICS_KEYWORDS = ['scada', 'ics', 'plc', 'hmi', 'rtu', 'dcs', 'modbus', 'dnp3', 'iec 61850', 'opc', 'industrial control', 'operational technology']
 
 export default function Dashboard() {
   const [data, setData] = useState<ApiResponse | null>(null)
@@ -204,13 +201,13 @@ export default function Dashboard() {
         return items.filter(item => item.severity === 'critical')
       case 'nation-state':
         return items.filter(item => {
-          const text = (item.title + ' ' + item.description).toLowerCase()
-          return NATION_STATE_KEYWORDS.some(kw => text.includes(kw)) || item.aiThreatType === 'apt'
+          const text = item.title + ' ' + item.description
+          return NATION_STATE_INDICATORS.some(ind => matchesIndicator(text, ind)) || item.aiThreatType === 'apt'
         })
       case 'ics-ot':
         return items.filter(item => {
-          const text = (item.title + ' ' + item.description).toLowerCase()
-          return ICS_KEYWORDS.some(kw => text.includes(kw))
+          const text = item.title + ' ' + item.description
+          return ICS_INDICATORS.some(ind => matchesIndicator(text, ind))
         })
       default:
         return items
@@ -226,12 +223,12 @@ export default function Dashboard() {
       energy: items.filter(item => item.isEnergyRelevant).length,
       critical: items.filter(item => item.severity === 'critical').length,
       nationState: items.filter(item => {
-        const text = (item.title + ' ' + item.description).toLowerCase()
-        return NATION_STATE_KEYWORDS.some(kw => text.includes(kw)) || item.aiThreatType === 'apt'
+        const text = item.title + ' ' + item.description
+        return NATION_STATE_INDICATORS.some(ind => matchesIndicator(text, ind)) || item.aiThreatType === 'apt'
       }).length,
       icsOt: items.filter(item => {
-        const text = (item.title + ' ' + item.description).toLowerCase()
-        return ICS_KEYWORDS.some(kw => text.includes(kw))
+        const text = item.title + ' ' + item.description
+        return ICS_INDICATORS.some(ind => matchesIndicator(text, ind))
       }).length
     }
   }, [data?.threats.all])
@@ -303,23 +300,23 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="hero-bg relative py-12 md:py-16 px-4 overflow-hidden">
+      <section className="hero-bg relative py-6 sm:py-10 md:py-16 px-4 overflow-hidden">
         <div className="max-w-4xl mx-auto relative">
           {/* CISA Agency Identifier with Official Logo */}
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-4 sm:mb-6">
             <Image
               src="/cisa-logo.svg"
               alt="CISA - Cybersecurity and Infrastructure Security Agency"
               width={300}
               height={60}
-              className="h-10 md:h-12 w-auto"
+              className="h-8 sm:h-10 md:h-12 w-auto"
               priority
             />
           </div>
 
-          {/* Heading - dev/README style */}
-          <div className="text-center mb-8">
-            <pre className="inline-block text-cisa-navy dark:text-blue-400 text-[10px] sm:text-xs md:text-sm leading-tight font-mono select-none" aria-hidden="true">{`
+          {/* Heading - dev/README style (hidden on mobile for score visibility) */}
+          <div className="text-center mb-4 sm:mb-8">
+            <pre className="hidden sm:inline-block text-cisa-navy dark:text-blue-400 text-[10px] sm:text-xs md:text-sm leading-tight font-mono select-none" aria-hidden="true">{`
   ██████╗ █████╗ ██████╗ ██████╗ ██╗
  ██╔════╝██╔══██╗██╔══██╗██╔══██╗██║
  ██║     ███████║██████╔╝██████╔╝██║
@@ -327,13 +324,13 @@ export default function Dashboard() {
  ╚██████╗██║  ██║██║     ██║  ██║██║
   ╚═════╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝╚═╝`}</pre>
             <h1 className="sr-only">CAPRI - Cyber Alert Prioritization & Readiness Index</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400 font-mono tracking-wider mt-2">
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-mono tracking-wider mt-1 sm:mt-2">
               &#127482;&#127480; threat intelligence for critical infrastructure
             </p>
           </div>
 
           {/* Score Display - Terminal Style */}
-          <div className="flex flex-col items-center gap-4 mb-10">
+          <div className="flex flex-col items-center gap-3 sm:gap-4 mb-6 sm:mb-10">
             <div className="font-mono text-center border border-gray-300 dark:border-gray-600 rounded px-6 py-4 inline-block relative" style={{ borderColor: data?.score.color + '30' }}>
               <span className="absolute -top-3 left-4 bg-white dark:bg-slate-900 px-2 text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-widest">threat level</span>
               <p className="text-5xl sm:text-6xl font-bold transition-all duration-500 ease-in-out mt-1" style={{ color: data?.score.color }}>
@@ -363,7 +360,7 @@ export default function Dashboard() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap justify-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap justify-center items-center gap-2 sm:gap-3">
             <button
               onClick={() => notificationStatus === 'granted' ? setShowAlertSettings(!showAlertSettings) : handleEnableAlerts()}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium text-sm transition-all shadow-sm hover:shadow-md min-h-[40px] ${
@@ -499,10 +496,36 @@ export default function Dashboard() {
       </div>
 
       {/* Threat Feeds */}
-      <section className="py-12 px-4 bg-white dark:bg-slate-900">
-        <div className="max-w-6xl mx-auto">
-          {/* Filter Tabs */}
-          <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
+      <section className="py-8 sm:py-12 px-4 bg-white dark:bg-slate-900 relative">
+        {/* Refreshing overlay */}
+        {isRefreshing && (
+          <div className="absolute inset-0 z-10 flex items-start justify-center pt-4 pointer-events-none">
+            <div className="flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white text-sm rounded-full shadow-lg animate-pulse">
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              Updating threat data...
+            </div>
+          </div>
+        )}
+        <div className={`max-w-6xl mx-auto ${isRefreshing ? 'opacity-60 pointer-events-none' : ''}`}>
+          {/* Filter Tabs — dropdown on mobile, tabs on sm+ */}
+          {/* Mobile: dropdown select */}
+          <div className="sm:hidden mb-6">
+            <label htmlFor="threat-filter" className="sr-only">Filter threats</label>
+            <select
+              id="threat-filter"
+              value={activeFilter}
+              onChange={(e) => setActiveFilter(e.target.value as ThreatFilter)}
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 font-medium text-sm focus:border-cisa-navy dark:focus:border-blue-500 focus:outline-none min-h-[44px]"
+            >
+              <option value="all">All ({filterCounts.all})</option>
+              <option value="energy">Energy ({filterCounts.energy})</option>
+              <option value="critical">Critical ({filterCounts.critical})</option>
+              <option value="nation-state">Nation-State ({filterCounts.nationState})</option>
+              <option value="ics-ot">ICS/OT ({filterCounts.icsOt})</option>
+            </select>
+          </div>
+          {/* Desktop: tab buttons */}
+          <div className="hidden sm:flex items-center gap-2 mb-6">
             {[
               { id: 'all' as ThreatFilter, label: 'All', count: filterCounts.all },
               { id: 'energy' as ThreatFilter, label: 'Energy', count: filterCounts.energy },
@@ -513,7 +536,7 @@ export default function Dashboard() {
               <button
                 key={tab.id}
                 onClick={() => setActiveFilter(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors min-h-[44px] ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors min-h-[44px] focus-visible:ring-2 focus-visible:ring-cisa-navy dark:focus-visible:ring-blue-400 focus-visible:ring-offset-1 ${
                   activeFilter === tab.id
                     ? 'bg-cisa-navy dark:bg-blue-600 text-white'
                     : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
@@ -529,19 +552,27 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
             {/* Energy-Relevant Threats */}
-            <div className="card-elevated p-8">
-              <h3 className="text-2xl font-bold text-cisa-navy dark:text-blue-400 mb-6 flex items-center gap-3">
-                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center">
-                  <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+            <div className="card-elevated p-4 sm:p-8">
+              <h3 className="text-xl sm:text-2xl font-bold text-cisa-navy dark:text-blue-400 mb-4 sm:mb-6 flex items-center gap-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center">
+                  <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600 dark:text-red-400" />
                 </div>
                 Energy Sector Alerts
                 <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-auto">({filteredEnergyThreats.length})</span>
               </h3>
               <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
                 {filteredEnergyThreats.length === 0 ? (
-                  <p className="text-gray-500 dark:text-gray-400 text-center py-8">No threats matching filter</p>
+                  <div className="text-center py-10">
+                    <Search className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                    <p className="text-gray-500 dark:text-gray-400 font-medium mb-2">No threats matching filter</p>
+                    {activeFilter !== 'all' && (
+                      <button onClick={() => setActiveFilter('all')} className="text-sm text-cisa-navy dark:text-blue-400 hover:underline font-medium">
+                        Clear filter
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   filteredEnergyThreats.map((item) => (
                     <ThreatCard key={item.id} item={item} showExtendedDetails={true} />
@@ -551,17 +582,25 @@ export default function Dashboard() {
             </div>
 
             {/* All Recent Threats */}
-            <div className="card-elevated p-8">
-              <h3 className="text-2xl font-bold text-cisa-navy dark:text-blue-400 mb-6 flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-                  <Shield className="h-6 w-6 text-cisa-navy dark:text-blue-400" />
+            <div className="card-elevated p-4 sm:p-8">
+              <h3 className="text-xl sm:text-2xl font-bold text-cisa-navy dark:text-blue-400 mb-4 sm:mb-6 flex items-center gap-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                  <Shield className="h-5 w-5 sm:h-6 sm:w-6 text-cisa-navy dark:text-blue-400" />
                 </div>
                 All Recent Threats
                 <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-auto">({filteredAllThreats.length})</span>
               </h3>
               <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
                 {filteredAllThreats.length === 0 ? (
-                  <p className="text-gray-500 dark:text-gray-400 text-center py-8">No threats matching filter</p>
+                  <div className="text-center py-10">
+                    <Search className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                    <p className="text-gray-500 dark:text-gray-400 font-medium mb-2">No threats matching filter</p>
+                    {activeFilter !== 'all' && (
+                      <button onClick={() => setActiveFilter('all')} className="text-sm text-cisa-navy dark:text-blue-400 hover:underline font-medium">
+                        Clear filter
+                      </button>
+                    )}
+                  </div>
                 ) : filteredAllThreats.slice(0, 15).map((item) => (
                   <ThreatCard key={item.id} item={item} showExtendedDetails={false} />
                 ))}
@@ -571,17 +610,6 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Recover: Economic Loss Estimation */}
-      {data && (
-        <div className={`transition-opacity duration-300 ease-in-out ${isRefreshing ? 'opacity-70' : 'opacity-100'}`}>
-          <RecoverEstimate
-            threats={data.threats}
-            kev={data.kev}
-            last24h={data.meta.last24h || { kev: 0, nationState: 0, ics: 0, total: 0 }}
-            score={data.score.score}
-          />
-        </div>
-      )}
 
       {/* General Feedback Banner */}
       <section className="py-8 px-4 bg-white dark:bg-slate-900">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import {
   Shield,
   Activity,
@@ -259,6 +260,8 @@ export default function GlobePage() {
       <div className="flex-shrink-0 h-10 bg-[#060d1a]/95 border-b border-white/[0.06] flex items-center justify-between px-4 backdrop-blur-sm">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
+            <Link href="/" className="text-xs text-gray-500 hover:text-gray-300 transition-colors hidden sm:inline">Dashboard</Link>
+            <span className="text-gray-600 hidden sm:inline">/</span>
             <Shield className="w-3.5 h-3.5 text-gray-400" />
             <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">CAPRI Threat Map</span>
           </div>

@@ -584,7 +584,7 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       geometry.setDrawRange(0, 0)
 
       const material = new THREE.LineBasicMaterial({
-        color: new THREE.Color(actor.color),
+        color: actorRedColor,
         transparent: true,
         opacity: 0.8,
       })
@@ -595,7 +595,7 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onEmp
       // Glowing head sprite
       const headMat = new THREE.SpriteMaterial({
         map: createGlowTexture('rgba(255, 255, 255, 0.8)'),
-        color: new THREE.Color(actor.color),
+        color: actorRedColor,
         transparent: true,
         blending: THREE.AdditiveBlending,
       })

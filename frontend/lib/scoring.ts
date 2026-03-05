@@ -3,6 +3,7 @@
 // OPEN SOURCE: All weights and methodology are transparent
 
 import { ThreatItem } from './feeds'
+import { NATION_STATE_INDICATORS, ICS_INDICATORS, matchesIndicator } from './indicators'
 
 // ============================================
 // SCORING WEIGHTS - OPEN SOURCE & TRANSPARENT
@@ -73,32 +74,6 @@ export interface ScoreFactor {
   weight: number
   maxImpact: number
   items: FactorItem[]
-}
-
-// Nation-state actors known to target energy sector
-const NATION_STATE_INDICATORS = [
-  'volt typhoon', 'sandworm', 'xenotime', 'chernovite', 'kamacite',
-  'apt28', 'apt29', 'lazarus', 'kimsuky', 'temp.veles',
-  'china', 'russia', 'iran', 'north korea', 'dprk'
-]
-
-// ICS/SCADA specific terms
-const ICS_INDICATORS = [
-  'scada', 'ics', 'plc', 'hmi', 'rtu', 'dcs',
-  'modbus', 'dnp3', 'iec 61850', 'opc',
-  'industrial control', 'operational technology'
-]
-
-// Word-boundary matching to prevent false positives (e.g., 'ics' won't match 'logistics')
-const _regexCache = new Map<string, RegExp>()
-function matchesIndicator(text: string, indicator: string): boolean {
-  let regex = _regexCache.get(indicator)
-  if (!regex) {
-    const escaped = indicator.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    regex = new RegExp(`\\b${escaped}\\b`, 'i')
-    _regexCache.set(indicator, regex)
-  }
-  return regex.test(text)
 }
 
 // Temporal decay: newer threats weigh more than older ones

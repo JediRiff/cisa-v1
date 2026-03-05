@@ -33,11 +33,11 @@ export default function KeyMetrics({ score, label, color, last24h }: KeyMetricsP
             <p className="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wider mb-2">Last 24 Hours</p>
             <p className="text-gray-900 dark:text-white text-2xl font-bold mb-2">{last24h.total} New</p>
             <p className="text-sm">
-              {last24h.kev > 0 && <span className="text-red-600 dark:text-red-400 font-medium">{last24h.kev} KEV</span>}
+              {last24h.kev > 0 && <span className="text-red-600 dark:text-red-400 font-medium" title="Known Exploited Vulnerabilities — actively exploited CVEs cataloged by CISA">{last24h.kev} KEV</span>}
               {last24h.kev > 0 && (last24h.nationState > 0 || last24h.ics > 0) && <span className="text-gray-400"> · </span>}
-              {last24h.nationState > 0 && <span className="text-orange-600 dark:text-orange-400 font-medium">{last24h.nationState} Nation-State</span>}
+              {last24h.nationState > 0 && <span className="text-orange-600 dark:text-orange-400 font-medium" title="Threats attributed to nation-state APT groups (e.g. Volt Typhoon, Sandworm)">{last24h.nationState} Nation-State</span>}
               {last24h.nationState > 0 && last24h.ics > 0 && <span className="text-gray-400"> · </span>}
-              {last24h.ics > 0 && <span className="text-yellow-600 dark:text-yellow-400 font-medium">{last24h.ics} ICS</span>}
+              {last24h.ics > 0 && <span className="text-yellow-600 dark:text-yellow-400 font-medium" title="Industrial Control Systems / Operational Technology vulnerabilities">{last24h.ics} ICS</span>}
               {last24h.kev === 0 && last24h.nationState === 0 && last24h.ics === 0 && <span className="text-gray-500 dark:text-gray-400">No critical alerts</span>}
             </p>
           </div>

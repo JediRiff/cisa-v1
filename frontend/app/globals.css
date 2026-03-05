@@ -88,11 +88,23 @@ a:focus-visible,
   outline-offset: 2px;
 }
 
+.dark button:focus-visible,
+.dark a:focus-visible,
+.dark [role="button"]:focus-visible {
+  outline-color: #60a5fa;
+}
+
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
   outline: 2px solid #1e3a5f;
   outline-offset: 2px;
+}
+
+.dark input:focus-visible,
+.dark select:focus-visible,
+.dark textarea:focus-visible {
+  outline-color: #60a5fa;
 }
 
 body {
@@ -280,6 +292,38 @@ body {
     bottom: 0.5in;
     left: 0.5in;
     right: 0.5in;
+  }
+
+  /* Threat cards: prevent page breaks inside, ensure readability */
+  .card-elevated,
+  .card-premium {
+    page-break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #d1d5db !important;
+    transform: none !important;
+  }
+
+  /* Links: show URL inline */
+  a[href]::after {
+    content: " (" attr(href) ")";
+    font-size: 8pt;
+    color: #6b7280;
+    word-break: break-all;
+  }
+
+  /* Don't show URL for internal/icon-only links */
+  a[href^="/"]::after,
+  a[href^="#"]::after,
+  a[aria-label]::after,
+  nav a::after,
+  footer a::after {
+    content: none;
+  }
+
+  /* Reset dark mode for print */
+  .dark {
+    background: white !important;
+    color: black !important;
   }
 
   /* Page setup */

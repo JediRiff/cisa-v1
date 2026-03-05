@@ -70,36 +70,20 @@ const FEED_SOURCES = [
   { name: 'AlienVault OTX', url: 'https://otx.alienvault.com/api/v1/pulses/activity', type: 'otx', sourceType: 'vendor' as const },
 ]
 
-// Energy sector keywords for relevance detection
-const ENERGY_KEYWORDS = [
-  'energy', 'power', 'grid', 'electric', 'utility', 'utilities',
-  'scada', 'ics', 'operational technology', 'industrial control',
-  'pipeline', 'oil and gas', 'oil & gas', 'petroleum', 'lng',
-  'nuclear', 'reactor', 'renewable', 'solar', 'wind',
-  'substation', 'transformer', 'transmission', 'distribution',
-  'nerc', 'cip', 'ferc', 'smart grid', 'smart meter',
-  'plc', 'rtu', 'hmi', 'dcs', 'modbus', 'dnp3', 'iec 61850',
-  'critical infrastructure', 'volt typhoon', 'sandworm', 'xenotime',
-  'chernovite', 'kamacite', 'havex', 'industroyer', 'crashoverride', 'triton',
-  'refinery', 'crude oil', 'natural gas', 'oil pipeline', 'oil sector',
-]
+import { ENERGY_KEYWORDS, matchesIndicator } from './indicators'
 
-// Word-boundary matching to prevent false positives
-// e.g., 'ics' won't match 'logistics', 'oil' won't match 'soil'
-const _feedRegexCache = new Map<string, RegExp>()
-function matchesKeyword(text: string, keyword: string): boolean {
-  let regex = _feedRegexCache.get(keyword)
-  if (!regex) {
-    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    regex = new RegExp(`\\b${escaped}\\b`, 'i')
-    _feedRegexCache.set(keyword, regex)
+// djb2 hash for deterministic RSS item IDs (stable across fetches)
+function hashString(str: string): string {
+  let hash = 5381
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash + str.charCodeAt(i)) & 0x7fffffff
   }
-  return regex.test(text)
+  return hash.toString(36)
 }
 
 function checkEnergyRelevance(title: string, description: string): boolean {
   const text = title + ' ' + description
-  return ENERGY_KEYWORDS.some(keyword => matchesKeyword(text, keyword))
+  return ENERGY_KEYWORDS.some(keyword => matchesIndicator(text, keyword))
 }
 
 function extractSeverity(title: string, description: string): ThreatItem['severity'] {
@@ -150,7 +134,7 @@ function parseRSS(xml: string, sourceName: string, sourceType: ThreatItem['sourc
     const pubDate = dateMatch ? new Date(dateMatch[1]).toISOString() : new Date().toISOString()
 
     items.push({
-      id: sourceName.replace(/\s/g, '-') + '-' + Math.random().toString(36).substring(2, 9),
+      id: sourceName.replace(/\s/g, '-') + '-' + hashString(sourceName + (link || title)),
       title,
       description,
       link,
