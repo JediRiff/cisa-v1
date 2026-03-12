@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const kevActions = feedResult.kevItems
-      .filter(kev => isEnergyRelevantKEV(kev.vendorProject, kev.shortDescription || ''))
+      .filter(kev => isEnergyRelevantKEV(kev.vendorProject, kev.shortDescription || '', kev.product || ''))
       .map(kev => ({
         cveId: kev.cveID,
         vendor: kev.vendorProject,

@@ -58,12 +58,20 @@ export const ENERGY_SECTOR_VENDORS = [
   'siemens', 'schneider electric', 'rockwell', 'rockwell automation',
   'honeywell', 'unitronics', 'abb', 'emerson', 'yokogawa',
   'ge vernova', 'ge digital', 'eaton', 'mitsubishi electric',
-  // SCADA/DCS software vendors
+  'hitachi energy', 'hitachi', 'delta electronics', 'omron',
+  'advantech', 'wago', 'beckhoff', 'b&r', 'red lion',
+  'sel', 'schweitzer', 'tridium', 'niagara',
+  // SCADA/DCS/historian software vendors
   'inductive automation', 'ignition', 'wonderware', 'aveva',
   'opto 22', 'kepware', 'moxa', 'phoenix contact',
-  // Energy-adjacent networking/infrastructure
+  'osisoft', 'pi server', 'codesys', 'prosoft',
+  // Network/security infrastructure common in energy utility environments
   'cisco', 'fortinet', 'palo alto', 'juniper',
   'lantronix', 'digi international', 'sierra wireless',
+  'ivanti', 'sonicwall', 'zyxel', 'barracuda',
+  'f5', 'citrix', 'pulse secure', 'vmware',
+  'sophos', 'watchguard', 'netgear', 'qnap',
+  'progress', 'connectwise', 'veeam',
 ] as const
 
 // Energy sector keywords for relevance detection
@@ -78,6 +86,16 @@ export const ENERGY_KEYWORDS = [
   'critical infrastructure', 'volt typhoon', 'sandworm', 'xenotime',
   'chernovite', 'kamacite', 'havex', 'industroyer', 'crashoverride', 'triton',
   'refinery', 'crude oil', 'natural gas', 'oil pipeline', 'oil sector',
+  // Additional infrastructure terms
+  'hydroelectric', 'turbine', 'generator', 'fuel', 'dam',
+  'water treatment', 'wastewater', 'building automation',
+  'firmware', 'embedded device', 'vpn', 'remote access',
+  'firewall', 'gateway',
+] as const
+
+// Vulnerability terms that only indicate energy relevance when paired with an energy/ICS context
+const CONTEXTUAL_VULN_TERMS = [
+  'authentication bypass', 'remote code execution',
 ] as const
 
 // Word-boundary regex matcher with shared cache.
@@ -111,13 +129,28 @@ export function matchesICSContext(text: string): boolean {
 
 /**
  * Check if a KEV entry is relevant to the energy sector.
- * Matches if the vendor is an energy/ICS vendor OR the description contains energy keywords.
+ * Matches if the vendor is an energy/ICS vendor, the product name matches,
+ * OR the description contains energy keywords.
+ * Contextual vuln terms (e.g. "remote code execution") only match when an
+ * energy/ICS term is also present.
  */
-export function isEnergyRelevantKEV(vendor: string, description: string): boolean {
+export function isEnergyRelevantKEV(vendor: string, description: string, product?: string): boolean {
   const vendorLower = vendor.toLowerCase()
   // Check if vendor is an energy sector vendor
   if (ENERGY_SECTOR_VENDORS.some(v => vendorLower.includes(v))) return true
-  // Check if description mentions energy/ICS keywords
-  const text = vendor + ' ' + description
-  return ENERGY_KEYWORDS.some(kw => matchesIndicator(text, kw))
+  // Check if product name matches a known energy vendor/keyword
+  if (product) {
+    const productLower = product.toLowerCase()
+    if (ENERGY_SECTOR_VENDORS.some(v => productLower.includes(v))) return true
+  }
+  // Check if description or product mentions energy/ICS keywords
+  const text = vendor + ' ' + (product || '') + ' ' + description
+  if (ENERGY_KEYWORDS.some(kw => matchesIndicator(text, kw))) return true
+  // Contextual vuln terms — only match when paired with an energy/ICS indicator
+  if (CONTEXTUAL_VULN_TERMS.some(term => matchesIndicator(text, term))) {
+    const hasEnergyContext = [...ICS_TERMS, ...ICS_VENDORS, ...ENERGY_SECTOR_VENDORS]
+      .some(ctx => matchesIndicator(text, ctx))
+    if (hasEnergyContext) return true
+  }
+  return false
 }

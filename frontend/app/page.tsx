@@ -72,6 +72,26 @@ interface ApiResponse {
 
 type ThreatFilter = 'all' | 'energy' | 'critical' | 'nation-state' | 'ics-ot'
 
+// ASCII art digit glyphs (5 rows each) — matches the ██╗ box-drawing style of the CAPRI banner
+const ASCII_DIGITS: Record<string, string[]> = {
+  '0': [' ██████╗ ','██╔═══██╗','██║   ██║','╚██████╔╝',' ╚═════╝ '],
+  '1': [' ██╗','███║','╚██║',' ██║',' ╚═╝'],
+  '2': ['██████╗ ','╚════██╗',' █████╔╝','██╔═══╝ ','███████╗'],
+  '3': ['██████╗ ','╚════██╗',' █████╔╝','██╔══██║','╚█████╔╝'],
+  '4': ['██╗██╗','██║██║','╚████║',' ╚═██║','   ╚═╝'],
+  '5': ['███████╗','██╔════╝','███████╗','╚════██║','██████╔╝'],
+  '.': ['   ','   ','   ','██╗','╚═╝'],
+}
+
+function scoreToAscii(score: number): string {
+  const chars = score.toFixed(1).split('')
+  const rows: string[] = []
+  for (let row = 0; row < 5; row++) {
+    rows.push(chars.map(ch => ASCII_DIGITS[ch]?.[row] ?? '').join(' '))
+  }
+  return rows.join('\n')
+}
+
 export default function Dashboard() {
   const [data, setData] = useState<ApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -329,14 +349,19 @@ export default function Dashboard() {
             </p>
           </div>
 
-          {/* Score Display - Terminal Style */}
+          {/* Score Display - ASCII Art Style */}
           <div className="flex flex-col items-center gap-3 sm:gap-4 mb-6 sm:mb-10">
-            <div className="font-mono text-center border border-gray-300 dark:border-gray-600 rounded px-6 py-4 inline-block relative" style={{ borderColor: data?.score.color + '30' }}>
+            <div className="font-mono text-center border border-gray-300 dark:border-gray-600 rounded px-4 sm:px-6 py-4 inline-block relative" style={{ borderColor: data?.score.color + '30' }}>
               <span className="absolute -top-3 left-4 bg-white dark:bg-slate-900 px-2 text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-widest">threat level</span>
-              <p className="text-5xl sm:text-6xl font-bold transition-all duration-500 ease-in-out mt-1" style={{ color: data?.score.color }}>
-                {data?.score.score.toFixed(1)}
-              </p>
-              <p className="text-sm font-bold uppercase tracking-wider mt-1 transition-colors duration-500 ease-in-out" style={{ color: data?.score.color }}>
+              <pre
+                className="transition-all duration-500 ease-in-out mt-1 leading-tight select-none text-[8px] sm:text-xs md:text-sm"
+                style={{ color: data?.score.color }}
+                aria-hidden="true"
+              >
+                {data ? scoreToAscii(data.score.score) : ''}
+              </pre>
+              <span className="sr-only">{data?.score.score.toFixed(1)}</span>
+              <p className="text-sm font-bold uppercase tracking-wider mt-2 transition-colors duration-500 ease-in-out" style={{ color: data?.score.color }}>
                 [ {data?.score.label} ]
               </p>
               <p className="text-[10px] text-gray-400 dark:text-gray-500 flex items-center justify-center gap-1.5 mt-2">

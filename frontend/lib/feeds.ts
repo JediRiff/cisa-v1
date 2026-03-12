@@ -197,7 +197,7 @@ function parseKEV(json: any): ThreatItem[] {
       source: 'CISA KEV',
       sourceType: 'government' as const,
       severity: 'critical' as const,
-      isEnergyRelevant: isEnergyRelevantKEV(vuln.vendorProject || '', vuln.shortDescription || '')
+      isEnergyRelevant: isEnergyRelevantKEV(vuln.vendorProject || '', vuln.shortDescription || '', vuln.product || '')
     }))
 }
 
