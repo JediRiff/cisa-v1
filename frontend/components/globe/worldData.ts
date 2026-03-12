@@ -274,12 +274,12 @@ export const DEFAULT_LAYER_VISIBILITY: LayerVisibility = {
 
 // Sector display colors for globe markers
 export const sectorColors: Record<Sector, string> = {
-  nuclear: '#FFD600',
-  hydro: '#2196F3',
-  grid: '#00E676',
-  natural_gas: '#FFAB00',
-  oil: '#FF6D00',
-  water: '#00E5FF',
+  nuclear: '#F9A825',
+  hydro: '#1E88E5',
+  grid: '#43A047',
+  natural_gas: '#FF8F00',
+  oil: '#E65100',
+  water: '#00ACC1',
 }
 
 export const sectorLabels: Record<Sector, string> = {
