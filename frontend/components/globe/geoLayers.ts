@@ -35,12 +35,14 @@ export const submarineCables: CableRoute[] = [
   {
     name: 'TGN-Atlantic',
     color: '#38bdf8',
-    waypoints: [[40.5, -74.0], [42.0, -55.0], [48.0, -30.0], [50.0, -10.0], [50.5, -1.0]],
+    // Final approach stays north of Brittany (48.4°N) and south of Cornwall (50°N)
+    waypoints: [[40.5, -74.0], [42.0, -55.0], [48.0, -30.0], [49.5, -10.0], [49.5, -6.0], [50.5, -1.0]],
   },
   {
     name: 'AC-1 (Atlantic Crossing)',
     color: '#60a5fa',
-    waypoints: [[40.0, -73.5], [38.0, -55.0], [40.0, -30.0], [50.0, -5.0], [51.5, 0.1]],
+    // Approaches through Celtic Sea, enters Channel well north of Brittany
+    waypoints: [[40.0, -73.5], [38.0, -55.0], [40.0, -30.0], [49.0, -10.0], [49.5, -6.0], [50.5, -2.0], [51.5, 0.1]],
   },
   {
     // Follows coast around NE Brazil bulge (coast reaches -35°W at ~7°S)
@@ -74,22 +76,34 @@ export const submarineCables: CableRoute[] = [
     ],
   },
   {
-    // US West Coast → SE Asia (via Guam)
-    name: 'SEA-US (US–Philippines)',
+    // US West Coast → Hawaii → Guam (stays in open Pacific)
+    name: 'SEA-US (US–Guam)',
     color: '#7dd3fc',
     waypoints: [
       [33.7, -118.2], [28.0, -140.0], [21.3, -157.8],
-      [15.0, -170.0], [13.5, 144.8], [12.0, 130.0],
-      [10.0, 120.0], [14.5, 121.0],
+      [15.0, -170.0], [13.5, 144.8],
+    ],
+  },
+  {
+    // Guam → south of Philippine archipelago → South China Sea → Hong Kong
+    // Mindanao south coast ~5.5°N at 126°E; Palawan west coast ~118°E at 10°N
+    name: 'SEA-US (Guam–Hong Kong)',
+    color: '#7dd3fc',
+    waypoints: [
+      [13.5, 144.8], [8.0, 137.0], [4.0, 128.0],
+      [4.0, 122.0], [7.0, 117.0], [14.0, 115.0],
+      [22.3, 114.2],
     ],
   },
   // ── Europe–Asia ──
   {
-    // UK → Med → Suez → Red Sea → around Arabian Peninsula → India → Singapore
+    // UK → around Brittany (west point 48.4°N,-4.8°W) → Bay of Biscay →
+    // Portugal → Gibraltar → Med → Suez → Red Sea → India → Singapore
     name: 'SEA-ME-WE (Europe–Asia)',
     color: '#38bdf8',
     waypoints: [
-      [50.5, -1.0], [43.0, -5.0], [36.0, -5.5],
+      [50.5, -1.0], [49.0, -3.0], [48.0, -7.0],
+      [45.0, -9.0], [40.0, -9.5], [36.0, -5.5],
       [36.0, 0.0], [34.0, 12.0], [31.3, 32.3],
       [30.0, 32.6], [28.0, 33.3], [22.0, 37.5],
       [15.0, 42.0], [12.6, 43.3], [12.0, 45.0],
