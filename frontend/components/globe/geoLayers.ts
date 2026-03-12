@@ -11,11 +11,6 @@ export interface CableRoute {
   waypoints: [number, number][] // [lat, lng]
 }
 
-export interface GridCorridor {
-  name: string
-  color: string
-  waypoints: [number, number][] // [lat, lng]
-}
 
 // ============================================================
 // Shortest-path longitude interpolation
@@ -109,42 +104,6 @@ export const submarineCables: CableRoute[] = [
   },
 ]
 
-// ============================================================
-// Data: US Power Grid Corridors
-// ============================================================
-
-export const powerGridCorridors: GridCorridor[] = [
-  {
-    name: 'Eastern-Western Interconnect Boundary',
-    color: '#4ade80',
-    waypoints: [[49.0, -104.0], [46.0, -104.0], [42.0, -104.5], [37.0, -104.0], [33.0, -103.5], [29.0, -103.0]],
-  },
-  {
-    name: 'ERCOT Boundary',
-    color: '#facc15',
-    waypoints: [[34.0, -100.0], [33.5, -97.0], [30.5, -97.5], [29.5, -95.0], [29.0, -94.5], [28.5, -97.5], [27.5, -99.0]],
-  },
-  {
-    name: 'PJM 500kV Backbone',
-    color: '#60a5fa',
-    waypoints: [[41.5, -81.7], [40.5, -80.0], [39.9, -77.0], [39.5, -75.5], [40.0, -74.5], [40.7, -74.0]],
-  },
-  {
-    name: 'Western 500kV Backbone',
-    color: '#c084fc',
-    waypoints: [[48.8, -122.0], [46.0, -122.7], [42.0, -122.5], [37.8, -121.5], [34.0, -118.2]],
-  },
-  {
-    name: 'Pacific DC Intertie',
-    color: '#f472b6',
-    waypoints: [[46.0, -119.5], [42.0, -120.0], [37.5, -118.5], [34.1, -118.3]],
-  },
-  {
-    name: 'TVA Transmission Corridor',
-    color: '#fb923c',
-    waypoints: [[36.2, -86.8], [35.5, -85.5], [35.0, -84.0], [34.7, -87.1], [33.5, -86.8]],
-  },
-]
 
 // ============================================================
 // Rendering: Submarine Cables
@@ -181,10 +140,6 @@ export function createSubmarineCableGroup(radius: number): THREE.Group {
 
   return group
 }
-
-// ============================================================
-// Rendering: Power Grid Corridors
-// ============================================================
 
 // ============================================================
 // Data: LNG Shipping Lanes (US export terminals → major import hubs)
@@ -300,37 +255,3 @@ export function createLngShippingLaneGroup(radius: number): THREE.Group {
   return group
 }
 
-// ============================================================
-// Rendering: Power Grid Corridors
-// ============================================================
-
-export function createGridCorridorGroup(radius: number): THREE.Group {
-  const group = new THREE.Group()
-  const r = radius + 0.004
-
-  powerGridCorridors.forEach((corridor) => {
-    const points: THREE.Vector3[] = []
-    for (let i = 0; i < corridor.waypoints.length - 1; i++) {
-      const [lat1, lng1] = corridor.waypoints[i]
-      const [lat2, lng2] = corridor.waypoints[i + 1]
-      const steps = 15
-      for (let s = 0; s <= steps; s++) {
-        const t = s / steps
-        const lat = lat1 + (lat2 - lat1) * t
-        const lng = lng1 + (lng2 - lng1) * t
-        points.push(latLngToVector3(lat, lng, r))
-      }
-    }
-
-    const geometry = new THREE.BufferGeometry().setFromPoints(points)
-    const material = new THREE.LineBasicMaterial({
-      color: corridor.color,
-      transparent: true,
-      opacity: 0.25,
-    })
-    const line = new THREE.Line(geometry, material)
-    group.add(line)
-  })
-
-  return group
-}

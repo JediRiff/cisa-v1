@@ -18,7 +18,6 @@ import {
 } from './worldData'
 import {
   createSubmarineCableGroup,
-  createGridCorridorGroup,
   createLngShippingLaneGroup,
 } from './geoLayers'
 
@@ -209,7 +208,6 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClu
   const actorGroupRef = useRef<THREE.Group | null>(null)
   const arcGroupRef = useRef<THREE.Group | null>(null)
   const cableGroupRef = useRef<THREE.Group | null>(null)
-  const gridCorridorGroupRef = useRef<THREE.Group | null>(null)
   const lngLaneGroupRef = useRef<THREE.Group | null>(null)
   const currentTierRef = useRef<ZoomTier>('far')
   const tierGroupsRef = useRef<{ far: THREE.Group; medium: THREE.Group; close: THREE.Group } | null>(null)
@@ -259,7 +257,6 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClu
 
     // Toggle geo-layer groups
     if (cableGroupRef.current) cableGroupRef.current.visible = lv.submarineCables
-    if (gridCorridorGroupRef.current) gridCorridorGroupRef.current.visible = lv.powerGridCorridors
     if (lngLaneGroupRef.current) lngLaneGroupRef.current.visible = lv.lngShippingLanes
 
     // Toggle per-sector facility visibility across all tiers
@@ -438,10 +435,6 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClu
     globeGroup.add(cableGroup)
     cableGroupRef.current = cableGroup
 
-    const gridCorridorGroup = createGridCorridorGroup(1)
-    globeGroup.add(gridCorridorGroup)
-    gridCorridorGroupRef.current = gridCorridorGroup
-
     const lngLaneGroup = createLngShippingLaneGroup(1)
     globeGroup.add(lngLaneGroup)
     lngLaneGroupRef.current = lngLaneGroup
@@ -449,7 +442,6 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClu
     // Apply initial layer visibility
     const initLV = layerVisibilityRef.current
     cableGroup.visible = initLV.submarineCables
-    gridCorridorGroup.visible = initLV.powerGridCorridors
     lngLaneGroup.visible = initLV.lngShippingLanes
 
     // ============================================================

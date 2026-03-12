@@ -15,7 +15,6 @@ const OVERLAY_ITEMS: { key: keyof LayerVisibility; label: string; color: string 
   { key: 'threatActors', label: 'Threat Actors', color: '#ef4444' },
   { key: 'attackArcs', label: 'Attack Arcs', color: '#ff6060' },
   { key: 'submarineCables', label: 'Submarine Cables', color: '#38bdf8' },
-  { key: 'powerGridCorridors', label: 'Power Grid Corridors', color: '#4ade80' },
   { key: 'lngShippingLanes', label: 'LNG Shipping Lanes', color: '#06b6d4' },
 ]
 

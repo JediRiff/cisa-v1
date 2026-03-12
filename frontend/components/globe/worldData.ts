@@ -260,7 +260,7 @@ export interface LayerVisibility {
   nuclear: boolean; hydro: boolean; grid: boolean
   natural_gas: boolean; oil: boolean; water: boolean
   threatActors: boolean; attackArcs: boolean
-  submarineCables: boolean; powerGridCorridors: boolean
+  submarineCables: boolean
   lngShippingLanes: boolean
 }
 
@@ -268,7 +268,7 @@ export const DEFAULT_LAYER_VISIBILITY: LayerVisibility = {
   nuclear: true, hydro: true, grid: true,
   natural_gas: true, oil: true, water: true,
   threatActors: true, attackArcs: true,
-  submarineCables: true, powerGridCorridors: true,
+  submarineCables: true,
   lngShippingLanes: true,
 }
 
