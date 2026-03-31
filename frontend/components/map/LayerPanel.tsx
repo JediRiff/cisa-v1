@@ -6,9 +6,11 @@ import {
   LayerVisibility,
   SECTOR_COLORS,
   SECTOR_LABELS,
+  SECTOR_SHAPES,
   INFRA_COLORS,
   EnergySector,
   InfrastructureType,
+  MarkerShape,
 } from './types'
 
 interface LayerPanelProps {
@@ -82,20 +84,91 @@ function SectionHeader({
   )
 }
 
+/** SVG shape icon for the legend */
+function ShapeIcon({ shape, color, checked, size = 10 }: { shape: MarkerShape | 'line' | 'circle-infra'; color: string; checked: boolean; size?: number }) {
+  const fill = checked ? color : 'transparent'
+  const stroke = checked ? color : 'rgba(100,116,139,0.3)'
+  const glow = checked ? `drop-shadow(0 0 3px ${color}60)` : 'none'
+  const s = size
+  const c = s / 2
+
+  if (shape === 'line') {
+    return (
+      <svg width={16} height={s} className="flex-shrink-0" style={{ filter: glow }}>
+        <line x1={0} y1={c} x2={16} y2={c} stroke={stroke} strokeWidth={2} strokeLinecap="round" />
+      </svg>
+    )
+  }
+  if (shape === 'circle-infra') {
+    return (
+      <svg width={s} height={s} className="flex-shrink-0" style={{ filter: glow }}>
+        <circle cx={c} cy={c} r={c - 1} fill={fill} stroke={stroke} strokeWidth={1} />
+      </svg>
+    )
+  }
+
+  return (
+    <svg width={s} height={s} className="flex-shrink-0" style={{ filter: glow }}>
+      {shape === 'triangle' && (
+        <polygon points={`${c},1 ${s - 1},${s - 1} 1,${s - 1}`} fill={fill} stroke={stroke} strokeWidth={1} />
+      )}
+      {shape === 'square' && (
+        <rect x={1} y={1} width={s - 2} height={s - 2} fill={fill} stroke={stroke} strokeWidth={1} />
+      )}
+      {shape === 'diamond' && (
+        <polygon points={`${c},1 ${s - 1},${c} ${c},${s - 1} 1,${c}`} fill={fill} stroke={stroke} strokeWidth={1} />
+      )}
+      {shape === 'star' && (
+        <polygon
+          points={(() => {
+            const pts: string[] = []
+            for (let i = 0; i < 10; i++) {
+              const angle = (i * Math.PI) / 5 - Math.PI / 2
+              const r = i % 2 === 0 ? c - 1 : (c - 1) * 0.4
+              pts.push(`${c + Math.cos(angle) * r},${c + Math.sin(angle) * r}`)
+            }
+            return pts.join(' ')
+          })()}
+          fill={fill} stroke={stroke} strokeWidth={0.8}
+        />
+      )}
+      {shape === 'hexagon' && (
+        <polygon
+          points={(() => {
+            const pts: string[] = []
+            for (let i = 0; i < 6; i++) {
+              const angle = (i * Math.PI) / 3 - Math.PI / 6
+              pts.push(`${c + Math.cos(angle) * (c - 1)},${c + Math.sin(angle) * (c - 1)}`)
+            }
+            return pts.join(' ')
+          })()}
+          fill={fill} stroke={stroke} strokeWidth={1}
+        />
+      )}
+      {shape === 'dot' && (
+        <circle cx={c} cy={c} r={c * 0.55} fill={fill} stroke={stroke} strokeWidth={0.8} />
+      )}
+      {shape === 'circle' && (
+        <circle cx={c} cy={c} r={c - 1} fill={fill} stroke={stroke} strokeWidth={1} />
+      )}
+    </svg>
+  )
+}
+
 function LayerRow({
   label,
   color,
   checked,
   count,
   onToggle,
-  shape = 'circle',
+  markerShape = 'circle',
 }: {
   label: string
   color: string
   checked: boolean
   count?: number
   onToggle: () => void
-  shape?: 'circle' | 'line'
+  markerShape?: MarkerShape | 'line' | 'circle-infra'
 }) {
   return (
     <label className="flex items-center gap-2 cursor-pointer group py-[3px]">
@@ -105,26 +178,7 @@ function LayerRow({
         onChange={onToggle}
         className="sr-only"
       />
-      {shape === 'line' ? (
-        <div
-          className="w-4 h-[2px] rounded-full flex-shrink-0 transition-all"
-          style={{
-            background: checked ? color : 'rgba(100,116,139,0.3)',
-            boxShadow: checked ? `0 0 6px ${color}40` : 'none',
-          }}
-        />
-      ) : (
-        <div
-          className="w-2 h-2 rounded-full flex-shrink-0 transition-all"
-          style={{
-            background: checked ? color : 'transparent',
-            borderWidth: 1.5,
-            borderStyle: 'solid',
-            borderColor: checked ? color : 'rgba(100,116,139,0.3)',
-            boxShadow: checked ? `0 0 6px ${color}40` : 'none',
-          }}
-        />
-      )}
+      <ShapeIcon shape={markerShape} color={color} checked={checked} />
       <span
         className={`text-[10px] flex-1 transition-colors leading-tight ${
           checked ? 'text-slate-300' : 'text-slate-600'
@@ -243,6 +297,7 @@ export default function LayerPanel({ layers, onToggle, featureCounts }: LayerPan
                       checked={layers[key]}
                       count={featureCounts?.[key]}
                       onToggle={() => onToggle(key)}
+                      markerShape={SECTOR_SHAPES[sector]}
                     />
                   ))}
                 </div>
@@ -283,7 +338,7 @@ export default function LayerPanel({ layers, onToggle, featureCounts }: LayerPan
                       checked={layers[key]}
                       count={featureCounts?.[key]}
                       onToggle={() => onToggle(key)}
-                      shape={['transmission_line', 'submarine_cable', 'fiber_route', 'gas_pipeline'].includes(type) ? 'line' : 'circle'}
+                      markerShape={['transmission_line', 'submarine_cable', 'fiber_route', 'gas_pipeline'].includes(type) ? 'line' : 'circle-infra'}
                     />
                   ))}
                 </div>
@@ -309,6 +364,7 @@ export default function LayerPanel({ layers, onToggle, featureCounts }: LayerPan
                       checked={layers[key]}
                       count={featureCounts?.[key]}
                       onToggle={() => onToggle(key)}
+                      markerShape={key === 'attack_arcs' ? 'line' : 'circle'}
                     />
                   ))}
                 </div>

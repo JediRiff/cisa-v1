@@ -109,6 +109,25 @@ export const INFRA_COLORS: Record<InfrastructureType, string> = {
   gas_pipeline: '#fb923c',    // Warm orange
 };
 
+// Shape type for each sector — distinguishes facility types at a glance
+export type MarkerShape = 'triangle' | 'circle' | 'square' | 'diamond' | 'star' | 'hexagon' | 'dot';
+
+export const SECTOR_SHAPES: Record<EnergySector, MarkerShape> = {
+  nuclear: 'triangle',
+  hydro: 'diamond',
+  pump_storage: 'diamond',
+  gas: 'square',
+  coal: 'square',
+  oil: 'square',
+  wind: 'circle',
+  offshore_wind: 'circle',
+  solar: 'dot',
+  storage: 'hexagon',
+  geothermal: 'star',
+  biomass: 'star',
+  other: 'circle',
+};
+
 // Facility risk — preserves the existing worldData.ts model
 export interface FacilityRisk {
   score: number;            // 1-5 (1=Severe, 5=Normal)

@@ -12,7 +12,7 @@ import {
   INFRA_COLORS,
   EnergySector,
 } from './types';
-import { MAP_STYLE, CLUSTER_CONFIG, getCircleRadiusExpression, getCircleOpacityExpression, getClusterRadiusExpression } from './mapStyle';
+import { MAP_STYLE, CLUSTER_CONFIG, getClusterRadiusExpression } from './mapStyle';
 import {
   sectorColorExpression,
   threatActorsToGeoJSON,
@@ -22,6 +22,7 @@ import {
   riskScoreToColor,
   formatCapacity,
 } from './utils';
+import { registerShapeIcons, sectorIconExpression } from './shapeIcons';
 import { threatActors, energyFacilities } from '../globe/worldData';
 import { submarineCables, lngShippingLanes } from '../globe/geoLayers';
 
@@ -153,6 +154,7 @@ export default function ThreatMap({
     map.on('load', () => {
       mapReadyRef.current = true;
       try {
+        registerShapeIcons(map);
         addSources(map);
         addLayers(map);
         setupInteractions(map);
@@ -373,47 +375,55 @@ export default function ThreatMap({
       },
     });
 
-    // Cluster count labels — clean white text
-    map.addLayer({
-      id: LAYER_IDS.PLANTS_CLUSTER_COUNT,
-      type: 'symbol',
-      source: SOURCE_IDS.PLANTS,
-      filter: ['has', 'point_count'],
-      layout: {
-        'text-field': '{point_count_abbreviated}',
-        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-        'text-size': 11,
-        'text-allow-overlap': true,
-      },
-      paint: {
-        'text-color': '#f1f5f9',
-        'text-halo-color': 'rgba(10,22,40,0.5)',
-        'text-halo-width': 1,
-      },
-    });
+    // Cluster count labels removed — cluster size communicates density
 
-    // Unclustered individual plant dots — luminescent glow
+    // Unclustered facilities — shape icons per sector type
     map.addLayer({
       id: LAYER_IDS.PLANTS_UNCLUSTERED,
-      type: 'circle',
+      type: 'symbol',
       source: SOURCE_IDS.PLANTS,
       filter: ['!', ['has', 'point_count']],
-      paint: {
-        'circle-color': sectorColorExpression() as maplibregl.ExpressionSpecification,
-        'circle-radius': getCircleRadiusExpression(),
-        'circle-stroke-width': [
-          'interpolate', ['linear'], ['zoom'],
-          2, 0,
-          6, 0.5,
-          10, 1,
+      layout: {
+        'icon-image': sectorIconExpression() as maplibregl.ExpressionSpecification,
+        'icon-size': [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          // zoom 2-4: tiny icons
+          2, [
+            'case',
+            ['==', ['get', 'sector'], 'solar'], 0.2,
+            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 1000], 0.35,
+            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 500], 0.3,
+            0.25,
+          ],
+          // zoom 6: moderate
+          6, [
+            'case',
+            ['==', ['get', 'sector'], 'solar'], 0.25,
+            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 1000], 0.5,
+            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 500], 0.4,
+            0.3,
+          ],
+          // zoom 10+: full size
+          10, [
+            'case',
+            ['==', ['get', 'sector'], 'solar'], 0.35,
+            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 1000], 0.75,
+            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 500], 0.6,
+            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 100], 0.5,
+            0.4,
+          ],
         ] as maplibregl.ExpressionSpecification,
-        'circle-stroke-color': 'rgba(255,255,255,0.2)',
-        'circle-opacity': getCircleOpacityExpression(),
-        'circle-blur': [
-          'interpolate', ['linear'], ['zoom'],
-          2, 0.4,
-          8, 0.15,
-          12, 0,
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+      paint: {
+        'icon-opacity': [
+          'case',
+          ['==', ['get', 'sector'], 'solar'],
+          ['interpolate', ['linear'], ['zoom'], 2, 0.35, 6, 0.55, 9, 0.85],
+          ['interpolate', ['linear'], ['zoom'], 2, 0.6, 6, 0.8, 9, 0.95],
         ] as maplibregl.ExpressionSpecification,
       },
     });
@@ -938,7 +948,6 @@ export default function ThreatMap({
       lv.geothermal || lv.biomass;
 
     setVis(LAYER_IDS.PLANTS_CLUSTER_CIRCLES, anySectorVisible);
-    setVis(LAYER_IDS.PLANTS_CLUSTER_COUNT, anySectorVisible);
     setVis(LAYER_IDS.PLANTS_LABELS, anySectorVisible);
 
     // Build sector filter for unclustered points
