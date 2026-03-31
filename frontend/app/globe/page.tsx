@@ -18,10 +18,13 @@ import {
 import {
   Sector,
   matchesSectorKeywords,
+  expandedSectorKeywords,
+  type ExpandedSector,
   threatActors as allThreatActors,
   energyFacilities,
   calculateFacilityRisk,
 } from '@/components/globe/worldData'
+import { matchesIndicator } from '@/lib/indicators'
 import {
   LayerVisibility,
   DEFAULT_LAYER_VISIBILITY,
@@ -140,12 +143,67 @@ function mapToLegacySector(sector: string): Sector | null {
   return mapping[sector] || null
 }
 
-// Filter threats by sector keywords (word-boundary matching)
-function filterBySector(items: any[], sector: Sector): any[] {
+// Filter threats by expanded sector keywords (word-boundary matching)
+function filterByExpandedSector(items: any[], sector: string): any[] {
+  const keywords = expandedSectorKeywords[sector as ExpandedSector]
+  if (!keywords) return []
   return items.filter((item) => {
     const text = `${item.title || ''} ${item.shortDescription || ''} ${item.description || ''}`
-    return matchesSectorKeywords(text, sector)
+    return keywords.some((kw) => matchesIndicator(text, kw))
   })
+}
+
+// Score a threat item by how specifically it matches a facility
+// Higher score = more relevant to this specific facility
+function scoreThreatRelevance(
+  item: any,
+  facilityName: string,
+  operator: string,
+  state: string,
+  sector: string,
+): number {
+  const text = `${item.title || ''} ${item.shortDescription || ''} ${item.description || ''}`.toLowerCase()
+  let score = 0
+
+  // Facility name match = highest relevance
+  if (facilityName && facilityName.length > 3 && text.includes(facilityName.toLowerCase())) {
+    score += 100
+  }
+  // Operator match
+  if (operator && operator.length > 3 && text.includes(operator.toLowerCase())) {
+    score += 50
+  }
+  // State match (for geographic relevance)
+  if (state && state.length === 2) {
+    // Match state abbreviation in context like "Texas" or state code
+    const stateNames: Record<string, string> = {
+      CA: 'california', TX: 'texas', FL: 'florida', NY: 'new york',
+      PA: 'pennsylvania', IL: 'illinois', OH: 'ohio', GA: 'georgia',
+      NC: 'north carolina', MI: 'michigan', NJ: 'new jersey', VA: 'virginia',
+      WA: 'washington', AZ: 'arizona', MA: 'massachusetts', TN: 'tennessee',
+      IN: 'indiana', MO: 'missouri', MD: 'maryland', WI: 'wisconsin',
+      CO: 'colorado', MN: 'minnesota', SC: 'south carolina', AL: 'alabama',
+      LA: 'louisiana', KY: 'kentucky', OR: 'oregon', OK: 'oklahoma',
+      CT: 'connecticut', UT: 'utah', NV: 'nevada', AR: 'arkansas',
+      MS: 'mississippi', KS: 'kansas', NM: 'new mexico', NE: 'nebraska',
+      ID: 'idaho', WV: 'west virginia', HI: 'hawaii', NH: 'new hampshire',
+      ME: 'maine', MT: 'montana', RI: 'rhode island', DE: 'delaware',
+      SD: 'south dakota', ND: 'north dakota', AK: 'alaska', VT: 'vermont',
+      WY: 'wyoming', DC: 'washington dc',
+    }
+    const stateName = stateNames[state.toUpperCase()]
+    if (stateName && text.includes(stateName)) score += 20
+  }
+  // Sector keyword match (baseline relevance)
+  const keywords = expandedSectorKeywords[sector as ExpandedSector]
+  if (keywords && keywords.some((kw) => matchesIndicator(text, kw))) {
+    score += 10
+  }
+  // Severity bonus
+  if (item.severity === 'critical') score += 5
+  else if (item.severity === 'high') score += 3
+
+  return score
 }
 
 // ── Main Page Component ──
@@ -266,39 +324,70 @@ export default function GlobePage() {
     )
   }, [selectedFeature, data])
 
-  // Sector threats for selected feature
+  // Facility-specific threats — scored by relevance to this exact facility
   const selectedSectorThreats = useMemo(() => {
     if (!selectedFeature || !data) return []
-    let sector: Sector | null = null
-    if (selectedFeature.type === 'plant') {
-      sector = mapToLegacySector(selectedFeature.properties.sector as string) || 'grid'
-    } else if (selectedFeature.type === 'threat_actor') {
-      // For threat actors, show threats matching their target sectors
-      const actorName = (selectedFeature.properties.name as string || '').toLowerCase()
-      const allItems = [...(data.threats.all || []), ...(data.kev || [])]
-      return allItems.filter((item) => {
-        const text = `${item.title || ''} ${item.shortDescription || ''} ${item.description || ''}`.toLowerCase()
-        return text.includes(actorName)
-      }).slice(0, 8)
-    } else {
-      sector = 'grid' // Default for infrastructure
-    }
-    if (!sector) return []
     const allItems = [...(data.threats.all || []), ...(data.kev || [])]
-    return filterBySector(allItems, sector).slice(0, 8)
+
+    if (selectedFeature.type === 'threat_actor') {
+      // For threat actors, show threats matching their name or target sectors
+      const actorName = (selectedFeature.properties.name as string || '').toLowerCase()
+      const targetSectors = (selectedFeature.properties.targetSectors as string || '').split(', ').filter(Boolean)
+      return allItems
+        .map((item) => {
+          const text = `${item.title || ''} ${item.shortDescription || ''} ${item.description || ''}`.toLowerCase()
+          let score = 0
+          if (text.includes(actorName)) score += 100
+          for (const s of targetSectors) {
+            const kws = expandedSectorKeywords[s as ExpandedSector]
+            if (kws && kws.some((kw) => matchesIndicator(text, kw))) score += 10
+          }
+          return { item, score }
+        })
+        .filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 12)
+        .map(({ item }) => item)
+    }
+
+    // For plants and infrastructure — score each threat by facility-specific relevance
+    const name = (selectedFeature.properties.name as string) || ''
+    const operator = (selectedFeature.properties.operator as string) || ''
+    const state = (selectedFeature.properties.state as string) || ''
+    const sector = (selectedFeature.properties.sector as string) ||
+      (selectedFeature.type === 'data_center' ? 'other' :
+       selectedFeature.type === 'substation' ? 'grid' : 'other')
+
+    // Use expanded sector for matching (not legacy)
+    const expandedSector = selectedFeature.type === 'plant' ? sector :
+      selectedFeature.type === 'data_center' ? 'storage' :
+      selectedFeature.type === 'substation' ? 'grid' : 'other'
+
+    return allItems
+      .map((item) => ({
+        item,
+        score: scoreThreatRelevance(item, name, operator, state, expandedSector),
+      }))
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 12)
+      .map(({ item }) => item)
   }, [selectedFeature, data])
 
-  // Targeting actors for selected feature
+  // Targeting actors for selected feature — matches expanded sector names
   const selectedTargetingActors = useMemo(() => {
     if (!selectedFeature || selectedFeature.type === 'threat_actor') return []
-    let sector: Sector | null = null
-    if (selectedFeature.type === 'plant') {
-      sector = mapToLegacySector(selectedFeature.properties.sector as string) || 'grid'
-    } else {
-      sector = 'grid'
-    }
-    if (!sector) return []
-    return allThreatActors.filter((a) => a.targetSectors.includes(sector!))
+    const sector = selectedFeature.type === 'plant'
+      ? (selectedFeature.properties.sector as string) || 'grid'
+      : selectedFeature.type === 'data_center' ? 'grid'
+      : selectedFeature.type === 'substation' ? 'grid'
+      : 'grid'
+    // Also check legacy sector mapping for backward compat
+    const legacySector = mapToLegacySector(sector)
+    return allThreatActors.filter((a) =>
+      a.targetSectors.includes(sector as Sector) ||
+      (legacySector && a.targetSectors.includes(legacySector))
+    )
   }, [selectedFeature])
 
   // Campaigns for selected feature
