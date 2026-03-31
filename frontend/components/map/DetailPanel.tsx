@@ -198,6 +198,54 @@ export default function DetailPanel({
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
+        {/* ── Relevant Alerts & CVEs (TOP of detail panel) ── */}
+        {sectorThreats.length > 0 && (
+          <div>
+            <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Zap className="w-3 h-3 text-red-400" />
+              Relevant Alerts & CVEs
+              <span className="text-[9px] font-mono text-gray-500 ml-auto">{sectorThreats.length}</span>
+            </h4>
+            <div className="space-y-1.5">
+              {sectorThreats.slice(0, 12).map((threat: any, i: number) => (
+                <a
+                  key={threat.id || threat.cveID || i}
+                  href={threat.link || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block bg-white/[0.03] hover:bg-white/[0.06] rounded-lg px-2.5 py-2 transition-colors group"
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    {threat.severity && (
+                      <span
+                        className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded border ${getSeverityColor(
+                          threat.severity
+                        )}`}
+                      >
+                        {threat.severity}
+                      </span>
+                    )}
+                    {threat.cveID && (
+                      <span className="text-[10px] font-mono text-red-400">{threat.cveID}</span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-gray-300 group-hover:text-white line-clamp-2 transition-colors">
+                    {threat.title || threat.shortDescription}
+                  </p>
+                  {threat.source && (
+                    <div className="flex items-center justify-between mt-1 text-[10px]">
+                      <span className="text-gray-600">{threat.source}</span>
+                      {threat.pubDate && (
+                        <span className="text-gray-600">{formatTimeAgo(threat.pubDate)}</span>
+                      )}
+                    </div>
+                  )}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── Risk Score (for plants and infrastructure) ── */}
         {risk && (
           <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3">
@@ -495,52 +543,7 @@ export default function DetailPanel({
           </div>
         )}
 
-        {/* ── Relevant Threats / CVEs ── */}
-        {sectorThreats.length > 0 && (
-          <div>
-            <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Zap className="w-3 h-3 text-red-400" />
-              Relevant Alerts & CVEs
-            </h4>
-            <div className="space-y-1.5">
-              {sectorThreats.slice(0, 8).map((threat: any, i: number) => (
-                <a
-                  key={threat.id || threat.cveID || i}
-                  href={threat.link || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block bg-white/[0.03] hover:bg-white/[0.06] rounded-lg px-2.5 py-2 transition-colors group"
-                >
-                  <div className="flex items-center gap-1.5 mb-1">
-                    {threat.severity && (
-                      <span
-                        className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded border ${getSeverityColor(
-                          threat.severity
-                        )}`}
-                      >
-                        {threat.severity}
-                      </span>
-                    )}
-                    {threat.cveID && (
-                      <span className="text-[10px] font-mono text-red-400">{threat.cveID}</span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-gray-300 group-hover:text-white line-clamp-2 transition-colors">
-                    {threat.title || threat.shortDescription}
-                  </p>
-                  {threat.source && (
-                    <div className="flex items-center justify-between mt-1 text-[10px]">
-                      <span className="text-gray-600">{threat.source}</span>
-                      {threat.pubDate && (
-                        <span className="text-gray-600">{formatTimeAgo(threat.pubDate)}</span>
-                      )}
-                    </div>
-                  )}
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Alerts moved to top of panel */}
       </div>
     </div>
   )
