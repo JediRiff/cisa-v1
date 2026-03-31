@@ -12,7 +12,7 @@ import {
   INFRA_COLORS,
   EnergySector,
 } from './types';
-import { MAP_STYLE, CLUSTER_CONFIG, getClusterRadiusExpression } from './mapStyle';
+import { MAP_STYLE } from './mapStyle';
 import {
   sectorColorExpression,
   threatActorsToGeoJSON,
@@ -228,18 +228,13 @@ export default function ThreatMap({
   // Add all GeoJSON sources
   // --------------------------------------------------------
   const addSources = useCallback((map: maplibregl.Map) => {
-    // --- Power plants (with clustering) ---
-    // Try to load from /data/power-plants.geojson first;
-    // fall back to converting legacy worldData facilities.
+    // --- Power plants (no clustering — every facility renders individually) ---
+    // 13,446 circle primitives is trivial for MapLibre's GPU renderer.
     const legacyPlantGeoJSON = legacyFacilitiesToGeoJSON(energyFacilities);
 
     map.addSource(SOURCE_IDS.PLANTS, {
       type: 'geojson',
       data: legacyPlantGeoJSON,
-      cluster: true,
-      clusterMaxZoom: CLUSTER_CONFIG.clusterMaxZoom,
-      clusterRadius: CLUSTER_CONFIG.clusterRadius,
-      clusterMinPoints: CLUSTER_CONFIG.clusterMinPoints,
     });
 
     // Try loading external GeoJSON and swap if available.
@@ -389,31 +384,7 @@ export default function ThreatMap({
     // Power plant clusters
     // ============================
 
-    // Cluster circles — luminescent blue theme
-    map.addLayer({
-      id: LAYER_IDS.PLANTS_CLUSTER_CIRCLES,
-      type: 'circle',
-      source: SOURCE_IDS.PLANTS,
-      filter: ['has', 'point_count'],
-      paint: {
-        'circle-color': [
-          'step',
-          ['get', 'point_count'],
-          '#60a5fa',   // < 10: soft blue
-          10, '#818cf8', // 10-49: indigo
-          50, '#a78bfa', // 50-99: purple
-          100, '#c084fc', // 100+: lavender
-        ],
-        'circle-radius': getClusterRadiusExpression(),
-        'circle-stroke-width': 1.5,
-        'circle-stroke-color': 'rgba(255,255,255,0.25)',
-        'circle-stroke-opacity': 0.6,
-        'circle-opacity': 0.55,
-        'circle-blur': 0.3,
-      },
-    });
-
-    // Cluster count labels removed — cluster size communicates density
+    // Clustering removed — all 13,446 facilities render individually
 
     // ============================
     // Risk visualization layers (behind shape icons)
@@ -425,7 +396,7 @@ export default function ThreatMap({
       id: LAYER_IDS.PLANTS_RISK_GLOW,
       type: 'circle',
       source: SOURCE_IDS.PLANTS,
-      filter: ['!', ['has', 'point_count']],
+      filter: ['has', 'sector'],  // Only render features with sector property
       paint: {
         'circle-color': riskColorExpression() as maplibregl.ExpressionSpecification,
         'circle-radius': [
@@ -470,7 +441,7 @@ export default function ThreatMap({
       id: LAYER_IDS.PLANTS_RISK_BORDER,
       type: 'circle',
       source: SOURCE_IDS.PLANTS,
-      filter: ['!', ['has', 'point_count']],
+      filter: ['has', 'sector'],  // Only render features with sector property
       paint: {
         'circle-color': 'transparent',
         'circle-radius': [
@@ -524,7 +495,7 @@ export default function ThreatMap({
       id: LAYER_IDS.PLANTS_UNCLUSTERED,
       type: 'circle',
       source: SOURCE_IDS.PLANTS,
-      filter: ['!', ['has', 'point_count']],
+      filter: ['has', 'sector'],  // Only render features with sector property
       paint: {
         'circle-color': sectorColorExpression() as maplibregl.ExpressionSpecification,
         'circle-radius': [
@@ -613,7 +584,7 @@ export default function ThreatMap({
       id: LAYER_IDS.PLANTS_LABELS,
       type: 'symbol',
       source: SOURCE_IDS.PLANTS,
-      filter: ['!', ['has', 'point_count']],
+      filter: ['has', 'sector'],  // Only render features with sector property
       minzoom: 6,
       layout: {
         'text-field': ['get', 'name'],
@@ -793,7 +764,6 @@ export default function ThreatMap({
     const clickableLayers = [
       LAYER_IDS.PLANTS_UNCLUSTERED,
       LAYER_IDS.PLANTS_RISK_BORDER,  // Larger click target around facilities
-      LAYER_IDS.PLANTS_CLUSTER_CIRCLES,
       LAYER_IDS.THREAT_ACTORS,
       LAYER_IDS.DATA_CENTERS,
       LAYER_IDS.SUBSTATIONS,
@@ -973,18 +943,7 @@ export default function ThreatMap({
     map.on('click', LAYER_IDS.PLANTS_UNCLUSTERED, handlePlantClick);
     map.on('click', LAYER_IDS.PLANTS_RISK_BORDER, handlePlantClick);
 
-    // --- Click: cluster => zoom in ---
-    map.on('click', LAYER_IDS.PLANTS_CLUSTER_CIRCLES, (e) => {
-      if (!e.features || e.features.length === 0) return;
-      const clusterId = e.features[0].properties?.cluster_id;
-      if (clusterId == null) return;
-
-      const src = map.getSource(SOURCE_IDS.PLANTS) as maplibregl.GeoJSONSource;
-      src.getClusterExpansionZoom(clusterId).then((zoom) => {
-        const coords = (e.features![0].geometry as GeoJSON.Point).coordinates as [number, number];
-        map.easeTo({ center: coords, zoom: zoom + 0.5 });
-      });
-    });
+    // Clustering removed — no cluster click handler needed
 
     // --- Click: threat actor ---
     map.on('click', LAYER_IDS.THREAT_ACTORS, (e) => {
@@ -1140,12 +1099,11 @@ export default function ThreatMap({
       lv.hydro || lv.nuclear || lv.gas || lv.coal || lv.oil ||
       lv.geothermal || lv.biomass;
 
-    setVis(LAYER_IDS.PLANTS_CLUSTER_CIRCLES, anySectorVisible);
     setVis(LAYER_IDS.PLANTS_RISK_GLOW, anySectorVisible);
     setVis(LAYER_IDS.PLANTS_RISK_BORDER, anySectorVisible);
     setVis(LAYER_IDS.PLANTS_LABELS, anySectorVisible);
 
-    // Build sector filter for unclustered points
+    // Build sector filter for plant layers
     if (anySectorVisible) {
       const visibleSectors: string[] = [];
       if (lv.solar) visibleSectors.push('solar');
@@ -1163,12 +1121,11 @@ export default function ThreatMap({
 
       const sectorFilter: maplibregl.FilterSpecification = [
         'all',
-        ['!', ['has', 'point_count']],
+        ['has', 'sector'],
         ['in', ['get', 'sector'], ['literal', visibleSectors]],
       ] as maplibregl.FilterSpecification;
 
       try {
-        // Apply same sector filter to all unclustered layers
         for (const layerId of [
           LAYER_IDS.PLANTS_UNCLUSTERED,
           LAYER_IDS.PLANTS_RISK_GLOW,
