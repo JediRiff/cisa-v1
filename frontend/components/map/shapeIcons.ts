@@ -8,13 +8,26 @@ import type maplibregl from 'maplibre-gl';
 import type { EnergySector, MarkerShape } from './types';
 import { SECTOR_COLORS, SECTOR_SHAPES } from './types';
 
-const ICON_SIZE = 32; // Base icon size in pixels (will be scaled by icon-size in layer)
-const PIXEL_RATIO = 2; // Retina quality
+const ICON_SIZE = 32;
+const PIXEL_RATIO = 2;
 
 /**
- * Draw a shape on a canvas context centered at (cx, cy) with given radius.
+ * Parse a hex color string to [r, g, b].
  */
-function drawShape(
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace('#', '');
+  return [
+    parseInt(h.substring(0, 2), 16),
+    parseInt(h.substring(2, 4), 16),
+    parseInt(h.substring(4, 6), 16),
+  ];
+}
+
+/**
+ * Draw a shape path on a canvas context centered at (cx, cy) with given radius.
+ * Does NOT fill or stroke — caller must do that.
+ */
+function tracePath(
   ctx: CanvasRenderingContext2D,
   shape: MarkerShape,
   cx: number,
@@ -25,7 +38,6 @@ function drawShape(
 
   switch (shape) {
     case 'triangle': {
-      // Equilateral triangle pointing up
       const h = r * Math.sqrt(3) / 2;
       ctx.moveTo(cx, cy - r);
       ctx.lineTo(cx - h, cy + r * 0.5);
@@ -73,7 +85,6 @@ function drawShape(
       break;
     }
     case 'dot': {
-      // Smaller filled circle
       ctx.arc(cx, cy, r * 0.6, 0, Math.PI * 2);
       break;
     }
@@ -87,6 +98,7 @@ function drawShape(
 
 /**
  * Generate a single shape icon as ImageData for MapLibre.
+ * Uses manual radial gradient for glow instead of ctx.filter (better compat).
  */
 function createShapeIcon(
   shape: MarkerShape,
@@ -101,24 +113,23 @@ function createShapeIcon(
 
   const cx = pxSize / 2;
   const cy = pxSize / 2;
-  const r = (pxSize / 2) * 0.7; // Leave margin for glow
+  const r = (pxSize / 2) * 0.65;
 
-  // Glow effect — draw blurred shape behind
-  ctx.save();
-  ctx.filter = `blur(${PIXEL_RATIO * 2}px)`;
-  ctx.globalAlpha = 0.4;
-  drawShape(ctx, shape, cx, cy, r);
+  // Glow effect — radial gradient behind the shape (no ctx.filter needed)
+  const [cr, cg, cb] = hexToRgb(color);
+  const grad = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * 1.6);
+  grad.addColorStop(0, `rgba(${cr},${cg},${cb},0.35)`);
+  grad.addColorStop(0.6, `rgba(${cr},${cg},${cb},0.1)`);
+  grad.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, pxSize, pxSize);
+
+  // Main shape — solid fill
+  tracePath(ctx, shape, cx, cy, r);
   ctx.fillStyle = color;
+  ctx.globalAlpha = 0.92;
   ctx.fill();
-  ctx.restore();
-
-  // Main shape
-  drawShape(ctx, shape, cx, cy, r);
-  ctx.fillStyle = color;
-  ctx.globalAlpha = 0.9;
-  ctx.fill();
-
-  // No white stroke — risk border circle layer provides the outline
+  ctx.globalAlpha = 1;
 
   const imageData = ctx.getImageData(0, 0, pxSize, pxSize);
   return {
@@ -149,14 +160,17 @@ export function registerShapeIcons(map: maplibregl.Map): void {
 
     if (map.hasImage(iconName)) continue;
 
-    const icon = createShapeIcon(shape, color);
-    map.addImage(iconName, icon, { pixelRatio: PIXEL_RATIO });
+    try {
+      const icon = createShapeIcon(shape, color);
+      map.addImage(iconName, icon, { pixelRatio: PIXEL_RATIO });
+    } catch (err) {
+      console.error(`[ShapeIcons] Failed to create icon for ${sector}:`, err);
+    }
   }
 }
 
 /**
  * Build a MapLibre match expression that maps sector property to icon name.
- * Returns: ['match', ['get', 'sector'], 'nuclear', 'sector-nuclear', ..., fallback]
  */
 export function sectorIconExpression(): unknown[] {
   const expr: unknown[] = ['match', ['get', 'sector']];

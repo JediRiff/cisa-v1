@@ -64,7 +64,7 @@ export function getCircleRadiusExpression(): maplibregl.ExpressionSpecification 
       ['==', ['get', 'sector'], 'solar'],
       1,
       // Everything else: small by capacity
-      ['step', ['coalesce', ['get', 'capacity_mw'], 0],
+      ['step', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0],
         1.5,     // default
         100, 2,
         500, 2.5,
@@ -75,12 +75,12 @@ export function getCircleRadiusExpression(): maplibregl.ExpressionSpecification 
     6, [
       'case',
       ['==', ['get', 'sector'], 'solar'],
-      ['step', ['coalesce', ['get', 'capacity_mw'], 0],
+      ['step', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0],
         1.5,
         50, 2,
         200, 3,
       ],
-      ['step', ['coalesce', ['get', 'capacity_mw'], 0],
+      ['step', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0],
         2.5,
         10, 3,
         100, 4,
@@ -91,7 +91,7 @@ export function getCircleRadiusExpression(): maplibregl.ExpressionSpecification 
     // zoom 9+: full detail, all sectors visible
     10, [
       'step',
-      ['coalesce', ['get', 'capacity_mw'], 0],
+      ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0],
       4,
       10, 5,
       100, 7,

@@ -468,22 +468,22 @@ export default function ThreatMap({
           2, [
             'case',
             ['==', ['get', 'sector'], 'solar'], 2,
-            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 1000], 4.5,
-            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 500], 3.5,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000], 4.5,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500], 3.5,
             3,
           ],
           6, [
             'case',
             ['==', ['get', 'sector'], 'solar'], 3,
-            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 1000], 7,
-            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 500], 5.5,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000], 7,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500], 5.5,
             4.5,
           ],
           10, [
             'case',
             ['==', ['get', 'sector'], 'solar'], 5,
-            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 1000], 12,
-            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 500], 9,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000], 12,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500], 9,
             7,
           ],
         ] as maplibregl.ExpressionSpecification,
@@ -523,25 +523,25 @@ export default function ThreatMap({
           2, [
             'case',
             ['==', ['get', 'sector'], 'solar'], 0.2,
-            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 1000], 0.35,
-            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 500], 0.3,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000], 0.35,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500], 0.3,
             0.25,
           ],
           // zoom 6: moderate
           6, [
             'case',
             ['==', ['get', 'sector'], 'solar'], 0.25,
-            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 1000], 0.5,
-            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 500], 0.4,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000], 0.5,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500], 0.4,
             0.3,
           ],
           // zoom 10+: full size
           10, [
             'case',
             ['==', ['get', 'sector'], 'solar'], 0.35,
-            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 1000], 0.75,
-            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 500], 0.6,
-            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 100], 0.5,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000], 0.75,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500], 0.6,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 100], 0.5,
             0.4,
           ],
         ] as maplibregl.ExpressionSpecification,
@@ -585,9 +585,9 @@ export default function ThreatMap({
           'case',
           ['in', ['get', 'sector'], ['literal', ['nuclear', 'hydro', 'pump_storage']]],
           0,  // Nuclear/hydro labels have highest priority
-          ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 500],
+          ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500],
           1,  // Large plants (500+ MW) next
-          ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 100],
+          ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 100],
           2,  // Medium plants
           ['==', ['get', 'sector'], 'solar'],
           10, // Solar labels get lowest priority
@@ -611,7 +611,7 @@ export default function ThreatMap({
           ['case',
             ['in', ['get', 'sector'], ['literal', ['nuclear']]],
             1,
-            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 1000],
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000],
             0.8,
             0, // hide everything else
           ],
@@ -620,7 +620,7 @@ export default function ThreatMap({
           ['case',
             ['in', ['get', 'sector'], ['literal', ['nuclear', 'hydro', 'pump_storage']]],
             1,
-            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 500],
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500],
             0.8,
             0,
           ],
@@ -768,7 +768,7 @@ export default function ThreatMap({
       const name = props.name ?? 'Unknown';
       const sector = (props.sector ?? '') as string;
       const operator = props.operator ?? '';
-      const capacityMW = Number(props.capacity_mw) || 0;
+      const capacityMW = Number(props.capacityMW ?? props.capacity_mw) || 0;
       const sectorColor = SECTOR_COLORS[sector as EnergySector] ?? '#cbd5e1';
       const sectorLabel = SECTOR_LABELS[sector as EnergySector] ?? sector;
       const capStr = capacityMW >= 1000 ? `${(capacityMW / 1000).toFixed(1)} GW` : capacityMW > 0 ? `${Math.round(capacityMW)} MW` : '';
@@ -846,7 +846,7 @@ export default function ThreatMap({
       const sector = (props.sector ?? '') as string;
       const sectorColor = SECTOR_COLORS[sector as EnergySector] ?? '#cbd5e1';
       const sectorLabel = SECTOR_LABELS[sector as EnergySector] ?? sector;
-      const capacityMW = Number(props.capacity_mw) || 0;
+      const capacityMW = Number(props.capacityMW ?? props.capacity_mw) || 0;
       const capStr = capacityMW >= 1000 ? `${(capacityMW / 1000).toFixed(1)} GW` : capacityMW > 0 ? `${Math.round(capacityMW)} MW` : '';
 
       // Risk indicator
