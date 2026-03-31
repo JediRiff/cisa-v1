@@ -1,0 +1,1110 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "source": "Curated from public carrier route information (Lumen/Level 3, Zayo, AT&T, Verizon, Crown Castle, Windstream)",
+    "description": "Major US fiber backbone routes connecting primary interconnection points. Routes follow approximate major highway/rail corridors.",
+    "fetchDate": "2026-03-31",
+    "totalRoutes": 34,
+    "note": "Route geometries are simplified city-to-city paths. Actual fiber routes follow specific rights-of-way."
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -74.006,
+            40.7128
+          ],
+          [
+            -81.6944,
+            41.4993
+          ],
+          [
+            -87.6298,
+            41.8781
+          ],
+          [
+            -93.265,
+            44.9778
+          ],
+          [
+            -108.501,
+            45.7833
+          ],
+          [
+            -116.2023,
+            43.615
+          ],
+          [
+            -122.3321,
+            47.6062
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_001",
+        "name": "Northern Corridor (NYC - Chicago - Seattle)",
+        "carrier": "Lumen Technologies (Level 3)",
+        "type": "long-haul",
+        "routeMiles": 2850
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -74.006,
+            40.7128
+          ],
+          [
+            -75.1652,
+            39.9526
+          ],
+          [
+            -81.6944,
+            41.4993
+          ],
+          [
+            -87.6298,
+            41.8781
+          ],
+          [
+            -93.6091,
+            41.5868
+          ],
+          [
+            -95.9345,
+            41.2565
+          ],
+          [
+            -104.82,
+            41.14
+          ],
+          [
+            -111.891,
+            40.7608
+          ],
+          [
+            -119.8138,
+            39.5296
+          ],
+          [
+            -121.4944,
+            38.5816
+          ],
+          [
+            -122.4194,
+            37.7749
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_002",
+        "name": "I-80 Corridor (NYC - Chicago - SF)",
+        "carrier": "Zayo Group",
+        "type": "long-haul",
+        "routeMiles": 2900
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -84.388,
+            33.749
+          ],
+          [
+            -90.049,
+            35.1495
+          ],
+          [
+            -96.797,
+            32.7767
+          ],
+          [
+            -106.425,
+            31.7619
+          ],
+          [
+            -112.074,
+            33.4484
+          ],
+          [
+            -118.2437,
+            34.0522
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_003",
+        "name": "Southern Transcontinental (Atlanta - Dallas - LA)",
+        "carrier": "AT&T",
+        "type": "long-haul",
+        "routeMiles": 2200
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -77.0369,
+            38.9072
+          ],
+          [
+            -77.436,
+            37.5407
+          ],
+          [
+            -82.9988,
+            39.9612
+          ],
+          [
+            -86.158,
+            39.7684
+          ],
+          [
+            -90.199,
+            38.627
+          ],
+          [
+            -94.5786,
+            39.0997
+          ],
+          [
+            -104.9903,
+            39.7392
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_004",
+        "name": "I-70 Central Corridor (DC - Denver)",
+        "carrier": "Lumen Technologies (Level 3)",
+        "type": "long-haul",
+        "routeMiles": 1700
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -104.9903,
+            39.7392
+          ],
+          [
+            -111.891,
+            40.7608
+          ],
+          [
+            -119.8138,
+            39.5296
+          ],
+          [
+            -121.4944,
+            38.5816
+          ],
+          [
+            -122.4194,
+            37.7749
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_005",
+        "name": "Denver - West Coast (Denver - SLC - SF)",
+        "carrier": "Zayo Group",
+        "type": "long-haul",
+        "routeMiles": 1200
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -81.6557,
+            30.3322
+          ],
+          [
+            -90.0715,
+            29.9511
+          ],
+          [
+            -95.3698,
+            29.7604
+          ],
+          [
+            -98.4936,
+            29.4241
+          ],
+          [
+            -106.425,
+            31.7619
+          ],
+          [
+            -112.074,
+            33.4484
+          ],
+          [
+            -118.2437,
+            34.0522
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_006",
+        "name": "I-10 Southern Route (Jacksonville - Houston - LA)",
+        "carrier": "Verizon",
+        "type": "long-haul",
+        "routeMiles": 2100
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -104.9903,
+            39.7392
+          ],
+          [
+            -111.891,
+            40.7608
+          ],
+          [
+            -116.2023,
+            43.615
+          ],
+          [
+            -122.6765,
+            45.5152
+          ],
+          [
+            -122.3321,
+            47.6062
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_007",
+        "name": "Denver - Seattle via SLC-Boise",
+        "carrier": "CenturyLink/Lumen",
+        "type": "long-haul",
+        "routeMiles": 1500
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -71.0589,
+            42.3601
+          ],
+          [
+            -74.006,
+            40.7128
+          ],
+          [
+            -75.1652,
+            39.9526
+          ],
+          [
+            -77.0369,
+            38.9072
+          ],
+          [
+            -77.436,
+            37.5407
+          ],
+          [
+            -80.8431,
+            35.2271
+          ],
+          [
+            -84.388,
+            33.749
+          ],
+          [
+            -81.6557,
+            30.3322
+          ],
+          [
+            -80.1918,
+            25.7617
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_008",
+        "name": "Eastern Seaboard (Boston - Miami)",
+        "carrier": "Crown Castle Fiber",
+        "type": "long-haul",
+        "routeMiles": 1500
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -71.0589,
+            42.3601
+          ],
+          [
+            -74.006,
+            40.7128
+          ],
+          [
+            -75.1652,
+            39.9526
+          ],
+          [
+            -77.0369,
+            38.9072
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_009",
+        "name": "I-95 Northeast Corridor (Boston - DC)",
+        "carrier": "Zayo Group",
+        "type": "long-haul",
+        "routeMiles": 450
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -122.3321,
+            47.6062
+          ],
+          [
+            -122.6765,
+            45.5152
+          ],
+          [
+            -121.4944,
+            38.5816
+          ],
+          [
+            -122.4194,
+            37.7749
+          ],
+          [
+            -121.8863,
+            37.3382
+          ],
+          [
+            -118.2437,
+            34.0522
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_010",
+        "name": "Pacific Coast (Seattle - LA)",
+        "carrier": "Lumen Technologies",
+        "type": "long-haul",
+        "routeMiles": 1140
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -122.3321,
+            47.6062
+          ],
+          [
+            -122.6765,
+            45.5152
+          ],
+          [
+            -121.4944,
+            38.5816
+          ],
+          [
+            -122.4194,
+            37.7749
+          ],
+          [
+            -121.8863,
+            37.3382
+          ],
+          [
+            -118.2437,
+            34.0522
+          ],
+          [
+            -117.1611,
+            32.7157
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_011",
+        "name": "I-5 Pacific Route (Seattle - San Diego)",
+        "carrier": "AT&T",
+        "type": "long-haul",
+        "routeMiles": 1260
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -93.265,
+            44.9778
+          ],
+          [
+            -93.6091,
+            41.5868
+          ],
+          [
+            -94.5786,
+            39.0997
+          ],
+          [
+            -97.5164,
+            35.4676
+          ],
+          [
+            -96.797,
+            32.7767
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_012",
+        "name": "Central North-South (Minneapolis - Dallas)",
+        "carrier": "Windstream",
+        "type": "long-haul",
+        "routeMiles": 950
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -87.6298,
+            41.8781
+          ],
+          [
+            -86.158,
+            39.7684
+          ],
+          [
+            -85.7585,
+            38.2527
+          ],
+          [
+            -86.7816,
+            36.1627
+          ],
+          [
+            -84.388,
+            33.749
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_013",
+        "name": "Chicago - Atlanta via Nashville",
+        "carrier": "AT&T",
+        "type": "long-haul",
+        "routeMiles": 720
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -87.6298,
+            41.8781
+          ],
+          [
+            -90.199,
+            38.627
+          ],
+          [
+            -90.049,
+            35.1495
+          ],
+          [
+            -96.797,
+            32.7767
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_014",
+        "name": "Chicago - Dallas via St. Louis",
+        "carrier": "Lumen Technologies",
+        "type": "long-haul",
+        "routeMiles": 920
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -96.797,
+            32.7767
+          ],
+          [
+            -97.7431,
+            30.2672
+          ],
+          [
+            -98.4936,
+            29.4241
+          ],
+          [
+            -95.3698,
+            29.7604
+          ],
+          [
+            -96.797,
+            32.7767
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_015",
+        "name": "Texas Triangle (Dallas - Houston - San Antonio)",
+        "carrier": "AT&T",
+        "type": "long-haul",
+        "routeMiles": 580
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -84.388,
+            33.749
+          ],
+          [
+            -90.049,
+            35.1495
+          ],
+          [
+            -96.797,
+            32.7767
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_016",
+        "name": "Atlanta - Dallas",
+        "carrier": "Verizon",
+        "type": "long-haul",
+        "routeMiles": 780
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -74.006,
+            40.7128
+          ],
+          [
+            -75.1652,
+            39.9526
+          ],
+          [
+            -81.6944,
+            41.4993
+          ],
+          [
+            -87.6298,
+            41.8781
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_017",
+        "name": "NYC - Chicago Direct",
+        "carrier": "Zayo Group",
+        "type": "long-haul",
+        "routeMiles": 790
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -87.6298,
+            41.8781
+          ],
+          [
+            -83.0458,
+            42.3314
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_018",
+        "name": "Chicago - Detroit",
+        "carrier": "AT&T",
+        "type": "long-haul",
+        "routeMiles": 280
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -87.6298,
+            41.8781
+          ],
+          [
+            -87.9065,
+            43.0389
+          ],
+          [
+            -93.265,
+            44.9778
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_019",
+        "name": "Chicago - Milwaukee - Minneapolis",
+        "carrier": "Lumen Technologies",
+        "type": "long-haul",
+        "routeMiles": 410
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -95.9345,
+            41.2565
+          ],
+          [
+            -93.6091,
+            41.5868
+          ],
+          [
+            -87.6298,
+            41.8781
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_020",
+        "name": "Omaha - Chicago",
+        "carrier": "Windstream",
+        "type": "long-haul",
+        "routeMiles": 470
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -104.9903,
+            39.7392
+          ],
+          [
+            -104.82,
+            41.14
+          ],
+          [
+            -95.9345,
+            41.2565
+          ],
+          [
+            -93.6091,
+            41.5868
+          ],
+          [
+            -87.6298,
+            41.8781
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_021",
+        "name": "Denver - Omaha - Chicago",
+        "carrier": "Lumen Technologies",
+        "type": "long-haul",
+        "routeMiles": 1000
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -104.9903,
+            39.7392
+          ],
+          [
+            -106.6504,
+            35.0844
+          ],
+          [
+            -112.074,
+            33.4484
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_022",
+        "name": "Denver - Albuquerque - Phoenix",
+        "carrier": "Zayo Group",
+        "type": "long-haul",
+        "routeMiles": 800
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -104.9903,
+            39.7392
+          ],
+          [
+            -97.5164,
+            35.4676
+          ],
+          [
+            -96.797,
+            32.7767
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_023",
+        "name": "Denver - Dallas via OKC",
+        "carrier": "Lumen Technologies",
+        "type": "long-haul",
+        "routeMiles": 880
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -112.074,
+            33.4484
+          ],
+          [
+            -115.1398,
+            36.1699
+          ],
+          [
+            -111.891,
+            40.7608
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_024",
+        "name": "Phoenix - Las Vegas - Salt Lake City",
+        "carrier": "Zayo Group",
+        "type": "long-haul",
+        "routeMiles": 660
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -118.2437,
+            34.0522
+          ],
+          [
+            -115.1398,
+            36.1699
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_025",
+        "name": "LA - Las Vegas",
+        "carrier": "Zayo Group",
+        "type": "long-haul",
+        "routeMiles": 270
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -118.2437,
+            34.0522
+          ],
+          [
+            -112.074,
+            33.4484
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_026",
+        "name": "LA - Phoenix",
+        "carrier": "Verizon",
+        "type": "long-haul",
+        "routeMiles": 370
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -74.006,
+            40.7128
+          ],
+          [
+            -75.1652,
+            39.9526
+          ],
+          [
+            -77.0369,
+            38.9072
+          ],
+          [
+            -75.978,
+            36.8529
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_027",
+        "name": "NYC - Virginia Beach (Cable Landing)",
+        "carrier": "Multiple",
+        "type": "long-haul",
+        "routeMiles": 350
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -95.3698,
+            29.7604
+          ],
+          [
+            -90.0715,
+            29.9511
+          ],
+          [
+            -81.6557,
+            30.3322
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_028",
+        "name": "Houston - New Orleans - Jacksonville",
+        "carrier": "AT&T",
+        "type": "long-haul",
+        "routeMiles": 900
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -84.388,
+            33.749
+          ],
+          [
+            -81.6557,
+            30.3322
+          ],
+          [
+            -80.1918,
+            25.7617
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_029",
+        "name": "Atlanta - Miami",
+        "carrier": "Lumen Technologies",
+        "type": "long-haul",
+        "routeMiles": 660
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -86.7816,
+            36.1627
+          ],
+          [
+            -84.388,
+            33.749
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_030",
+        "name": "Nashville - Atlanta",
+        "carrier": "Zayo Group",
+        "type": "long-haul",
+        "routeMiles": 250
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -94.5786,
+            39.0997
+          ],
+          [
+            -90.199,
+            38.627
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_031",
+        "name": "Kansas City - St. Louis",
+        "carrier": "AT&T",
+        "type": "long-haul",
+        "routeMiles": 250
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -96.797,
+            32.7767
+          ],
+          [
+            -95.3698,
+            29.7604
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_032",
+        "name": "Dallas - Houston",
+        "carrier": "Lumen Technologies",
+        "type": "long-haul",
+        "routeMiles": 240
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -122.4194,
+            37.7749
+          ],
+          [
+            -121.8863,
+            37.3382
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_033",
+        "name": "SF Bay Area Ring (SF - San Jose)",
+        "carrier": "Multiple",
+        "type": "metro",
+        "routeMiles": 50
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -95.9928,
+            36.154
+          ],
+          [
+            -97.5164,
+            35.4676
+          ],
+          [
+            -96.797,
+            32.7767
+          ]
+        ]
+      },
+      "properties": {
+        "id": "fiber_034",
+        "name": "Tulsa - OKC - Dallas",
+        "carrier": "Windstream",
+        "type": "long-haul",
+        "routeMiles": 310
+      }
+    }
+  ]
+}

@@ -12,54 +12,44 @@ import {
   ChevronRight,
   RefreshCw,
   Zap,
-  X,
-  Atom,
-  Droplets,
-  Fuel,
-  Flame,
-  Factory,
-  Waves,
   Crosshair,
   Bell,
 } from 'lucide-react'
 import {
-  EnergyFacility,
-  ThreatActor,
   Sector,
-  FacilityRisk,
-  MitreTTP,
-  ResolvedCluster,
-  sectorColors,
-  sectorLabels,
-  sectorKeywords,
   matchesSectorKeywords,
   threatActors as allThreatActors,
   energyFacilities,
   calculateFacilityRisk,
-  riskScoreToColor,
+} from '@/components/globe/worldData'
+import {
   LayerVisibility,
   DEFAULT_LAYER_VISIBILITY,
-} from '@/components/globe/worldData'
+  SelectedFeature,
+} from '@/components/map/types'
 import type { CampaignCandidate } from '@/lib/campaign-correlation'
 import type { VendorAlert } from '@/lib/supply-chain'
-import { getVendorDependencies } from '@/lib/supply-chain'
-import LayerTogglePanel from '@/components/globe/LayerTogglePanel'
+import LayerPanel from '@/components/map/LayerPanel'
+import DetailPanel from '@/components/map/DetailPanel'
+import FacilityPopup from '@/components/map/FacilityPopup'
 import AlertSettingsPanel from '@/components/AlertSettingsPanel'
-import { AlertConfig, loadAlertConfig, saveAlertConfig } from '@/lib/alertRules'
+import { AlertConfig, loadAlertConfig } from '@/lib/alertRules'
 import { evaluateAlertRules, dispatchAlerts, AlertContext } from '@/lib/alertEvaluator'
 
-// Dynamic import for Three.js (no SSR)
-const GlobeCanvas = dynamic(() => import('@/components/globe/GlobeCanvas'), {
+// Dynamic import for the new MapLibre-based ThreatMap (no SSR)
+const ThreatMap = dynamic(() => import('@/components/map/ThreatMap'), {
   ssr: false,
   loading: () => (
     <div className="w-full h-full flex items-center justify-center bg-[#030810]">
       <div className="text-center">
         <div className="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-white/70 text-sm font-mono">Initializing Globe...</p>
+        <p className="text-white/70 text-sm font-mono">Initializing Map...</p>
       </div>
     </div>
   ),
 })
+
+// ── Types ──
 
 interface ThreatData {
   score: { score: number; label: string; color: string; factors: any[] }
@@ -79,6 +69,8 @@ interface ThreatData {
     icsExposure?: { count: number; hasShodanKey: boolean }
   }
 }
+
+// ── Helpers ──
 
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -104,18 +96,7 @@ function getScoreColor(score: number): string {
   return 'text-emerald-400'
 }
 
-function getSectorIcon(sector: Sector) {
-  switch (sector) {
-    case 'nuclear': return Atom
-    case 'hydro': return Droplets
-    case 'grid': return Zap
-    case 'natural_gas': return Flame
-    case 'oil': return Fuel
-    case 'water': return Waves
-  }
-}
-
-// ASCII art digit glyphs (5 rows each) in the same ██╗ box-drawing style as the CAPRI banner
+// ASCII art digit glyphs (5 rows each)
 const ASCII_DIGITS: Record<string, string[]> = {
   '0': [' ██████╗ ','██╔═══██╗','██║   ██║','╚██████╔╝',' ╚═════╝ '],
   '1': [' ██╗','███║','╚██║',' ██║',' ╚═╝'],
@@ -135,6 +116,26 @@ function scoreToAscii(score: number): string {
   return rows.join('\n')
 }
 
+// Map new EnergySector to legacy Sector for facility risk lookups
+function mapToLegacySector(sector: string): Sector | null {
+  const mapping: Record<string, Sector> = {
+    nuclear: 'nuclear',
+    hydro: 'hydro',
+    pump_storage: 'hydro',
+    gas: 'natural_gas',
+    coal: 'grid',
+    oil: 'oil',
+    solar: 'grid',
+    wind: 'grid',
+    offshore_wind: 'grid',
+    storage: 'grid',
+    geothermal: 'grid',
+    biomass: 'grid',
+    other: 'grid',
+  }
+  return mapping[sector] || null
+}
+
 // Filter threats by sector keywords (word-boundary matching)
 function filterBySector(items: any[], sector: Sector): any[] {
   return items.filter((item) => {
@@ -143,20 +144,24 @@ function filterBySector(items: any[], sector: Sector): any[] {
   })
 }
 
+// ── Main Page Component ──
+
 export default function GlobePage() {
   const [data, setData] = useState<ThreatData | null>(null)
   const [loading, setLoading] = useState(true)
   const [rightPanelOpen, setRightPanelOpen] = useState(true)
   const [attackCount, setAttackCount] = useState(0)
-  const [selectedFacility, setSelectedFacility] = useState<EnergyFacility | null>(null)
-  const [selectedActor, setSelectedActor] = useState<ThreatActor | null>(null)
-  const [selectedCluster, setSelectedCluster] = useState<ResolvedCluster | null>(null)
+
+  // Selected feature from the map
+  const [selectedFeature, setSelectedFeature] = useState<SelectedFeature | null>(null)
+  // Hover feature for popup
+  const [hoveredFeature, setHoveredFeature] = useState<{ feature: SelectedFeature; position: { x: number; y: number } } | null>(null)
 
   // Layer visibility state — persisted to localStorage
   const [layerVisibility, setLayerVisibility] = useState<LayerVisibility>(() => {
     if (typeof window === 'undefined') return DEFAULT_LAYER_VISIBILITY
     try {
-      const saved = localStorage.getItem('capri-layer-visibility')
+      const saved = localStorage.getItem('capri-map-layer-visibility')
       return saved ? { ...DEFAULT_LAYER_VISIBILITY, ...JSON.parse(saved) } : DEFAULT_LAYER_VISIBILITY
     } catch {
       return DEFAULT_LAYER_VISIBILITY
@@ -170,10 +175,12 @@ export default function GlobePage() {
   function handleLayerToggle(key: keyof LayerVisibility) {
     setLayerVisibility(prev => {
       const next = { ...prev, [key]: !prev[key] }
-      try { localStorage.setItem('capri-layer-visibility', JSON.stringify(next)) } catch {}
+      try { localStorage.setItem('capri-map-layer-visibility', JSON.stringify(next)) } catch {}
       return next
     })
   }
+
+  // ── Data Fetching ──
 
   const fetchData = useCallback(async () => {
     try {
@@ -204,6 +211,8 @@ export default function GlobePage() {
     return () => clearInterval(interval)
   }, [data?.meta?.totalItems])
 
+  // ── Computed Values ──
+
   // Top 10 critical threats for sidebar
   const topThreats = useMemo(() => {
     if (!data) return []
@@ -216,80 +225,13 @@ export default function GlobePage() {
     }).slice(0, 10)
   }, [data])
 
-  // Filtered threats for selected facility's sector
-  const sectorThreats = useMemo(() => {
-    if (!selectedFacility || !data) return []
-    const allItems = [...(data.threats.all || []), ...(data.kev || [])]
-    return filterBySector(allItems, selectedFacility.sector).slice(0, 8)
-  }, [selectedFacility, data])
-
-  // Threat actors targeting the selected facility's sector
-  const targetingActors = useMemo(() => {
-    if (!selectedFacility) return []
-    return allThreatActors.filter((a) =>
-      a.targetSectors.includes(selectedFacility.sector)
-    )
-  }, [selectedFacility])
-
-  // Risk score for selected facility
-  const facilityRisk = useMemo(() => {
-    if (!selectedFacility || !data) return null
-    return calculateFacilityRisk(
-      selectedFacility,
-      data.threats.all || [],
-      data.kev || [],
-      data.gridStress,
-      data.vendorAlerts,
-    )
-  }, [selectedFacility, data])
-
-  // Facilities targeted by selected actor
-  const actorTargetFacilities = useMemo(() => {
-    if (!selectedActor) return []
-    return energyFacilities.filter((f) =>
-      selectedActor.targetSectors.includes(f.sector)
-    )
-  }, [selectedActor])
-
-  // Actor-relevant threats
-  const actorThreats = useMemo(() => {
-    if (!selectedActor || !data) return []
-    const allItems = [...(data.threats.all || []), ...(data.kev || [])]
-    const keywords = [
-      selectedActor.name.toLowerCase(),
-      selectedActor.country.toLowerCase(),
-      ...selectedActor.targetSectors.flatMap((s) => sectorKeywords[s].slice(0, 3)),
-    ]
-    return allItems.filter((item) => {
-      const text = `${item.title || ''} ${item.shortDescription || ''} ${item.description || ''}`.toLowerCase()
-      return keywords.some((kw) => text.includes(kw))
-    }).slice(0, 8)
-  }, [selectedActor, data])
-
-  // Campaigns for selected actor
-  const actorCampaigns = useMemo(() => {
-    if (!selectedActor || !data?.campaigns) return []
-    return data.campaigns.filter(c => c.actorName === selectedActor.name)
-  }, [selectedActor, data?.campaigns])
-
-  // Campaigns affecting selected facility's sector
-  const facilityCampaigns = useMemo(() => {
-    if (!selectedFacility || !data?.campaigns) return []
-    return data.campaigns.filter(c => c.affectedSectors.includes(selectedFacility.sector))
-  }, [selectedFacility, data?.campaigns])
-
   // Medium/high campaigns for sidebar display
   const activeCampaigns = useMemo(() => {
     if (!data?.campaigns) return []
     return data.campaigns.filter(c => c.confidence === 'high' || c.confidence === 'medium')
   }, [data?.campaigns])
 
-  // Actor names with active campaigns (for globe pulse enhancement)
-  const activeCampaignActors = useMemo(() => {
-    return activeCampaigns.map(c => c.actorName)
-  }, [activeCampaigns])
-
-  // Facility risk scores for 3D bar heights on globe
+  // Facility risk scores for map visualization
   const facilityRiskScores = useMemo(() => {
     if (!data) return {}
     const scores: Record<string, number> = {}
@@ -300,7 +242,88 @@ export default function GlobePage() {
     return scores
   }, [data])
 
-  // Evaluate alert rules when data changes
+  // ── Detail panel computed data ──
+
+  // Risk for selected feature
+  const selectedRisk = useMemo(() => {
+    if (!selectedFeature || !data) return null
+    if (selectedFeature.type === 'threat_actor') return null
+    // Find matching legacy facility for risk calc
+    const facilityId = selectedFeature.properties.id as string | undefined
+    if (!facilityId) return null
+    const facility = energyFacilities.find(f => f.id === facilityId)
+    if (!facility) return null
+    return calculateFacilityRisk(
+      facility,
+      data.threats.all || [],
+      data.kev || [],
+      data.gridStress,
+      data.vendorAlerts,
+    )
+  }, [selectedFeature, data])
+
+  // Sector threats for selected feature
+  const selectedSectorThreats = useMemo(() => {
+    if (!selectedFeature || !data) return []
+    let sector: Sector | null = null
+    if (selectedFeature.type === 'plant') {
+      sector = mapToLegacySector(selectedFeature.properties.sector as string) || 'grid'
+    } else if (selectedFeature.type === 'threat_actor') {
+      // For threat actors, show threats matching their target sectors
+      const actorName = (selectedFeature.properties.name as string || '').toLowerCase()
+      const allItems = [...(data.threats.all || []), ...(data.kev || [])]
+      return allItems.filter((item) => {
+        const text = `${item.title || ''} ${item.shortDescription || ''} ${item.description || ''}`.toLowerCase()
+        return text.includes(actorName)
+      }).slice(0, 8)
+    } else {
+      sector = 'grid' // Default for infrastructure
+    }
+    if (!sector) return []
+    const allItems = [...(data.threats.all || []), ...(data.kev || [])]
+    return filterBySector(allItems, sector).slice(0, 8)
+  }, [selectedFeature, data])
+
+  // Targeting actors for selected feature
+  const selectedTargetingActors = useMemo(() => {
+    if (!selectedFeature || selectedFeature.type === 'threat_actor') return []
+    let sector: Sector | null = null
+    if (selectedFeature.type === 'plant') {
+      sector = mapToLegacySector(selectedFeature.properties.sector as string) || 'grid'
+    } else {
+      sector = 'grid'
+    }
+    if (!sector) return []
+    return allThreatActors.filter((a) => a.targetSectors.includes(sector!))
+  }, [selectedFeature])
+
+  // Campaigns for selected feature
+  const selectedCampaigns = useMemo(() => {
+    if (!selectedFeature || !data?.campaigns) return []
+    if (selectedFeature.type === 'threat_actor') {
+      const name = selectedFeature.properties.name as string
+      return data.campaigns.filter(c => c.actorName === name)
+    }
+    // For facilities: campaigns affecting the sector
+    let sector: Sector | null = null
+    if (selectedFeature.type === 'plant') {
+      sector = mapToLegacySector(selectedFeature.properties.sector as string) || 'grid'
+    } else {
+      sector = 'grid'
+    }
+    if (!sector) return []
+    return data.campaigns.filter(c => c.affectedSectors.includes(sector!))
+  }, [selectedFeature, data?.campaigns])
+
+  // Vendor alerts for selected feature
+  const selectedVendorAlerts = useMemo(() => {
+    if (!selectedFeature || !data?.vendorAlerts) return []
+    if (selectedFeature.type === 'threat_actor') return []
+    return data.vendorAlerts.filter(a => a.kevCount > 0 || a.cveCount > 0)
+  }, [selectedFeature, data?.vendorAlerts])
+
+  // ── Alert Rule Evaluation ──
+
   useEffect(() => {
     if (!data || !alertConfig.webhookUrl) return
     const context: AlertContext = {
@@ -312,34 +335,15 @@ export default function GlobePage() {
     const alerts = evaluateAlertRules(alertConfig, context)
     if (alerts.length > 0) {
       dispatchAlerts(alertConfig, alerts).then(() => {
-        // Reload config to get updated cooldown timestamps
         setAlertConfig(loadAlertConfig())
       })
     }
   }, [data, facilityRiskScores]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function handleFacilityClick(facility: EnergyFacility) {
-    setSelectedActor(null)
-    setSelectedCluster(null)
-    setSelectedFacility(facility)
-  }
+  // ── Feature Selection ──
 
-  function handleActorClick(actor: ThreatActor) {
-    setSelectedFacility(null)
-    setSelectedCluster(null)
-    setSelectedActor(actor)
-  }
-
-  function handleClusterClick(cluster: ResolvedCluster) {
-    setSelectedFacility(null)
-    setSelectedActor(null)
-    setSelectedCluster(cluster)
-  }
-
-  function handleEmptyClick() {
-    setSelectedFacility(null)
-    setSelectedActor(null)
-    setSelectedCluster(null)
+  function handleFeatureSelect(feature: SelectedFeature | null) {
+    setSelectedFeature(feature)
   }
 
   return (
@@ -432,27 +436,17 @@ export default function GlobePage() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Globe Viewport */}
+        {/* Map Viewport */}
         <div className="flex-1 relative">
-          {/* Vignette overlay — dark edges for focus */}
-          <div
-            className="absolute inset-0 pointer-events-none z-10"
-            style={{ background: 'radial-gradient(ellipse at center, transparent 50%, rgba(3,8,16,0.6) 100%)' }}
-          />
-          <GlobeCanvas
-            onFacilityClick={handleFacilityClick}
-            onThreatActorClick={handleActorClick}
-            onClusterClick={handleClusterClick}
-            onEmptyClick={handleEmptyClick}
-            selectedFacilityId={selectedFacility?.id || null}
-            selectedActorName={selectedActor?.name || null}
-            activeCampaignActors={activeCampaignActors}
-            facilityRiskScores={facilityRiskScores}
-            layerVisibility={layerVisibility}
+          <ThreatMap
+            visibleLayers={layerVisibility}
+            threatData={data as unknown as Record<string, unknown> | undefined}
+            onFeatureSelect={handleFeatureSelect}
+            className="w-full h-full"
           />
 
-          {/* Overlay: Score Badge — ASCII art digits matching CAPRI banner style */}
-          {data?.score && !selectedFacility && !selectedActor && !selectedCluster && (
+          {/* Overlay: Score Badge — ASCII art digits */}
+          {data?.score && !selectedFeature && (
             <div className="absolute top-4 left-4 z-20 bg-[#060d1a]/90 backdrop-blur-md border border-white/[0.08] rounded-lg px-4 py-3">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">CAPRI Score</p>
               <pre
@@ -464,40 +458,6 @@ export default function GlobePage() {
                 [ {data.score.label} ]
               </p>
             </div>
-          )}
-
-          {/* Overlay: Facility Detail Panel */}
-          {selectedFacility && (
-            <FacilityDetailPanel
-              facility={selectedFacility}
-              threats={sectorThreats}
-              actors={targetingActors}
-              risk={facilityRisk}
-              campaigns={facilityCampaigns}
-              vendorAlerts={data?.vendorAlerts || []}
-              onClose={() => setSelectedFacility(null)}
-            />
-          )}
-
-          {/* Overlay: Threat Actor Detail Panel */}
-          {selectedActor && (
-            <ActorDetailPanel
-              actor={selectedActor}
-              threats={actorThreats}
-              facilities={actorTargetFacilities}
-              campaigns={actorCampaigns}
-              onClose={() => setSelectedActor(null)}
-            />
-          )}
-
-          {/* Overlay: Cluster Detail Panel */}
-          {selectedCluster && (
-            <ClusterDetailPanel
-              cluster={selectedCluster}
-              facilityRiskScores={facilityRiskScores}
-              onFacilityClick={handleFacilityClick}
-              onClose={() => setSelectedCluster(null)}
-            />
           )}
 
           {/* Overlay: Bottom-left status widgets */}
@@ -526,8 +486,29 @@ export default function GlobePage() {
             )}
           </div>
 
-          {/* Overlay: Layer Toggle Panel (replaces static sector legend) */}
-          <LayerTogglePanel layers={layerVisibility} onToggle={handleLayerToggle} />
+          {/* Overlay: Hover Popup */}
+          {hoveredFeature && (
+            <FacilityPopup
+              feature={hoveredFeature.feature}
+              position={hoveredFeature.position}
+            />
+          )}
+
+          {/* Overlay: Layer Toggle Panel (bottom-right) */}
+          <LayerPanel layers={layerVisibility} onToggle={handleLayerToggle} />
+
+          {/* Overlay: Detail Panel (right side slide-out) */}
+          {selectedFeature && (
+            <DetailPanel
+              feature={selectedFeature}
+              risk={selectedRisk}
+              sectorThreats={selectedSectorThreats}
+              targetingActors={selectedTargetingActors}
+              campaigns={selectedCampaigns}
+              vendorAlerts={selectedVendorAlerts}
+              onClose={() => setSelectedFeature(null)}
+            />
+          )}
         </div>
 
         {/* Right Sidebar: Threat Feed */}
@@ -663,723 +644,6 @@ export default function GlobePage() {
           onClose={() => setAlertSettingsOpen(false)}
         />
       )}
-    </div>
-  )
-}
-
-// ============================================================
-// Facility Detail Panel Component
-// ============================================================
-function FacilityDetailPanel({
-  facility,
-  threats,
-  actors,
-  risk,
-  campaigns,
-  vendorAlerts,
-  onClose,
-}: {
-  facility: EnergyFacility
-  threats: any[]
-  actors: ThreatActor[]
-  risk: FacilityRisk | null
-  campaigns: CampaignCandidate[]
-  vendorAlerts: VendorAlert[]
-  onClose: () => void
-}) {
-  const SectorIcon = getSectorIcon(facility.sector)
-  const color = sectorColors[facility.sector]
-
-  return (
-    <div className="absolute top-4 left-4 w-[380px] max-h-[calc(100%-2rem)] bg-[#111d35]/95 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden flex flex-col animate-in fade-in slide-in-from-left-4 duration-200">
-      {/* Header */}
-      <div className="flex-shrink-0 p-4 border-b border-white/10" style={{ borderTopColor: color, borderTopWidth: 3 }}>
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${color}20` }}>
-              <SectorIcon className="w-4 h-4" style={{ color }} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color }}>
-                {sectorLabels[facility.sector]}
-              </p>
-              <h3 className="text-sm font-bold text-white truncate">{facility.name}</h3>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors p-1 flex-shrink-0">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
-          <div>
-            <span className="text-gray-500">Operator: </span>
-            <span className="text-gray-300">{facility.operator}</span>
-          </div>
-          {facility.capacity && (
-            <div>
-              <span className="text-gray-500">Capacity: </span>
-              <span className="text-gray-300">{facility.capacity}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
-        {/* Risk Score */}
-        {risk && (
-          <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-[10px] font-bold text-white uppercase tracking-wider">Facility Risk Assessment</h4>
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-bold font-mono" style={{ color: risk.color }}>
-                  {risk.score.toFixed(1)}/5
-                </span>
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ color: risk.color, background: `${risk.color}20` }}>
-                  {risk.label}
-                </span>
-              </div>
-            </div>
-            {/* Risk bar — inverted: score 1 = full bar (severe), score 5 = minimal bar (low) */}
-            <div className="w-full h-1.5 bg-white/10 rounded-full mb-2">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{ width: `${((5 - risk.score) / 4) * 100}%`, background: risk.color }}
-              />
-            </div>
-            {/* Risk factors */}
-            <div className="space-y-1">
-              {risk.factors.map((factor, i) => (
-                <div key={i} className="flex items-start gap-1.5">
-                  <span className="text-[10px] mt-0.5" style={{ color: risk.color }}>&#x25cf;</span>
-                  <span className="text-[10px] text-gray-400 leading-tight">{factor}</span>
-                </div>
-              ))}
-            </div>
-            {/* Breakdown */}
-            <div className="mt-2 pt-2 border-t border-white/5 grid grid-cols-4 gap-2 text-center">
-              <div>
-                <p className="text-[10px] text-gray-500">Actors</p>
-                <p className="text-xs font-bold text-white">{risk.actorCount}</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-500">CVEs</p>
-                <p className="text-xs font-bold text-white">{risk.relevantCveCount}</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-500">KEVs</p>
-                <p className="text-xs font-bold text-white">{risk.relevantKevCount}</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-500">Overdue</p>
-                <p className="text-xs font-bold" style={{ color: risk.overdueKevCount > 0 ? '#ef4444' : '#22c55e' }}>
-                  {risk.overdueKevCount}
-                </p>
-              </div>
-            </div>
-            {/* Grid Headroom Bar (grid-sector facilities only) */}
-            {risk.gridStressLevel && (
-              <div className="mt-2 pt-2 border-t border-white/5">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] text-gray-500">Grid Headroom</span>
-                  <span className={`text-[10px] font-bold uppercase ${
-                    risk.gridStressLevel === 'critical' ? 'text-red-400' :
-                    risk.gridStressLevel === 'high' ? 'text-orange-400' :
-                    risk.gridStressLevel === 'elevated' ? 'text-amber-400' :
-                    'text-emerald-400'
-                  }`}>{risk.gridStressLevel}</span>
-                </div>
-                <div className="w-full h-2 bg-white/10 rounded-full">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{
-                      width: `${((risk.gridHeadroom ?? 1) * 100)}%`,
-                      background: risk.gridStressLevel === 'critical' ? '#ef4444' :
-                        risk.gridStressLevel === 'high' ? '#f97316' :
-                        risk.gridStressLevel === 'elevated' ? '#eab308' : '#22c55e',
-                    }}
-                  />
-                </div>
-                <p className="text-[10px] text-gray-600 mt-0.5">
-                  {risk.gridHeadroom != null ? `${(risk.gridHeadroom * 100).toFixed(0)}%` : '--'} spare capacity (EIA-930)
-                </p>
-              </div>
-            )}
-            {/* Transparent Score Computation */}
-            <details className="mt-2 pt-2 border-t border-white/5">
-              <summary className="text-[10px] text-gray-500 cursor-pointer hover:text-gray-300 transition-colors">
-                How was this score calculated?
-              </summary>
-              <div className="mt-2 space-y-2 text-[10px] leading-relaxed">
-                <p className="text-gray-500">
-                  CAPRI scale: <strong className="text-white">1 = Severe</strong>, <strong className="text-white">5 = Normal</strong>. Score is computed from weighted factors for the <strong className="text-white">{sectorLabels[facility.sector]}</strong> sector:
-                </p>
-                {/* Factor 1: Actors */}
-                <div className="bg-white/[0.03] rounded px-2 py-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Threat Actors (0-4 pts)</span>
-                    <span className="text-white font-mono font-bold">{risk.actorScore.toFixed(1)}</span>
-                  </div>
-                  <p className="text-gray-600 mt-0.5">
-                    {risk.actorCount} nation-state APT group{risk.actorCount !== 1 ? 's' : ''} targeting {sectorLabels[facility.sector].toLowerCase()} &times; 0.5 = {(risk.actorCount * 0.5).toFixed(1)}{risk.actorCount * 0.5 > 4 ? ' (capped at 4.0)' : ''}
-                  </p>
-                  {risk.actorCount > 0 && (
-                    <p className="text-gray-600 mt-0.5 italic">
-                      {risk.actorNames.join(', ')}
-                    </p>
-                  )}
-                </div>
-                {/* Factor 2: CVEs */}
-                <div className="bg-white/[0.03] rounded px-2 py-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400">CVE Exposure (0-3 pts)</span>
-                    <span className="text-white font-mono font-bold">{risk.cveScore.toFixed(1)}</span>
-                  </div>
-                  <p className="text-gray-600 mt-0.5">
-                    {risk.relevantCveCount} sector-relevant CVE{risk.relevantCveCount !== 1 ? 's' : ''} from 10 intel sources &times; 0.15 = {(risk.relevantCveCount * 0.15).toFixed(1)}{risk.relevantCveCount * 0.15 > 3 ? ' (capped at 3.0)' : ''}
-                  </p>
-                </div>
-                {/* Factor 3: KEVs */}
-                <div className="bg-white/[0.03] rounded px-2 py-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400">KEV Urgency (0-3 pts)</span>
-                    <span className="text-white font-mono font-bold">{risk.kevScore.toFixed(1)}</span>
-                  </div>
-                  <p className="text-gray-600 mt-0.5">
-                    {risk.relevantKevCount} active KEV{risk.relevantKevCount !== 1 ? 's' : ''} (0.4 ea) + {risk.overdueKevCount} overdue (+0.5 ea) + {risk.ransomwareKevCount} ransomware (+0.3 ea)
-                  </p>
-                </div>
-                {/* Factor 4: Grid Stress (grid-sector only) */}
-                {risk.gridStressLevel && (
-                  <div className="bg-white/[0.03] rounded px-2 py-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400">Grid Stress (0-2 pts)</span>
-                      <span className="text-white font-mono font-bold">{risk.gridStressScore.toFixed(1)}</span>
-                    </div>
-                    <p className="text-gray-600 mt-0.5">
-                      EIA-930 demand: {risk.gridStressLevel} stress level, {risk.gridHeadroom != null ? `${(risk.gridHeadroom * 100).toFixed(0)}%` : '--'} headroom
-                    </p>
-                  </div>
-                )}
-                {/* Factor 5: Vendor Exposure */}
-                {risk.vendorExposureScore > 0 && (
-                  <div className="bg-white/[0.03] rounded px-2 py-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400">Vendor Exposure (0-2 pts)</span>
-                      <span className="text-white font-mono font-bold">{risk.vendorExposureScore.toFixed(1)}</span>
-                    </div>
-                    <p className="text-gray-600 mt-0.5">
-                      Active alerts for: {risk.exposedVendors.join(', ')}
-                    </p>
-                  </div>
-                )}
-                {/* Inversion formula */}
-                <div className="bg-white/[0.05] rounded px-2 py-1.5 border border-white/10">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Raw Threat Intensity</span>
-                    <span className="text-white font-mono font-bold">{risk.rawTotal.toFixed(1)} / 10</span>
-                  </div>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-gray-400">Inverted to CAPRI scale</span>
-                    <span className="font-mono font-bold" style={{ color: risk.color }}>
-                      5 &minus; ({risk.rawTotal.toFixed(1)} &divide; 10 &times; 4) = {risk.score.toFixed(1)}
-                    </span>
-                  </div>
-                </div>
-                <p className="text-gray-600">
-                  Data: CVEs from latest advisories across 10 sources (CISA, Microsoft, Unit42, CrowdStrike, etc.). KEVs from CISA catalog (past 30 days). Refreshes every 60s.
-                </p>
-              </div>
-            </details>
-          </div>
-        )}
-
-        {/* Supply Chain Dependencies */}
-        {(() => {
-          const deps = getVendorDependencies(facility)
-          if (deps.length === 0) return null
-          // Build a lookup of active alerts by vendor name
-          const alertsByVendor = new Map(vendorAlerts.map(a => [a.vendor, a]))
-          return (
-            <div>
-              <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <Factory className="w-3 h-3 text-cyan-400" />
-                Supply Chain Dependencies
-              </h4>
-              <div className="space-y-1">
-                {deps.map((dep, i) => {
-                  const alert = alertsByVendor.get(dep.vendor)
-                  const hasAlert = alert && (alert.kevCount > 0 || alert.cveCount > 0)
-                  return (
-                    <div
-                      key={`${dep.vendor}-${dep.system}-${i}`}
-                      className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 ${
-                        hasAlert ? 'bg-red-500/10 border border-red-500/20' : 'bg-white/[0.03]'
-                      }`}
-                    >
-                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                        hasAlert ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'
-                      }`} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-gray-200 capitalize">{dep.vendor}</span>
-                          <span className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded ${
-                            dep.criticality === 'critical' ? 'text-red-400 bg-red-500/20' :
-                            dep.criticality === 'high' ? 'text-orange-400 bg-orange-500/20' :
-                            'text-blue-400 bg-blue-500/20'
-                          }`}>{dep.criticality}</span>
-                        </div>
-                        <p className="text-[10px] text-gray-500 truncate">{dep.system}</p>
-                      </div>
-                      {hasAlert && (
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          {alert!.kevCount > 0 && (
-                            <span className="text-[9px] font-bold text-red-400 bg-red-500/20 px-1.5 py-0.5 rounded">
-                              {alert!.kevCount} KEV{alert!.kevCount !== 1 ? 's' : ''}
-                            </span>
-                          )}
-                          {alert!.cveCount > 0 && (
-                            <span className="text-[9px] font-bold text-orange-400 bg-orange-500/20 px-1.5 py-0.5 rounded">
-                              {alert!.cveCount} CVE{alert!.cveCount !== 1 ? 's' : ''}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )
-        })()}
-
-        {/* Campaign Exposure */}
-        {campaigns.length > 0 && (
-          <div>
-            <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Crosshair className="w-3 h-3 text-amber-400" />
-              Campaign Exposure
-            </h4>
-            <div className="space-y-1.5">
-              {campaigns.map((campaign) => (
-                <div
-                  key={campaign.id}
-                  className="bg-white/[0.03] border border-white/5 rounded-lg p-2.5"
-                >
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="text-[11px] font-semibold text-white">{campaign.actorName}</span>
-                    <span className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded ${
-                      campaign.confidence === 'high'
-                        ? 'text-red-400 bg-red-500/20'
-                        : campaign.confidence === 'medium'
-                        ? 'text-amber-400 bg-amber-500/20'
-                        : 'text-gray-400 bg-gray-500/20'
-                    }`}>
-                      {campaign.confidence}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 text-[10px] text-gray-400 mb-1">
-                    <span>{campaign.correlatedItems.length} items</span>
-                    <span>Severity: {campaign.avgSeverity.toFixed(2)}</span>
-                    <span className="text-gray-500">{formatTimeAgo(campaign.lastSeen)}</span>
-                  </div>
-                  <p className="text-[10px] text-gray-500 leading-relaxed">{campaign.rationale}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Threat Actors Targeting This Sector */}
-        <div>
-          <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2">
-            Threat Actors Targeting {sectorLabels[facility.sector]}
-          </h4>
-          <div className="space-y-1.5">
-            {actors.map((actor) => (
-              <div key={actor.name} className="flex items-center gap-2 bg-white/[0.03] rounded-lg px-2.5 py-1.5">
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: actor.color }} />
-                <span className="text-xs text-gray-200">{actor.name}</span>
-                <span className="text-[10px] text-gray-500 ml-auto">{actor.country}</span>
-              </div>
-            ))}
-            {actors.length === 0 && (
-              <p className="text-[11px] text-gray-500 italic">No known threat actors targeting this sector</p>
-            )}
-          </div>
-        </div>
-
-        {/* Relevant Threats / CVEs */}
-        <div>
-          <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2">
-            Relevant Alerts & CVEs
-          </h4>
-          {threats.length > 0 ? (
-            <div className="space-y-1.5">
-              {threats.map((threat, i) => (
-                <a
-                  key={threat.id || threat.cveID || i}
-                  href={threat.link || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block bg-white/[0.03] hover:bg-white/[0.06] rounded-lg px-2.5 py-2 transition-colors group"
-                >
-                  <div className="flex items-center gap-1.5 mb-1">
-                    {threat.severity && (
-                      <span className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded border ${getSeverityColor(threat.severity)}`}>
-                        {threat.severity}
-                      </span>
-                    )}
-                    {threat.cveID && (
-                      <span className="text-[10px] font-mono text-red-400">{threat.cveID}</span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-gray-300 group-hover:text-white line-clamp-2 transition-colors">
-                    {threat.title || threat.shortDescription}
-                  </p>
-                  {threat.source && (
-                    <p className="text-[10px] text-gray-600 mt-1">{threat.source}</p>
-                  )}
-                </a>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white/[0.02] rounded-lg p-3">
-              <p className="text-[11px] text-gray-500">
-                No sector-specific alerts currently detected. Monitor the general threat feed for broader indicators.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ============================================================
-// Cluster Detail Panel Component
-// ============================================================
-function ClusterDetailPanel({
-  cluster,
-  facilityRiskScores,
-  onFacilityClick,
-  onClose,
-}: {
-  cluster: ResolvedCluster
-  facilityRiskScores: Record<string, number>
-  onFacilityClick: (facility: EnergyFacility) => void
-  onClose: () => void
-}) {
-  const worstColor = riskScoreToColor(cluster.worstRisk)
-  const riskLabel = cluster.worstRisk <= 1.5 ? 'Severe'
-    : cluster.worstRisk <= 2.5 ? 'High'
-    : cluster.worstRisk <= 3.5 ? 'Elevated'
-    : cluster.worstRisk <= 4.5 ? 'Guarded'
-    : 'Low'
-
-  return (
-    <div className="absolute top-4 left-4 w-[340px] max-h-[calc(100%-2rem)] bg-[#111d35]/95 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden flex flex-col animate-in fade-in slide-in-from-left-4 duration-200" style={{ borderTopColor: worstColor, borderTopWidth: 3 }}>
-      {/* Header */}
-      <div className="flex-shrink-0 p-4 border-b border-white/10">
-        <div className="flex items-start justify-between">
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Region Cluster</p>
-            <h3 className="text-sm font-bold text-white">{cluster.cluster.label}</h3>
-          </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors p-1 flex-shrink-0">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="mt-2 flex items-center gap-4 text-[11px]">
-          <div>
-            <span className="text-gray-500">Facilities: </span>
-            <span className="text-white font-bold">{cluster.facilities.length}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-gray-500">Worst Risk: </span>
-            <span className="font-bold font-mono" style={{ color: worstColor }}>
-              {cluster.worstRisk.toFixed(1)}
-            </span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ color: worstColor, background: `${worstColor}20` }}>
-              {riskLabel}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Scrollable facility list */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-thin">
-        {cluster.facilities
-          .slice()
-          .sort((a, b) => (facilityRiskScores[a.id] ?? 5) - (facilityRiskScores[b.id] ?? 5))
-          .map((facility) => {
-            const SIcon = getSectorIcon(facility.sector)
-            const score = facilityRiskScores[facility.id]
-            const scoreColor = score != null ? riskScoreToColor(score) : '#6b7280'
-            return (
-              <button
-                key={facility.id}
-                onClick={() => onFacilityClick(facility)}
-                className="w-full flex items-center gap-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-lg px-2.5 py-2 transition-colors text-left group"
-              >
-                <SIcon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: sectorColors[facility.sector] }} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] text-gray-300 group-hover:text-white truncate transition-colors">{facility.name}</p>
-                  <p className="text-[10px] text-gray-500 truncate">{facility.operator}</p>
-                </div>
-                {score != null && (
-                  <span className="text-[11px] font-bold font-mono flex-shrink-0" style={{ color: scoreColor }}>
-                    {score.toFixed(1)}
-                  </span>
-                )}
-              </button>
-            )
-          })}
-      </div>
-    </div>
-  )
-}
-
-// ============================================================
-// Threat Actor Detail Panel Component
-// ============================================================
-function ActorDetailPanel({
-  actor,
-  threats,
-  facilities,
-  campaigns,
-  onClose,
-}: {
-  actor: ThreatActor
-  threats: any[]
-  facilities: EnergyFacility[]
-  campaigns: CampaignCandidate[]
-  onClose: () => void
-}) {
-  return (
-    <div className="absolute top-4 left-4 w-[380px] max-h-[calc(100%-2rem)] bg-[#111d35]/95 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden flex flex-col animate-in fade-in slide-in-from-left-4 duration-200">
-      {/* Header */}
-      <div className="flex-shrink-0 p-4 border-b border-white/10" style={{ borderTopColor: actor.color, borderTopWidth: 3 }}>
-        <div className="flex items-start justify-between">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-3 h-3 rounded-full animate-pulse" style={{ background: actor.color }} />
-              <h3 className="text-sm font-bold text-white">{actor.name}</h3>
-            </div>
-            {actor.aliases && actor.aliases.length > 0 && (
-              <p className="text-[10px] text-gray-500 mb-1">
-                aka {actor.aliases.join(', ')}
-              </p>
-            )}
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
-              <div>
-                <span className="text-gray-500">Origin: </span>
-                <span className="text-gray-300">{actor.country}</span>
-              </div>
-              <div>
-                <span className="text-gray-500">Type: </span>
-                <span className="text-gray-300">{actor.type}</span>
-              </div>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors p-1 flex-shrink-0">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">{actor.description}</p>
-      </div>
-
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
-        {/* Target Sectors */}
-        <div>
-          <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2">Target Sectors</h4>
-          <div className="flex flex-wrap gap-1.5">
-            {actor.targetSectors.map((sector) => (
-              <span
-                key={sector}
-                className="text-[10px] font-medium px-2 py-1 rounded-md border"
-                style={{
-                  color: sectorColors[sector],
-                  background: `${sectorColors[sector]}15`,
-                  borderColor: `${sectorColors[sector]}30`,
-                }}
-              >
-                {sectorLabels[sector]}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Campaign Activity */}
-        {campaigns.length > 0 && (
-          <div>
-            <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Crosshair className="w-3 h-3 text-amber-400" />
-              Campaign Activity
-            </h4>
-            <div className="space-y-2">
-              {campaigns.map((campaign) => (
-                <div
-                  key={campaign.id}
-                  className={`border rounded-lg p-3 ${
-                    campaign.confidence === 'high'
-                      ? 'bg-red-500/5 border-red-500/20'
-                      : campaign.confidence === 'medium'
-                      ? 'bg-amber-500/5 border-amber-500/20'
-                      : 'bg-white/[0.02] border-white/5'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                      campaign.confidence === 'high'
-                        ? 'text-red-400 bg-red-500/20'
-                        : campaign.confidence === 'medium'
-                        ? 'text-amber-400 bg-amber-500/20'
-                        : 'text-gray-400 bg-gray-500/20'
-                    }`}>
-                      {campaign.confidence} confidence
-                    </span>
-                    <span className="text-[10px] text-gray-500 font-mono ml-auto">
-                      {campaign.confidenceScore.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-center mb-2">
-                    <div>
-                      <p className="text-[10px] text-gray-500">Items</p>
-                      <p className="text-xs font-bold text-white">{campaign.correlatedItems.length}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-gray-500">Severity</p>
-                      <p className="text-xs font-bold text-white">{campaign.avgSeverity.toFixed(2)}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-gray-500">KEVs</p>
-                      <p className="text-xs font-bold text-white">{campaign.kevCount}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 text-[10px] text-gray-500 mb-2">
-                    <span>{formatTimeAgo(campaign.firstSeen)} &ndash; {formatTimeAgo(campaign.lastSeen)}</span>
-                  </div>
-                  <p className="text-[10px] text-gray-400 leading-relaxed">{campaign.rationale}</p>
-                  {/* Correlated items */}
-                  <details className="mt-2">
-                    <summary className="text-[10px] text-gray-500 cursor-pointer hover:text-gray-300 transition-colors">
-                      Correlated items ({campaign.correlatedItems.length})
-                    </summary>
-                    <div className="mt-1.5 space-y-1">
-                      {campaign.correlatedItems.slice(0, 5).map((ci) => (
-                        <div key={ci.itemId} className="flex items-start gap-1.5">
-                          <span className="text-[10px] font-mono text-gray-500 flex-shrink-0">{ci.pairScore.toFixed(2)}</span>
-                          <span className="text-[10px] text-gray-400 line-clamp-1">{ci.title}</span>
-                        </div>
-                      ))}
-                      {campaign.correlatedItems.length > 5 && (
-                        <p className="text-[10px] text-gray-600">+{campaign.correlatedItems.length - 5} more</p>
-                      )}
-                    </div>
-                  </details>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* MITRE ATT&CK TTPs */}
-        {actor.ttps && actor.ttps.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-[10px] font-bold text-white uppercase tracking-wider">MITRE ATT&CK TTPs</h4>
-              {actor.mitrePage && (
-                <a
-                  href={actor.mitrePage}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1"
-                >
-                  {actor.mitreId} <ExternalLink className="w-2.5 h-2.5" />
-                </a>
-              )}
-            </div>
-            <div className="space-y-1">
-              {actor.ttps.map((ttp) => (
-                <a
-                  key={ttp.id}
-                  href={`https://attack.mitre.org/techniques/${ttp.id.replace('.', '/')}/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 bg-white/[0.03] hover:bg-white/[0.06] rounded px-2 py-1.5 transition-colors group"
-                >
-                  <span className="text-[10px] font-mono text-red-400 flex-shrink-0 w-16">{ttp.id}</span>
-                  <span className="text-[10px] text-gray-300 group-hover:text-white flex-1 truncate">{ttp.name}</span>
-                  <span className="text-[9px] text-gray-600 flex-shrink-0">{ttp.tactic}</span>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Targeted Facilities */}
-        <div>
-          <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2">
-            At-Risk Facilities ({facilities.length})
-          </h4>
-          <div className="space-y-1 max-h-40 overflow-y-auto scrollbar-thin">
-            {facilities.slice(0, 15).map((f) => {
-              const SIcon = getSectorIcon(f.sector)
-              return (
-                <div key={f.id} className="flex items-center gap-2 bg-white/[0.03] rounded px-2 py-1.5">
-                  <SIcon className="w-3 h-3 flex-shrink-0" style={{ color: sectorColors[f.sector] }} />
-                  <span className="text-[11px] text-gray-300 truncate">{f.name}</span>
-                </div>
-              )
-            })}
-            {facilities.length > 15 && (
-              <p className="text-[10px] text-gray-500 pl-2">+{facilities.length - 15} more facilities</p>
-            )}
-          </div>
-        </div>
-
-        {/* Related Threats */}
-        <div>
-          <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2">
-            Related Alerts & CVEs
-          </h4>
-          {threats.length > 0 ? (
-            <div className="space-y-1.5">
-              {threats.map((threat, i) => (
-                <a
-                  key={threat.id || threat.cveID || i}
-                  href={threat.link || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block bg-white/[0.03] hover:bg-white/[0.06] rounded-lg px-2.5 py-2 transition-colors group"
-                >
-                  <div className="flex items-center gap-1.5 mb-1">
-                    {threat.severity && (
-                      <span className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded border ${getSeverityColor(threat.severity)}`}>
-                        {threat.severity}
-                      </span>
-                    )}
-                    {threat.cveID && (
-                      <span className="text-[10px] font-mono text-red-400">{threat.cveID}</span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-gray-300 group-hover:text-white line-clamp-2 transition-colors">
-                    {threat.title || threat.shortDescription}
-                  </p>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white/[0.02] rounded-lg p-3">
-              <p className="text-[11px] text-gray-500">
-                No specific alerts currently linked to this actor. Check general threat feed for updates.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   )
 }

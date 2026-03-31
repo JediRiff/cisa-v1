@@ -310,6 +310,217 @@ export function matchesSectorKeywords(text: string, sector: Sector): boolean {
   return sectorKeywords[sector].some((kw) => matchesKeyword(text, kw))
 }
 
+// ============================================================
+// Expanded Sector Keywords — maps the 13 new EnergySector types
+// from components/map/types.ts to keyword sets for threat matching.
+// The legacy Sector type ('nuclear' | 'hydro' | 'grid' | ...) is
+// preserved for backward-compat; this adds a parallel keyword map
+// keyed by EnergySector strings.
+// ============================================================
+
+export type ExpandedSector =
+  | 'solar' | 'wind' | 'offshore_wind' | 'storage' | 'pump_storage'
+  | 'hydro' | 'nuclear' | 'gas' | 'coal' | 'oil'
+  | 'geothermal' | 'biomass' | 'other'
+
+/** Keywords used to match CVEs/KEVs/alerts to expanded sectors. */
+export const expandedSectorKeywords: Record<ExpandedSector, string[]> = {
+  solar: [
+    'solar', 'photovoltaic', 'PV', 'solar panel', 'solar farm', 'solar inverter',
+    'solar array', 'solar generation', 'net metering', 'DERMS', 'distributed energy',
+  ],
+  wind: [
+    'wind turbine', 'wind farm', 'wind energy', 'wind power', 'onshore wind',
+    'wind generation', 'SCADA', 'turbine control',
+  ],
+  offshore_wind: [
+    'offshore wind', 'offshore turbine', 'offshore energy', 'floating wind',
+    'subsea cable', 'offshore platform', 'marine energy',
+  ],
+  storage: [
+    'battery storage', 'energy storage', 'BESS', 'lithium-ion', 'battery management',
+    'grid storage', 'ESS', 'battery inverter', 'power storage',
+  ],
+  pump_storage: [
+    'pumped storage', 'pumped hydro', 'pump storage', 'pumped-storage',
+    'reversible turbine', 'upper reservoir', 'lower reservoir',
+  ],
+  hydro: [
+    'hydroelectric', 'dam', 'reservoir', 'spillway', 'hydropower', 'water turbine',
+    'FERC', 'flood control', 'penstock', 'hydro plant', 'run-of-river',
+  ],
+  nuclear: [
+    'nuclear', 'NRC', 'reactor', 'radiation', 'fuel rod', 'containment', 'IAEA',
+    'enrichment', 'centrifuge', 'Stuxnet', 'nuclear plant', 'nuclear power',
+    'uranium', 'spent fuel', 'BWR', 'PWR', 'fission', 'small modular reactor', 'SMR',
+  ],
+  gas: [
+    'natural gas', 'LNG', 'pipeline', 'compressor station', 'gas turbine', 'methane',
+    'PHMSA', 'gas distribution', 'gas pipeline', 'liquefied natural gas',
+    'regasification', 'liquefaction', 'Colonial Pipeline', 'combined cycle',
+    'gas-fired', 'gas plant',
+  ],
+  coal: [
+    'coal', 'coal-fired', 'coal plant', 'coal generation', 'fly ash', 'coal combustion',
+    'scrubber', 'flue gas', 'pulverized coal', 'lignite',
+  ],
+  oil: [
+    'petroleum', 'refinery', 'crude oil', 'strategic petroleum', 'SPR', 'petrochemical',
+    'distillation', 'oil pipeline', 'oil refinery', 'oil and gas', 'oil & gas',
+    'oil sector', 'oil industry', 'crude', 'Shamoon', 'Triton', 'TRISIS',
+    'oil-fired', 'fuel oil',
+  ],
+  geothermal: [
+    'geothermal', 'geothermal plant', 'geothermal energy', 'geothermal power',
+    'hot springs', 'geothermal well', 'binary cycle', 'flash steam',
+  ],
+  biomass: [
+    'biomass', 'biomass plant', 'biogas', 'bioenergy', 'waste-to-energy',
+    'wood pellet', 'landfill gas', 'anaerobic digestion', 'biofuel',
+  ],
+  other: [
+    'power plant', 'generation', 'electricity', 'megawatt', 'utility',
+  ],
+}
+
+/** Map an expanded sector to the nearest legacy Sector for risk calc. */
+export function expandedToLegacySector(sector: ExpandedSector): Sector {
+  switch (sector) {
+    case 'nuclear': return 'nuclear'
+    case 'hydro': return 'hydro'
+    case 'pump_storage': return 'hydro'
+    case 'gas': return 'natural_gas'
+    case 'oil': return 'oil'
+    // Renewables, storage, coal, and 'other' map to 'grid' (ICS/SCADA risk profile)
+    case 'solar': case 'wind': case 'offshore_wind': case 'storage':
+    case 'coal': case 'geothermal': case 'biomass': case 'other':
+      return 'grid'
+  }
+}
+
+/** Match threat text against expanded sector keywords. */
+export function matchesExpandedSectorKeywords(text: string, sector: ExpandedSector): boolean {
+  const kws = expandedSectorKeywords[sector]
+  if (!kws) return false
+  return kws.some((kw) => matchesKeyword(text, kw))
+}
+
+/**
+ * Sector-specific ICS weighting multiplier.
+ * Nuclear, grid, and gas/oil facilities with ICS/SCADA exposure
+ * receive higher risk weighting than purely-IT sectors.
+ */
+export function sectorICSWeight(sector: ExpandedSector): number {
+  switch (sector) {
+    case 'nuclear': return 1.5     // Highest: safety-critical ICS
+    case 'gas': return 1.3         // Pipeline SCADA
+    case 'oil': return 1.3         // Refinery DCS
+    case 'hydro': return 1.2       // Dam control systems
+    case 'pump_storage': return 1.2
+    case 'coal': return 1.1        // Boiler control / DCS
+    case 'geothermal': return 1.1
+    // Renewables and storage typically have less ICS complexity
+    case 'wind': case 'offshore_wind': return 1.0
+    case 'solar': return 0.9
+    case 'storage': return 0.9
+    case 'biomass': return 1.0
+    case 'other': return 0.8
+  }
+}
+
+/**
+ * Enhanced facility risk for expanded sector set.
+ * Wraps the existing calculateFacilityRisk() and applies:
+ *   1. Capacity-weighted risk (larger plants matter more)
+ *   2. Sector-specific ICS weighting
+ *   3. Expanded keyword matching for the new sectors
+ *
+ * Returns a FacilityRisk with the adjusted score.
+ */
+export function calculateExpandedFacilityRisk(
+  facility: { id: string; sector: ExpandedSector; capacity?: string; operator?: string; name: string; lat: number; lng: number },
+  threatItems: any[],
+  kevItems: any[],
+  gridStressData?: { facilityId: string; stressLevel: string; utilization: number }[],
+  vendorAlerts?: VendorAlert[],
+): FacilityRisk {
+  // Map to legacy facility shape for the base risk calculation
+  const legacySector = expandedToLegacySector(facility.sector)
+  const legacyFacility: EnergyFacility = {
+    id: facility.id,
+    lat: facility.lat,
+    lng: facility.lng,
+    name: facility.name,
+    sector: legacySector,
+    operator: facility.operator || 'Unknown',
+    capacity: facility.capacity,
+  }
+  const baseRisk = calculateFacilityRisk(legacyFacility, threatItems, kevItems, gridStressData, vendorAlerts)
+
+  // Additional expanded-sector CVE matches (keywords the legacy sector may miss)
+  const expandedCves = threatItems.filter((item) => {
+    const text = `${item.title || ''} ${item.description || ''} ${item.shortDescription || ''}`
+    return matchesExpandedSectorKeywords(text, facility.sector)
+  })
+  const extraCveCount = Math.max(0, expandedCves.length - baseRisk.relevantCveCount)
+  const extraCveScore = Math.min(extraCveCount * 0.1, 1.0) // Up to +1 additional point
+
+  // ICS weighting: amplify raw score for ICS-heavy sectors
+  const icsMultiplier = sectorICSWeight(facility.sector)
+
+  // Capacity weighting: parse capacity to detect high-value targets
+  let capacityMultiplier = 1.0
+  if (facility.capacity) {
+    const mwMatch = facility.capacity.match(/([\d,.]+)\s*(MW|GW)/i)
+    if (mwMatch) {
+      let mw = parseFloat(mwMatch[1].replace(/,/g, ''))
+      if (mwMatch[2].toUpperCase() === 'GW') mw *= 1000
+      // Scale: plants >2GW get +20%, >500MW get +10%, small plants get no bonus
+      if (mw >= 2000) capacityMultiplier = 1.2
+      else if (mw >= 500) capacityMultiplier = 1.1
+    }
+  }
+
+  // Re-compute final score with adjustments
+  const adjustedRaw = Math.min(
+    (baseRisk.rawTotal + extraCveScore) * icsMultiplier * capacityMultiplier,
+    10,
+  )
+  const inverted = 5 - (adjustedRaw / 10) * 4
+  const adjustedScore = Math.max(Math.min(Math.round(inverted * 10) / 10, 5), 1)
+
+  // Determine label and color
+  let label: string
+  let color: string
+  if (adjustedScore <= 1.5) { label = 'Severe'; color = '#ef4444' }
+  else if (adjustedScore <= 2.5) { label = 'High'; color = '#f97316' }
+  else if (adjustedScore <= 3.5) { label = 'Elevated'; color = '#eab308' }
+  else if (adjustedScore <= 4.5) { label = 'Guarded'; color = '#3b82f6' }
+  else { label = 'Low'; color = '#22c55e' }
+
+  // Add enhancement factors
+  const factors = [...baseRisk.factors]
+  if (extraCveCount > 0) {
+    factors.push(`${extraCveCount} additional CVE${extraCveCount > 1 ? 's' : ''} matching ${facility.sector} sector keywords`)
+  }
+  if (icsMultiplier > 1) {
+    factors.push(`ICS/SCADA weight: ${icsMultiplier}x for ${facility.sector} sector`)
+  }
+  if (capacityMultiplier > 1) {
+    factors.push(`High-capacity facility: ${facility.capacity} (${capacityMultiplier}x weight)`)
+  }
+
+  return {
+    ...baseRisk,
+    score: adjustedScore,
+    label,
+    color,
+    factors,
+    relevantCveCount: baseRisk.relevantCveCount + extraCveCount,
+    rawTotal: adjustedRaw,
+  }
+}
+
 // Known threat actor origins with targeting data and MITRE ATT&CK TTPs
 // TTPs sourced from attack.mitre.org group pages unless otherwise noted
 export const threatActors: ThreatActor[] = [
