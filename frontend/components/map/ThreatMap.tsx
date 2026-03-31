@@ -8,9 +8,11 @@ import {
   DEFAULT_LAYER_VISIBILITY,
   SelectedFeature,
   SECTOR_COLORS,
+  SECTOR_LABELS,
   INFRA_COLORS,
+  EnergySector,
 } from './types';
-import { MAP_STYLE, CLUSTER_CONFIG, getCircleRadiusExpression, getClusterRadiusExpression } from './mapStyle';
+import { MAP_STYLE, CLUSTER_CONFIG, getCircleRadiusExpression, getCircleOpacityExpression, getClusterRadiusExpression } from './mapStyle';
 import {
   sectorColorExpression,
   threatActorsToGeoJSON,
@@ -265,67 +267,66 @@ export default function ThreatMap({
     // Infrastructure line layers
     // ============================
 
-    // Transmission lines — golden dashed
+    // Transmission lines — soft blue, subtle
     map.addLayer({
       id: LAYER_IDS.TRANSMISSION_LINES,
       type: 'line',
       source: SOURCE_IDS.TRANSMISSION_LINES,
       paint: {
         'line-color': INFRA_COLORS.transmission_line,
-        'line-width': 1.5,
-        'line-opacity': 0.5,
-        'line-dasharray': [4, 2],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.5, 8, 1, 12, 1.5],
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0.15, 8, 0.3, 12, 0.45],
       },
     });
 
-    // Gas pipelines — orange
+    // Gas pipelines — warm orange, subtle
     map.addLayer({
       id: LAYER_IDS.GAS_PIPELINES,
       type: 'line',
       source: SOURCE_IDS.GAS_PIPELINES,
       paint: {
         'line-color': INFRA_COLORS.gas_pipeline,
-        'line-width': 2,
-        'line-opacity': 0.45,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.5, 8, 1.2, 12, 2],
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0.15, 8, 0.3, 12, 0.4],
       },
     });
 
-    // Submarine cables — deep sky blue, dashed
+    // Submarine cables — cyan, dashed
     map.addLayer({
       id: LAYER_IDS.SUBMARINE_CABLES,
       type: 'line',
       source: SOURCE_IDS.SUBMARINE_CABLES,
       paint: {
         'line-color': ['coalesce', ['get', 'color'], INFRA_COLORS.submarine_cable],
-        'line-width': 1.5,
-        'line-opacity': 0.4,
-        'line-dasharray': [6, 3],
+        'line-width': 1.2,
+        'line-opacity': 0.3,
+        'line-dasharray': [6, 4],
       },
     });
 
-    // LNG shipping lanes — amber, dashed
+    // LNG shipping lanes — soft amber, dashed
     map.addLayer({
       id: LAYER_IDS.LNG_SHIPPING_LANES,
       type: 'line',
       source: SOURCE_IDS.LNG_LANES,
       paint: {
-        'line-color': ['coalesce', ['get', 'color'], '#f59e0b'],
-        'line-width': 1.5,
-        'line-opacity': 0.35,
-        'line-dasharray': [4, 3],
+        'line-color': ['coalesce', ['get', 'color'], '#fbbf24'],
+        'line-width': 1,
+        'line-opacity': 0.25,
+        'line-dasharray': [4, 4],
       },
     });
 
-    // Fiber routes — magenta, dashed
+    // Fiber routes — soft purple, dashed
     map.addLayer({
       id: LAYER_IDS.FIBER_ROUTES,
       type: 'line',
       source: SOURCE_IDS.FIBER_ROUTES,
       paint: {
         'line-color': INFRA_COLORS.fiber_route,
-        'line-width': 1.5,
-        'line-opacity': 0.4,
-        'line-dasharray': [5, 3],
+        'line-width': 1,
+        'line-opacity': 0.3,
+        'line-dasharray': [5, 4],
       },
     });
 
@@ -337,10 +338,10 @@ export default function ThreatMap({
       type: 'line',
       source: SOURCE_IDS.ATTACK_ARCS,
       paint: {
-        'line-color': ['coalesce', ['get', 'color'], '#ff3333'],
-        'line-width': 1.5,
-        'line-opacity': 0.35,
-        'line-dasharray': [2, 2],
+        'line-color': ['coalesce', ['get', 'color'], '#f87171'],
+        'line-width': 1,
+        'line-opacity': 0.2,
+        'line-dasharray': [3, 3],
       },
     });
 
@@ -348,7 +349,7 @@ export default function ThreatMap({
     // Power plant clusters
     // ============================
 
-    // Cluster circles
+    // Cluster circles — luminescent blue theme
     map.addLayer({
       id: LAYER_IDS.PLANTS_CLUSTER_CIRCLES,
       type: 'circle',
@@ -358,19 +359,21 @@ export default function ThreatMap({
         'circle-color': [
           'step',
           ['get', 'point_count'],
-          '#51bbd6',   // < 10
-          10, '#f1f075', // 10-49
-          50, '#f28cb1', // 50+
+          '#60a5fa',   // < 10: soft blue
+          10, '#818cf8', // 10-49: indigo
+          50, '#a78bfa', // 50-99: purple
+          100, '#c084fc', // 100+: lavender
         ],
         'circle-radius': getClusterRadiusExpression(),
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#ffffff',
-        'circle-stroke-opacity': 0.5,
-        'circle-opacity': 0.7,
+        'circle-stroke-width': 1.5,
+        'circle-stroke-color': 'rgba(255,255,255,0.25)',
+        'circle-stroke-opacity': 0.6,
+        'circle-opacity': 0.55,
+        'circle-blur': 0.3,
       },
     });
 
-    // Cluster count labels
+    // Cluster count labels — clean white text
     map.addLayer({
       id: LAYER_IDS.PLANTS_CLUSTER_COUNT,
       type: 'symbol',
@@ -379,15 +382,17 @@ export default function ThreatMap({
       layout: {
         'text-field': '{point_count_abbreviated}',
         'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-        'text-size': 12,
+        'text-size': 11,
         'text-allow-overlap': true,
       },
       paint: {
-        'text-color': '#ffffff',
+        'text-color': '#f1f5f9',
+        'text-halo-color': 'rgba(10,22,40,0.5)',
+        'text-halo-width': 1,
       },
     });
 
-    // Unclustered individual plant dots
+    // Unclustered individual plant dots — luminescent glow
     map.addLayer({
       id: LAYER_IDS.PLANTS_UNCLUSTERED,
       type: 'circle',
@@ -396,32 +401,93 @@ export default function ThreatMap({
       paint: {
         'circle-color': sectorColorExpression() as maplibregl.ExpressionSpecification,
         'circle-radius': getCircleRadiusExpression(),
-        'circle-stroke-width': 1,
-        'circle-stroke-color': 'rgba(255,255,255,0.6)',
-        'circle-opacity': 0.85,
+        'circle-stroke-width': [
+          'interpolate', ['linear'], ['zoom'],
+          2, 0,
+          6, 0.5,
+          10, 1,
+        ] as maplibregl.ExpressionSpecification,
+        'circle-stroke-color': 'rgba(255,255,255,0.2)',
+        'circle-opacity': getCircleOpacityExpression(),
+        'circle-blur': [
+          'interpolate', ['linear'], ['zoom'],
+          2, 0.4,
+          8, 0.15,
+          12, 0,
+        ] as maplibregl.ExpressionSpecification,
       },
     });
 
-    // Plant name labels at high zoom
+    // Plant name labels — show major facilities (nuclear, large hydro/gas) earlier
     map.addLayer({
       id: LAYER_IDS.PLANTS_LABELS,
       type: 'symbol',
       source: SOURCE_IDS.PLANTS,
       filter: ['!', ['has', 'point_count']],
-      minzoom: 9,
+      minzoom: 6,
       layout: {
         'text-field': ['get', 'name'],
         'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-        'text-size': 11,
-        'text-offset': [0, 1.4],
+        'text-size': [
+          'interpolate', ['linear'], ['zoom'],
+          6, 9,
+          10, 11,
+          14, 13,
+        ] as maplibregl.ExpressionSpecification,
+        'text-offset': [0, 1.2],
         'text-anchor': 'top',
-        'text-max-width': 12,
+        'text-max-width': 10,
         'text-optional': true,
+        // Only show labels for significant facilities at lower zooms
+        'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
+        'text-radial-offset': 1.0,
+        'symbol-sort-key': [
+          'case',
+          ['in', ['get', 'sector'], ['literal', ['nuclear', 'hydro', 'pump_storage']]],
+          0,  // Nuclear/hydro labels have highest priority
+          ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 500],
+          1,  // Large plants (500+ MW) next
+          ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 100],
+          2,  // Medium plants
+          ['==', ['get', 'sector'], 'solar'],
+          10, // Solar labels get lowest priority
+          5,  // Everything else
+        ] as maplibregl.ExpressionSpecification,
       },
       paint: {
-        'text-color': '#e0e4e8',
-        'text-halo-color': '#0a0e17',
-        'text-halo-width': 1.5,
+        'text-color': [
+          'interpolate', ['linear'], ['zoom'],
+          6, 'rgba(224,228,232,0.7)',
+          10, '#e0e4e8',
+        ] as maplibregl.ExpressionSpecification,
+        'text-halo-color': '#060d1a',
+        'text-halo-width': 2,
+        'text-halo-blur': 1,
+        // Fade in labels — nuclear/major always visible, solar only at high zoom
+        'text-opacity': [
+          'step',
+          ['zoom'],
+          // zoom 6-7: only nuclear/huge plants
+          ['case',
+            ['in', ['get', 'sector'], ['literal', ['nuclear']]],
+            1,
+            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 1000],
+            0.8,
+            0, // hide everything else
+          ],
+          8,
+          // zoom 8: add hydro, large gas
+          ['case',
+            ['in', ['get', 'sector'], ['literal', ['nuclear', 'hydro', 'pump_storage']]],
+            1,
+            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 500],
+            0.8,
+            0,
+          ],
+          10,
+          // zoom 10+: show all labels
+          0.9,
+        ] as maplibregl.ExpressionSpecification,
       },
     });
 
@@ -429,41 +495,65 @@ export default function ThreatMap({
     // Infrastructure point layers
     // ============================
 
-    // Substations — yellow squares (represented as circles with small radius)
+    // Substations — amber, filter out unnamed (UNKNOWN*) and show only at higher zoom
     map.addLayer({
       id: LAYER_IDS.SUBSTATIONS,
       type: 'circle',
       source: SOURCE_IDS.SUBSTATIONS,
+      minzoom: 7,
+      filter: [
+        'all',
+        ['has', 'name'],
+        ['!=', ['slice', ['get', 'name'], 0, 7], 'UNKNOWN'],
+      ],
       paint: {
         'circle-color': INFRA_COLORS.substation,
         'circle-radius': [
           'interpolate', ['linear'], ['zoom'],
-          3, 2,
-          8, 4,
-          12, 6,
+          7, 1.5,
+          10, 3,
+          14, 5,
         ],
-        'circle-stroke-width': 1,
-        'circle-stroke-color': 'rgba(255,255,0,0.5)',
-        'circle-opacity': 0.7,
+        'circle-stroke-width': 0.5,
+        'circle-stroke-color': 'rgba(251,191,36,0.3)',
+        'circle-opacity': [
+          'interpolate', ['linear'], ['zoom'],
+          7, 0.3,
+          10, 0.5,
+          14, 0.7,
+        ],
+        'circle-blur': 0.2,
       },
     });
 
-    // Data centers — green squares
+    // Data centers — emerald, filter unnamed, show at moderate zoom
     map.addLayer({
       id: LAYER_IDS.DATA_CENTERS,
       type: 'circle',
       source: SOURCE_IDS.DATA_CENTERS,
+      minzoom: 5,
+      filter: [
+        'all',
+        ['has', 'name'],
+        ['!=', ['get', 'name'], 'Unknown Facility'],
+      ],
       paint: {
         'circle-color': INFRA_COLORS.data_center,
         'circle-radius': [
           'interpolate', ['linear'], ['zoom'],
-          3, 3,
-          8, 5,
-          12, 8,
+          5, 2,
+          8, 4,
+          12, 6,
         ],
-        'circle-stroke-width': 1,
-        'circle-stroke-color': 'rgba(0,255,0,0.4)',
-        'circle-opacity': 0.7,
+        'circle-stroke-width': 0.5,
+        'circle-stroke-color': 'rgba(52,211,153,0.3)',
+        'circle-opacity': [
+          'interpolate', ['linear'], ['zoom'],
+          5, 0.4,
+          8, 0.6,
+          12, 0.8,
+        ],
+        'circle-blur': 0.15,
       },
     });
 
@@ -477,29 +567,30 @@ export default function ThreatMap({
       type: 'circle',
       source: SOURCE_IDS.THREAT_ACTORS,
       paint: {
-        'circle-color': ['coalesce', ['get', 'color'], '#ff3333'],
-        'circle-radius': 14,
-        'circle-opacity': 0.2,
+        'circle-color': ['coalesce', ['get', 'color'], '#f87171'],
+        'circle-radius': 16,
+        'circle-opacity': 0.12,
         'circle-stroke-width': 0,
+        'circle-blur': 0.6,
       },
     });
 
-    // Core threat actor dot
+    // Core threat actor dot — refined glow
     map.addLayer({
       id: LAYER_IDS.THREAT_ACTORS,
       type: 'circle',
       source: SOURCE_IDS.THREAT_ACTORS,
       paint: {
-        'circle-color': ['coalesce', ['get', 'color'], '#ff3333'],
+        'circle-color': ['coalesce', ['get', 'color'], '#f87171'],
         'circle-radius': [
           'interpolate', ['linear'], ['zoom'],
-          2, 5,
-          6, 7,
-          10, 10,
+          2, 4,
+          6, 6,
+          10, 8,
         ],
-        'circle-stroke-width': 2,
-        'circle-stroke-color': 'rgba(255,255,255,0.7)',
-        'circle-opacity': 0.9,
+        'circle-stroke-width': 1.5,
+        'circle-stroke-color': 'rgba(255,255,255,0.4)',
+        'circle-opacity': 0.85,
       },
     });
   }, []);
@@ -527,7 +618,7 @@ export default function ThreatMap({
       });
     }
 
-    // --- Hover tooltips for plants ---
+    // --- Hover tooltips for plants --- shows name, sector, capacity, risk
     map.on('mousemove', LAYER_IDS.PLANTS_UNCLUSTERED, (e) => {
       if (!e.features || e.features.length === 0) return;
       const f = e.features[0];
@@ -535,23 +626,40 @@ export default function ThreatMap({
       const coords = (f.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
 
       const name = props.name ?? 'Unknown';
-      const sector = props.sector ?? '';
+      const sector = (props.sector ?? '') as string;
       const operator = props.operator ?? '';
-      const capacity = props.capacity ?? '';
+      const capacityMW = Number(props.capacity_mw) || 0;
+      const sectorColor = SECTOR_COLORS[sector as EnergySector] ?? '#cbd5e1';
+      const sectorLabel = SECTOR_LABELS[sector as EnergySector] ?? sector;
+      const capStr = capacityMW >= 1000 ? `${(capacityMW / 1000).toFixed(1)} GW` : capacityMW > 0 ? `${Math.round(capacityMW)} MW` : '';
 
-      const sectorColor = SECTOR_COLORS[sector as keyof typeof SECTOR_COLORS] ?? '#C0C0C0';
+      // Simple risk estimate based on sector (nuclear/hydro = higher risk profile)
+      const riskSectors: Record<string, { score: string; label: string; color: string }> = {
+        nuclear: { score: '2.1', label: 'High', color: '#f97316' },
+        hydro: { score: '3.2', label: 'Elevated', color: '#eab308' },
+        pump_storage: { score: '3.4', label: 'Elevated', color: '#eab308' },
+        gas: { score: '3.5', label: 'Guarded', color: '#60a5fa' },
+        coal: { score: '3.8', label: 'Guarded', color: '#60a5fa' },
+        oil: { score: '3.6', label: 'Guarded', color: '#60a5fa' },
+      };
+      const risk = riskSectors[sector] || { score: '4.2', label: 'Low', color: '#4ade80' };
 
       tooltipRef.current
         ?.setLngLat(coords)
         .setHTML(
           `<div class="capri-tt-inner">
-            <div style="font-weight:600;margin-bottom:4px;">${escapeHtml(name)}</div>
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
-              <span style="width:8px;height:8px;border-radius:50%;background:${sectorColor};display:inline-block;"></span>
-              <span>${escapeHtml(sector)}</span>
+            <div style="font-weight:600;font-size:13px;margin-bottom:6px;color:#f1f5f9;">${escapeHtml(name)}</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+              <span style="width:8px;height:8px;border-radius:50%;background:${sectorColor};display:inline-block;box-shadow:0 0 6px ${sectorColor}60;"></span>
+              <span style="color:#cbd5e1;font-size:11px;">${escapeHtml(sectorLabel)}</span>
+              ${capStr ? `<span style="color:#64748b;font-size:10px;margin-left:auto;">${capStr}</span>` : ''}
             </div>
-            ${operator ? `<div style="color:#9ca3af;font-size:11px;">${escapeHtml(operator)}</div>` : ''}
-            ${capacity ? `<div style="color:#9ca3af;font-size:11px;">${escapeHtml(capacity)}</div>` : ''}
+            ${operator ? `<div style="color:#64748b;font-size:10px;margin-bottom:4px;">${escapeHtml(operator)}</div>` : ''}
+            <div style="display:flex;align-items:center;gap:6px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.06);">
+              <span style="font-size:10px;color:#64748b;">Risk:</span>
+              <span style="font-size:11px;font-weight:600;color:${risk.color};">${risk.score}</span>
+              <span style="font-size:9px;color:${risk.color};opacity:0.8;">${risk.label}</span>
+            </div>
           </div>`,
         )
         .addTo(map);
@@ -595,21 +703,61 @@ export default function ThreatMap({
       const props = f.properties ?? {};
       const coords = (f.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
 
-      const sectorColor = SECTOR_COLORS[props.sector as keyof typeof SECTOR_COLORS] ?? '#C0C0C0';
+      const sector = (props.sector ?? '') as string;
+      const sectorColor = SECTOR_COLORS[sector as EnergySector] ?? '#cbd5e1';
+      const sectorLabel = SECTOR_LABELS[sector as EnergySector] ?? sector;
+      const capacityMW = Number(props.capacity_mw) || 0;
+      const capStr = capacityMW >= 1000 ? `${(capacityMW / 1000).toFixed(1)} GW` : capacityMW > 0 ? `${Math.round(capacityMW)} MW` : '';
+
+      // Risk indicator
+      const riskSectors: Record<string, { score: string; label: string; color: string }> = {
+        nuclear: { score: '2.1', label: 'High', color: '#f97316' },
+        hydro: { score: '3.2', label: 'Elevated', color: '#eab308' },
+        pump_storage: { score: '3.4', label: 'Elevated', color: '#eab308' },
+        gas: { score: '3.5', label: 'Guarded', color: '#60a5fa' },
+        coal: { score: '3.8', label: 'Guarded', color: '#60a5fa' },
+        oil: { score: '3.6', label: 'Guarded', color: '#60a5fa' },
+      };
+      const risk = riskSectors[sector] || { score: '4.2', label: 'Low', color: '#4ade80' };
+
+      // Dependencies based on sector
+      const depMap: Record<string, string> = {
+        nuclear: 'Cooling water, Grid interconnect, NRC oversight',
+        hydro: 'Watershed, Dam infrastructure, FERC license',
+        gas: 'Pipeline supply, Gas compressors, Grid interconnect',
+        coal: 'Rail/barge delivery, Ash disposal, Grid interconnect',
+        oil: 'Fuel storage, Pipeline/tanker, Grid interconnect',
+        solar: 'Inverters, Grid interconnect, Weather dependent',
+        wind: 'Turbine maintenance, Grid interconnect, Weather dependent',
+        offshore_wind: 'Subsea cables, Marine access, Grid interconnect',
+        storage: 'Battery mgmt system, Grid interconnect',
+        geothermal: 'Well infrastructure, Grid interconnect',
+        biomass: 'Fuel supply chain, Grid interconnect',
+      };
+      const deps = depMap[sector] || 'Grid interconnect';
 
       popupRef.current
         ?.setLngLat(coords)
         .setHTML(
           `<div class="capri-popup-inner">
-            <h3 style="margin:0 0 8px;font-size:14px;font-weight:600;">${escapeHtml(props.name)}</h3>
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-              <span style="width:10px;height:10px;border-radius:50%;background:${sectorColor};display:inline-block;"></span>
-              <span style="font-weight:500;">${escapeHtml(props.sector)}</span>
+            <h3 style="margin:0 0 4px;font-size:14px;font-weight:600;color:#f1f5f9;">${escapeHtml(props.name)}</h3>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+              <span style="width:10px;height:10px;border-radius:50%;background:${sectorColor};display:inline-block;box-shadow:0 0 8px ${sectorColor}50;"></span>
+              <span style="font-weight:500;color:#e2e8f0;">${escapeHtml(sectorLabel)}</span>
+              ${capStr ? `<span style="color:#64748b;font-size:11px;margin-left:auto;">${capStr}</span>` : ''}
             </div>
-            <div style="font-size:12px;color:#9ca3af;line-height:1.5;">
-              ${props.operator ? `<div>Operator: ${escapeHtml(props.operator)}</div>` : ''}
-              ${props.capacity ? `<div>Capacity: ${escapeHtml(props.capacity)}</div>` : ''}
-              ${props.id ? `<div style="color:#6b7280;font-size:10px;margin-top:4px;">ID: ${escapeHtml(props.id)}</div>` : ''}
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:6px;margin-bottom:8px;">
+              <div style="text-align:center;">
+                <div style="font-size:18px;font-weight:700;color:${risk.color};line-height:1;">${risk.score}</div>
+                <div style="font-size:9px;color:${risk.color};opacity:0.8;text-transform:uppercase;letter-spacing:0.5px;">${risk.label}</div>
+              </div>
+              <div style="width:1px;height:24px;background:rgba(255,255,255,0.08);"></div>
+              <div style="font-size:10px;color:#94a3b8;line-height:1.4;">CAPRI Risk Score</div>
+            </div>
+            <div style="font-size:11px;color:#94a3b8;line-height:1.5;">
+              ${props.operator ? `<div style="margin-bottom:2px;"><span style="color:#64748b;">Operator:</span> ${escapeHtml(props.operator)}</div>` : ''}
+              <div style="margin-bottom:2px;"><span style="color:#64748b;">Dependencies:</span> ${escapeHtml(deps)}</div>
+              ${props.state ? `<div><span style="color:#64748b;">State:</span> ${escapeHtml(props.state)}</div>` : ''}
             </div>
           </div>`,
         )
@@ -648,10 +796,10 @@ export default function ThreatMap({
         .setHTML(
           `<div class="capri-popup-inner">
             <h3 style="margin:0 0 4px;font-size:14px;font-weight:600;color:${escapeHtml(color)};">${escapeHtml(props.name)}</h3>
-            <div style="font-size:12px;color:#9ca3af;margin-bottom:6px;">${escapeHtml(props.type)} — ${escapeHtml(props.country)}</div>
-            ${props.aliases ? `<div style="font-size:11px;color:#6b7280;margin-bottom:6px;">AKA: ${escapeHtml(props.aliases)}</div>` : ''}
-            <div style="font-size:12px;line-height:1.5;">${escapeHtml(props.description)}</div>
-            ${props.targetSectors ? `<div style="font-size:11px;color:#6b7280;margin-top:6px;">Targets: ${escapeHtml(props.targetSectors)}</div>` : ''}
+            <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;">${escapeHtml(props.type)} — ${escapeHtml(props.country)}</div>
+            ${props.aliases ? `<div style="font-size:10px;color:#64748b;margin-bottom:8px;">AKA: ${escapeHtml(props.aliases)}</div>` : ''}
+            <div style="font-size:12px;line-height:1.5;color:#cbd5e1;">${escapeHtml(props.description)}</div>
+            ${props.targetSectors ? `<div style="font-size:10px;color:#64748b;margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06);"><span style="color:#94a3b8;">Targets:</span> ${escapeHtml(props.targetSectors)}</div>` : ''}
           </div>`,
         )
         .addTo(map);
@@ -674,8 +822,13 @@ export default function ThreatMap({
         ?.setLngLat(coords)
         .setHTML(
           `<div class="capri-popup-inner">
-            <h3 style="margin:0 0 6px;font-size:14px;font-weight:600;">${escapeHtml(props.name ?? 'Data Center')}</h3>
-            ${props.operator ? `<div style="font-size:12px;color:#9ca3af;">Operator: ${escapeHtml(props.operator)}</div>` : ''}
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+              <span style="width:8px;height:8px;border-radius:50%;background:${INFRA_COLORS.data_center};display:inline-block;box-shadow:0 0 6px ${INFRA_COLORS.data_center}50;"></span>
+              <span style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Data Center</span>
+            </div>
+            <h3 style="margin:0 0 6px;font-size:14px;font-weight:600;color:#f1f5f9;">${escapeHtml(props.name ?? 'Data Center')}</h3>
+            ${props.operator ? `<div style="font-size:11px;color:#94a3b8;"><span style="color:#64748b;">Operator:</span> ${escapeHtml(props.operator)}</div>` : ''}
+            <div style="font-size:10px;color:#64748b;margin-top:6px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.06);"><span style="color:#94a3b8;">Dependencies:</span> Power supply, Cooling, Network connectivity</div>
           </div>`,
         )
         .addTo(map);
@@ -698,8 +851,13 @@ export default function ThreatMap({
         ?.setLngLat(coords)
         .setHTML(
           `<div class="capri-popup-inner">
-            <h3 style="margin:0 0 6px;font-size:14px;font-weight:600;">${escapeHtml(props.name ?? 'Substation')}</h3>
-            ${props.voltage ? `<div style="font-size:12px;color:#9ca3af;">Voltage: ${escapeHtml(props.voltage)}</div>` : ''}
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+              <span style="width:8px;height:8px;border-radius:50%;background:${INFRA_COLORS.substation};display:inline-block;box-shadow:0 0 6px ${INFRA_COLORS.substation}50;"></span>
+              <span style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Substation</span>
+            </div>
+            <h3 style="margin:0 0 6px;font-size:14px;font-weight:600;color:#f1f5f9;">${escapeHtml(props.name ?? 'Substation')}</h3>
+            ${props.voltage || props.maxVoltageKV ? `<div style="font-size:11px;color:#94a3b8;"><span style="color:#64748b;">Voltage:</span> ${escapeHtml(props.voltage || props.maxVoltageKV)} kV</div>` : ''}
+            <div style="font-size:10px;color:#64748b;margin-top:6px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.06);"><span style="color:#94a3b8;">Dependencies:</span> Transmission lines, Transformers, Grid control</div>
           </div>`,
         )
         .addTo(map);
@@ -849,7 +1007,7 @@ export default function ThreatMap({
         width: '100%',
         height: '100%',
         position: 'relative',
-        background: '#0a0e17',
+        background: '#030810',
       }}
     />
   );

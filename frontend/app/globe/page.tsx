@@ -349,7 +349,7 @@ export default function GlobePage() {
   return (
     <div className="h-[calc(100vh-84px)] flex flex-col bg-[#030810] text-white overflow-hidden">
       {/* Top Stats Bar */}
-      <div className="flex-shrink-0 h-10 bg-[#060d1a]/95 border-b border-white/[0.06] flex items-center justify-between px-4 backdrop-blur-sm">
+      <div className="flex-shrink-0 h-10 bg-[#0a1628]/90 border-b border-white/[0.04] flex items-center justify-between px-4 backdrop-blur-xl">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
             <Link href="/" className="text-xs text-gray-500 hover:text-gray-300 transition-colors hidden sm:inline">Dashboard</Link>
@@ -445,10 +445,10 @@ export default function GlobePage() {
             className="w-full h-full"
           />
 
-          {/* Overlay: Score Badge — ASCII art digits */}
+          {/* Overlay: Score Badge — positioned below legend */}
           {data?.score && !selectedFeature && (
-            <div className="absolute top-4 left-4 z-20 bg-[#060d1a]/90 backdrop-blur-md border border-white/[0.08] rounded-lg px-4 py-3">
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">CAPRI Score</p>
+            <div className="absolute top-[calc(var(--legend-height,360px)+24px)] left-4 z-20 bg-[#0a1628]/85 backdrop-blur-xl border border-white/[0.06] rounded-xl px-4 py-3 shadow-2xl" style={{ minWidth: 200 }}>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1 font-semibold">CAPRI Score</p>
               <pre
                 className={`text-[7px] leading-[1.15] font-mono select-none ${getScoreColor(data.score.score)}`}
                 aria-hidden="true"
@@ -460,25 +460,23 @@ export default function GlobePage() {
             </div>
           )}
 
-          {/* Overlay: Bottom-left status widgets */}
+          {/* Overlay: Bottom-left status widgets — glass morphism */}
           <div className="absolute bottom-4 left-4 z-20 flex items-end gap-2">
-            {/* Attack Counter */}
-            <div className="bg-[#060d1a]/90 backdrop-blur-md border border-white/[0.08] rounded-lg px-4 py-3">
+            <div className="bg-[#0a1628]/85 backdrop-blur-xl border border-white/[0.06] rounded-xl px-4 py-3 shadow-2xl">
               <div className="flex items-center gap-3">
                 <Activity className="w-4 h-4 text-red-400 animate-pulse" />
                 <div>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">Observed Attacks</p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Observed Attacks</p>
                   <p className="text-lg font-bold font-mono text-red-400">{attackCount.toLocaleString()}</p>
                 </div>
               </div>
             </div>
-            {/* Active KEVs */}
             {data?.kev && data.kev.length > 0 && (
-              <div className="bg-[#060d1a]/90 backdrop-blur-md border border-red-500/20 rounded-lg px-4 py-3">
+              <div className="bg-[#0a1628]/85 backdrop-blur-xl border border-red-500/10 rounded-xl px-4 py-3 shadow-2xl">
                 <div className="flex items-center gap-3">
                   <Zap className="w-4 h-4 text-red-400" />
                   <div>
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">Active KEVs</p>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Active KEVs</p>
                     <p className="text-lg font-bold font-mono text-red-300">{data.kev.length}</p>
                   </div>
                 </div>
@@ -494,7 +492,7 @@ export default function GlobePage() {
             />
           )}
 
-          {/* Overlay: Layer Toggle Panel (bottom-right) */}
+          {/* Overlay: Legend Panel (top-left, OpenGridWorks style) */}
           <LayerPanel layers={layerVisibility} onToggle={handleLayerToggle} />
 
           {/* Overlay: Detail Panel (right side slide-out) */}
@@ -512,7 +510,7 @@ export default function GlobePage() {
         </div>
 
         {/* Right Sidebar: Threat Feed */}
-        <div className={`flex-shrink-0 bg-[#060d1a]/95 border-l border-white/[0.06] transition-all duration-300 overflow-hidden ${rightPanelOpen ? 'w-80' : 'w-0'} hidden md:block`}>
+        <div className={`flex-shrink-0 bg-[#0a1628]/90 border-l border-white/[0.04] transition-all duration-300 overflow-hidden ${rightPanelOpen ? 'w-80' : 'w-0'} hidden md:block`}>
           <div className="h-full flex flex-col w-80">
             <div className="flex-shrink-0 p-3 border-b border-white/[0.06]">
               <div className="flex items-center justify-between">

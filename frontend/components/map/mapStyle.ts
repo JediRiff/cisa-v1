@@ -42,50 +42,80 @@ export const DARK_STYLE_FALLBACK: StyleSpecification = {
 };
 
 // Clustering configuration for power plant sources
+// More aggressive clustering to keep the map clean at zoom-out
 export const CLUSTER_CONFIG = {
-  clusterMaxZoom: 12,  // Don't cluster above zoom 12
-  clusterRadius: 50,   // Pixel radius for clustering
-  clusterMinPoints: 3, // Min points to form a cluster
+  clusterMaxZoom: 11,  // Don't cluster above zoom 11
+  clusterRadius: 60,   // Larger pixel radius for tighter grouping
+  clusterMinPoints: 2, // Cluster even pairs to reduce visual noise
 };
 
 // MapLibre expression for circle radius based on zoom + capacity
-// At zoom < 5:  small dots
-// At zoom 5-8:  dots scale by capacity
-// At zoom > 8:  larger dots, labels start appearing
+// Designed to keep dots small and clean at low zoom, revealing detail as you zoom in.
+// Solar facilities get smaller radii to prevent overwhelming the map.
 export function getCircleRadiusExpression(): maplibregl.ExpressionSpecification {
   return [
     'interpolate',
     ['linear'],
     ['zoom'],
-    // zoom 0-4: small fixed size per capacity tier
+    // zoom 0-4: tiny dots — just show presence
     2, [
-      'step',
-      ['coalesce', ['get', 'capacity_mw'], 0],
-      2,     // default for 0 MW
-      10, 2.5,
-      100, 3,
-      500, 3.5,
-      1000, 4,
+      'case',
+      // Solar gets extra-small dots at low zoom
+      ['==', ['get', 'sector'], 'solar'],
+      1,
+      // Everything else: small by capacity
+      ['step', ['coalesce', ['get', 'capacity_mw'], 0],
+        1.5,     // default
+        100, 2,
+        500, 2.5,
+        1000, 3,
+      ],
     ],
-    // zoom 5-8: moderate scaling
+    // zoom 5-7: moderate, solar still restrained
     6, [
-      'step',
-      ['coalesce', ['get', 'capacity_mw'], 0],
-      3,
-      10, 4,
-      100, 5,
-      500, 6,
-      1000, 8,
+      'case',
+      ['==', ['get', 'sector'], 'solar'],
+      ['step', ['coalesce', ['get', 'capacity_mw'], 0],
+        1.5,
+        50, 2,
+        200, 3,
+      ],
+      ['step', ['coalesce', ['get', 'capacity_mw'], 0],
+        2.5,
+        10, 3,
+        100, 4,
+        500, 5,
+        1000, 7,
+      ],
     ],
-    // zoom 9+: larger, detail visible
+    // zoom 9+: full detail, all sectors visible
     10, [
       'step',
       ['coalesce', ['get', 'capacity_mw'], 0],
-      5,
-      10, 6,
-      100, 8,
-      500, 10,
-      1000, 14,
+      4,
+      10, 5,
+      100, 7,
+      500, 9,
+      1000, 12,
+    ],
+  ] as maplibregl.ExpressionSpecification;
+}
+
+// Opacity expression — solar fades at low zoom to reduce visual noise
+export function getCircleOpacityExpression(): maplibregl.ExpressionSpecification {
+  return [
+    'case',
+    ['==', ['get', 'sector'], 'solar'],
+    ['interpolate', ['linear'], ['zoom'],
+      2, 0.3,
+      6, 0.5,
+      9, 0.8,
+    ],
+    // All other sectors: higher baseline opacity
+    ['interpolate', ['linear'], ['zoom'],
+      2, 0.6,
+      6, 0.75,
+      9, 0.9,
     ],
   ] as maplibregl.ExpressionSpecification;
 }
@@ -99,15 +129,15 @@ export function capacityToRadius(capacityMW: number): number {
   return 3;
 }
 
-// Cluster circle radius expression (larger clusters = larger circles)
+// Cluster circle radius expression — smaller, cleaner clusters
 export function getClusterRadiusExpression(): maplibregl.ExpressionSpecification {
   return [
     'step',
     ['get', 'point_count'],
-    15,    // < 10 points
-    10, 20,
-    50, 25,
-    100, 30,
-    500, 35,
+    12,    // < 10 points
+    10, 16,
+    50, 20,
+    100, 24,
+    500, 28,
   ] as maplibregl.ExpressionSpecification;
 }

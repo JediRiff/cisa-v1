@@ -64,21 +64,22 @@ export const DEFAULT_LAYER_VISIBILITY: LayerVisibility = {
   attack_arcs: true,
 };
 
-// Sector colors — distinct, accessible palette
+// Sector colors — luminescent palette inspired by OpenGridWorks
+// Designed to glow against dark backgrounds without overwhelming
 export const SECTOR_COLORS: Record<EnergySector, string> = {
-  solar: '#FFD700',        // Gold
-  wind: '#00CED1',         // Dark turquoise
-  offshore_wind: '#4169E1', // Royal blue
-  storage: '#FF69B4',      // Hot pink
-  pump_storage: '#8A2BE2', // Blue violet
-  hydro: '#1E90FF',        // Dodger blue
-  nuclear: '#FF4500',      // Orange red
-  gas: '#FFA500',          // Orange
-  coal: '#808080',         // Gray
-  oil: '#8B4513',          // Saddle brown
-  geothermal: '#DC143C',   // Crimson
-  biomass: '#32CD32',      // Lime green
-  other: '#C0C0C0',        // Silver
+  solar: '#f5e6c8',        // Warm pale cream — subtle, won't dominate
+  wind: '#7dd3fc',         // Light sky blue
+  offshore_wind: '#818cf8', // Soft indigo
+  storage: '#c4b5fd',      // Lavender
+  pump_storage: '#a78bfa',  // Medium purple
+  hydro: '#38bdf8',        // Bright cyan blue
+  nuclear: '#4ade80',      // Luminescent green
+  gas: '#fb923c',          // Soft orange
+  coal: '#94a3b8',         // Cool slate
+  oil: '#a8a29e',          // Warm stone
+  geothermal: '#f87171',   // Soft red
+  biomass: '#86efac',      // Mint green
+  other: '#cbd5e1',        // Light slate
 };
 
 // Sector labels for UI display
@@ -98,14 +99,14 @@ export const SECTOR_LABELS: Record<EnergySector, string> = {
   other: 'Other',
 };
 
-// Infrastructure colors
+// Infrastructure colors — luminescent, subtle on dark
 export const INFRA_COLORS: Record<InfrastructureType, string> = {
-  data_center: '#00FF00',
-  substation: '#FFFF00',
-  transmission_line: '#FFD700',
-  submarine_cable: '#00BFFF',
-  fiber_route: '#FF00FF',
-  gas_pipeline: '#FF8C00',
+  data_center: '#34d399',     // Emerald glow
+  substation: '#fbbf24',      // Warm amber
+  transmission_line: '#60a5fa', // Soft blue
+  submarine_cable: '#38bdf8',  // Cyan
+  fiber_route: '#c084fc',     // Soft purple
+  gas_pipeline: '#fb923c',    // Warm orange
 };
 
 // Facility risk — preserves the existing worldData.ts model

@@ -4,62 +4,45 @@
 @tailwind components;
 @tailwind utilities;
 
-/* MapLibre popup and tooltip overrides for CAPRI dark theme */
+/* MapLibre popup and tooltip — luminescent glass theme */
 .maplibregl-popup-content {
-  background: #0a1628 !important;
-  color: #e0e4e8 !important;
-  border: 1px solid rgba(255,255,255,0.1) !important;
-  border-radius: 8px !important;
+  background: rgba(10, 22, 40, 0.92) !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  border-radius: 12px !important;
   padding: 0 !important;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+  box-shadow:
+    0 4px 24px rgba(0,0,0,0.5),
+    0 0 1px rgba(255,255,255,0.1),
+    inset 0 1px 0 rgba(255,255,255,0.04) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
 }
 .maplibregl-popup-tip {
-  border-top-color: #0a1628 !important;
+  border-top-color: rgba(10, 22, 40, 0.92) !important;
 }
 .maplibregl-popup-close-button {
-  color: #9ca3af !important;
-  font-size: 18px !important;
+  color: #64748b !important;
+  font-size: 16px !important;
   padding: 4px 8px !important;
+  line-height: 1 !important;
 }
 .maplibregl-popup-close-button:hover {
-  color: #ffffff !important;
+  color: #f1f5f9 !important;
   background: transparent !important;
 }
-.capri-popup-inner, .capri-tt-inner {
-  padding: 10px 12px;
+.capri-popup-inner {
+  padding: 12px 14px;
+}
+.capri-tt-inner {
+  padding: 8px 10px;
 }
 .capri-tooltip .maplibregl-popup-content {
   padding: 0 !important;
   font-size: 12px;
-}
-
-/* MapLibre popup and tooltip overrides for CAPRI dark theme */
-.maplibregl-popup-content {
-  background: #0a1628 !important;
-  color: #e0e4e8 !important;
-  border: 1px solid rgba(255,255,255,0.1) !important;
-  border-radius: 8px !important;
-  padding: 0 !important;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
-}
-.maplibregl-popup-tip {
-  border-top-color: #0a1628 !important;
-}
-.maplibregl-popup-close-button {
-  color: #9ca3af !important;
-  font-size: 18px !important;
-  padding: 4px 8px !important;
-}
-.maplibregl-popup-close-button:hover {
-  color: #ffffff !important;
-  background: transparent !important;
-}
-.capri-popup-inner, .capri-tt-inner {
-  padding: 10px 12px;
-}
-.capri-tooltip .maplibregl-popup-content {
-  padding: 0 !important;
-  font-size: 12px;
+  box-shadow:
+    0 2px 12px rgba(0,0,0,0.4),
+    0 0 1px rgba(255,255,255,0.08) !important;
 }
 
 /* ============================================
