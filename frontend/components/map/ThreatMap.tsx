@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
+// CSS is imported in globals.css to avoid issues with dynamic imports
 import {
   LayerVisibility,
   DEFAULT_LAYER_VISIBILITY,
@@ -101,18 +101,28 @@ export default function ThreatMap({
   useEffect(() => {
     if (!mapContainer.current) return;
 
-    const map = new maplibregl.Map({
-      container: mapContainer.current,
-      style: MAP_STYLE,
-      center: [-98.5, 39.8], // Center of continental US
-      zoom: 3.5,
-      minZoom: 1.5,
-      maxZoom: 18,
-      attributionControl: false,
-    });
+    let map: maplibregl.Map;
+    try {
+      map = new maplibregl.Map({
+        container: mapContainer.current,
+        style: MAP_STYLE,
+        center: [-98.5, 39.8], // Center of continental US
+        zoom: 3.5,
+        minZoom: 1.5,
+        maxZoom: 18,
+        attributionControl: false,
+      });
+    } catch (err) {
+      console.error('[ThreatMap] Failed to create map:', err);
+      return;
+    }
 
     // Enable globe projection (MapLibre GL JS v4+)
-    map.setProjection({ type: 'globe' });
+    try {
+      map.setProjection({ type: 'globe' } as maplibregl.ProjectionSpecification);
+    } catch {
+      console.warn('[ThreatMap] Globe projection not supported, using mercator');
+    }
 
     // Compact attribution in bottom-right
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
@@ -140,11 +150,19 @@ export default function ThreatMap({
 
     map.on('load', () => {
       mapReadyRef.current = true;
-      addSources(map);
-      addLayers(map);
-      setupInteractions(map);
-      applyLayerVisibility(map, layersRef.current);
-      startPulseAnimation(map);
+      try {
+        addSources(map);
+        addLayers(map);
+        setupInteractions(map);
+        applyLayerVisibility(map, layersRef.current);
+        startPulseAnimation(map);
+      } catch (err) {
+        console.error('[ThreatMap] Failed to initialize map layers:', err);
+      }
+    });
+
+    map.on('error', (e) => {
+      console.warn('[ThreatMap] Map error:', e.error?.message || e);
     });
 
     // Cleanup

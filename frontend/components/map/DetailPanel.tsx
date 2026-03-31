@@ -120,10 +120,10 @@ export default function DetailPanel({
             <h3 className="text-sm font-bold text-white leading-tight">
               {str(props.name) || 'Unknown'}
             </h3>
-            {/* Aliases (threat actors) */}
+            {/* Aliases (threat actors) — MapLibre serializes arrays to strings */}
             {feature.type === 'threat_actor' && !!props.aliases && (
               <p className="text-[10px] text-gray-500 mt-0.5">
-                aka {(props.aliases as string[]).join(', ')}
+                aka {Array.isArray(props.aliases) ? (props.aliases as string[]).join(', ') : str(props.aliases)}
               </p>
             )}
           </div>
@@ -328,7 +328,7 @@ export default function DetailPanel({
               Target Sectors
             </h4>
             <div className="flex flex-wrap gap-1.5">
-              {(props.targetSectors as string[]).map((sector) => {
+              {(Array.isArray(props.targetSectors) ? props.targetSectors : str(props.targetSectors).split(', ').filter(Boolean)).map((sector: string) => {
                 const sectorKey = sector as EnergySector
                 const color = SECTOR_COLORS[sectorKey] || '#6b7280'
                 const label = SECTOR_LABELS[sectorKey] || sector

@@ -4,6 +4,64 @@
 @tailwind components;
 @tailwind utilities;
 
+/* MapLibre popup and tooltip overrides for CAPRI dark theme */
+.maplibregl-popup-content {
+  background: #0a1628 !important;
+  color: #e0e4e8 !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 8px !important;
+  padding: 0 !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+}
+.maplibregl-popup-tip {
+  border-top-color: #0a1628 !important;
+}
+.maplibregl-popup-close-button {
+  color: #9ca3af !important;
+  font-size: 18px !important;
+  padding: 4px 8px !important;
+}
+.maplibregl-popup-close-button:hover {
+  color: #ffffff !important;
+  background: transparent !important;
+}
+.capri-popup-inner, .capri-tt-inner {
+  padding: 10px 12px;
+}
+.capri-tooltip .maplibregl-popup-content {
+  padding: 0 !important;
+  font-size: 12px;
+}
+
+/* MapLibre popup and tooltip overrides for CAPRI dark theme */
+.maplibregl-popup-content {
+  background: #0a1628 !important;
+  color: #e0e4e8 !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 8px !important;
+  padding: 0 !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+}
+.maplibregl-popup-tip {
+  border-top-color: #0a1628 !important;
+}
+.maplibregl-popup-close-button {
+  color: #9ca3af !important;
+  font-size: 18px !important;
+  padding: 4px 8px !important;
+}
+.maplibregl-popup-close-button:hover {
+  color: #ffffff !important;
+  background: transparent !important;
+}
+.capri-popup-inner, .capri-tt-inner {
+  padding: 10px 12px;
+}
+.capri-tooltip .maplibregl-popup-content {
+  padding: 0 !important;
+  font-size: 12px;
+}
+
 /* ============================================
    CSS VARIABLES FOR LIGHT/DARK THEME
    ============================================ */
