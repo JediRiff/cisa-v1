@@ -42,11 +42,11 @@ export const DARK_STYLE_FALLBACK: StyleSpecification = {
 };
 
 // Clustering configuration for power plant sources
-// More aggressive clustering to keep the map clean at zoom-out
+// Balanced: clusters at low zoom but shows individual facilities sooner
 export const CLUSTER_CONFIG = {
-  clusterMaxZoom: 11,  // Don't cluster above zoom 11
-  clusterRadius: 60,   // Larger pixel radius for tighter grouping
-  clusterMinPoints: 2, // Cluster even pairs to reduce visual noise
+  clusterMaxZoom: 9,   // Stop clustering at zoom 9 (was 11 — too aggressive)
+  clusterRadius: 40,   // Moderate radius (was 60 — absorbed too many)
+  clusterMinPoints: 5, // Need 5+ to form a cluster (was 2 — too aggressive)
 };
 
 // MapLibre expression for circle radius based on zoom + capacity

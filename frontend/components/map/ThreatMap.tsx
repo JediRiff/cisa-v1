@@ -517,8 +517,9 @@ export default function ThreatMap({
       },
     });
 
-    // Unclustered facilities — reliable circle layer, colored by sector
-    // Circle layers are GPU-native, always render, and have perfect click hit-testing.
+    // Unclustered facilities — circle layer colored by sector.
+    // Radii are large enough to see AND click at all zoom levels.
+    // Nuclear/hydro/gas get priority sizing so they're visible among 6k+ solar.
     map.addLayer({
       id: LAYER_IDS.PLANTS_UNCLUSTERED,
       type: 'circle',
@@ -530,46 +531,80 @@ export default function ThreatMap({
           'interpolate',
           ['linear'],
           ['zoom'],
-          // zoom 2-4: tiny dots, solar smallest
+          // zoom 2: visible dots — nuclear/hydro/gas stand out
           2, [
             'case',
-            ['==', ['get', 'sector'], 'solar'], 1,
-            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000], 3,
-            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500], 2.5,
-            1.5,
-          ],
-          // zoom 6: moderate scaling
-          6, [
-            'case',
-            ['==', ['get', 'sector'], 'solar'], 1.5,
-            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000], 6,
-            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500], 5,
-            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 100], 4,
-            3,
-          ],
-          // zoom 10+: full detail
-          10, [
-            'case',
-            ['==', ['get', 'sector'], 'solar'], 4,
-            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000], 12,
-            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500], 9,
-            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 100], 7,
+            ['in', ['get', 'sector'], ['literal', ['nuclear']]],
             5,
+            ['in', ['get', 'sector'], ['literal', ['hydro', 'pump_storage']]],
+            4,
+            ['in', ['get', 'sector'], ['literal', ['gas', 'coal', 'oil', 'wind', 'offshore_wind']]],
+            3,
+            ['==', ['get', 'sector'], 'solar'],
+            1.5,
+            2.5,
+          ],
+          // zoom 5: all clearly visible
+          5, [
+            'case',
+            ['in', ['get', 'sector'], ['literal', ['nuclear']]],
+            7,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000],
+            7,
+            ['in', ['get', 'sector'], ['literal', ['hydro', 'pump_storage']]],
+            6,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500],
+            5.5,
+            ['in', ['get', 'sector'], ['literal', ['gas', 'coal', 'oil', 'wind', 'offshore_wind']]],
+            4.5,
+            ['==', ['get', 'sector'], 'solar'],
+            2.5,
+            3.5,
+          ],
+          // zoom 8: detailed, capacity-scaled
+          8, [
+            'case',
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 2000],
+            14,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000],
+            11,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500],
+            9,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 100],
+            7,
+            ['==', ['get', 'sector'], 'solar'],
+            4,
+            6,
+          ],
+          // zoom 12+: full detail
+          12, [
+            'case',
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 2000],
+            18,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000],
+            14,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500],
+            11,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 100],
+            9,
+            ['==', ['get', 'sector'], 'solar'],
+            6,
+            7,
           ],
         ] as maplibregl.ExpressionSpecification,
         'circle-opacity': [
           'case',
           ['==', ['get', 'sector'], 'solar'],
-          ['interpolate', ['linear'], ['zoom'], 2, 0.3, 6, 0.5, 9, 0.8],
-          ['interpolate', ['linear'], ['zoom'], 2, 0.6, 6, 0.8, 9, 0.9],
+          ['interpolate', ['linear'], ['zoom'], 2, 0.4, 6, 0.6, 9, 0.85],
+          0.85,
         ] as maplibregl.ExpressionSpecification,
         'circle-stroke-width': [
           'interpolate', ['linear'], ['zoom'],
-          2, 0,
-          8, 0.5,
-          12, 1,
+          2, 0.5,
+          8, 1,
+          12, 1.5,
         ] as maplibregl.ExpressionSpecification,
-        'circle-stroke-color': 'rgba(255,255,255,0.15)',
+        'circle-stroke-color': 'rgba(255,255,255,0.2)',
       },
     });
 
@@ -757,6 +792,7 @@ export default function ThreatMap({
     // Clickable layers
     const clickableLayers = [
       LAYER_IDS.PLANTS_UNCLUSTERED,
+      LAYER_IDS.PLANTS_RISK_BORDER,  // Larger click target around facilities
       LAYER_IDS.PLANTS_CLUSTER_CIRCLES,
       LAYER_IDS.THREAT_ACTORS,
       LAYER_IDS.DATA_CENTERS,
@@ -774,7 +810,9 @@ export default function ThreatMap({
     }
 
     // --- Hover tooltips for plants --- shows name, sector, capacity, risk
-    map.on('mousemove', LAYER_IDS.PLANTS_UNCLUSTERED, (e) => {
+    // Shared handler bound to both PLANTS_UNCLUSTERED and PLANTS_RISK_BORDER
+    // so clicking the glow halo also shows the popup.
+    function handlePlantHover(e: maplibregl.MapMouseEvent & { features?: maplibregl.GeoJSONFeature[] }) {
       if (!e.features || e.features.length === 0) return;
       const f = e.features[0];
       const props = f.properties ?? {};
@@ -818,11 +856,17 @@ export default function ThreatMap({
           </div>`,
         )
         .addTo(map);
-    });
+    }
 
-    map.on('mouseleave', LAYER_IDS.PLANTS_UNCLUSTERED, () => {
+    function handlePlantHoverLeave() {
       tooltipRef.current?.remove();
-    });
+    }
+
+    // Bind hover to both the main circle and the risk border (larger click target)
+    map.on('mousemove', LAYER_IDS.PLANTS_UNCLUSTERED, handlePlantHover);
+    map.on('mousemove', LAYER_IDS.PLANTS_RISK_BORDER, handlePlantHover);
+    map.on('mouseleave', LAYER_IDS.PLANTS_UNCLUSTERED, handlePlantHoverLeave);
+    map.on('mouseleave', LAYER_IDS.PLANTS_RISK_BORDER, handlePlantHoverLeave);
 
     // --- Hover tooltips for threat actors ---
     map.on('mousemove', LAYER_IDS.THREAT_ACTORS, (e) => {
@@ -851,8 +895,8 @@ export default function ThreatMap({
       tooltipRef.current?.remove();
     });
 
-    // --- Click: unclustered plant ---
-    map.on('click', LAYER_IDS.PLANTS_UNCLUSTERED, (e) => {
+    // --- Click: unclustered plant (shared handler for main circle + risk border) ---
+    function handlePlantClick(e: maplibregl.MapMouseEvent & { features?: maplibregl.GeoJSONFeature[] }) {
       if (!e.features || e.features.length === 0) return;
       const f = e.features[0];
       const props = f.properties ?? {};
@@ -923,7 +967,11 @@ export default function ThreatMap({
         properties: props as Record<string, unknown>,
         coordinates: coords,
       });
-    });
+    }
+
+    // Bind click to both the main circle and the risk border (larger click target)
+    map.on('click', LAYER_IDS.PLANTS_UNCLUSTERED, handlePlantClick);
+    map.on('click', LAYER_IDS.PLANTS_RISK_BORDER, handlePlantClick);
 
     // --- Click: cluster => zoom in ---
     map.on('click', LAYER_IDS.PLANTS_CLUSTER_CIRCLES, (e) => {
