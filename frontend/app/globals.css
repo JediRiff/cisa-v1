@@ -4,6 +4,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Globe — dark space background behind the sphere */
+.maplibregl-map,
+.maplibregl-canvas-container,
+.maplibregl-canvas {
+  background: #030810 !important;
+}
+
 /* MapLibre popup and tooltip — luminescent glass theme */
 .maplibregl-popup-content {
   background: rgba(10, 22, 40, 0.92) !important;

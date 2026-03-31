@@ -24,7 +24,6 @@ import {
   sectorRiskScore,
   formatCapacity,
 } from './utils';
-import { registerShapeIcons, sectorIconExpression } from './shapeIcons';
 import { threatActors, energyFacilities } from '../globe/worldData';
 import { submarineCables, lngShippingLanes } from '../globe/geoLayers';
 
@@ -124,26 +123,38 @@ export default function ThreatMap({
       return;
     }
 
-    // Enable globe projection (MapLibre GL JS v4+)
-    try {
-      map.setProjection({ type: 'globe' } as maplibregl.ProjectionSpecification);
-    } catch {
-      console.warn('[ThreatMap] Globe projection not supported, using mercator');
-    }
-
-    // Set sky/atmosphere for the globe — dark space background
+    // Globe projection + atmosphere MUST be set inside style.load
+    // (setting before style loads silently fails and falls back to flat Mercator)
     map.on('style.load', () => {
+      // 1. Enable globe projection
+      try {
+        map.setProjection({ type: 'globe' } as maplibregl.ProjectionSpecification);
+      } catch {
+        console.warn('[ThreatMap] Globe projection not supported, using mercator');
+      }
+
+      // 2. Atmosphere — fades out as you zoom in
       try {
         map.setSky({
-          'sky-color': '#030810',
-          'sky-horizon-blend': 0.5,
-          'horizon-color': '#060d1a',
-          'horizon-fog-blend': 0.8,
-          'fog-color': '#030810',
-          'fog-ground-blend': 1.0,
+          'atmosphere-blend': [
+            'interpolate', ['linear'], ['zoom'],
+            0, 1,   // Full atmosphere at global view
+            5, 1,   // Maintain through zoom 5
+            7, 0,   // Fade out by zoom 7 (regional view)
+          ],
         } as any);
       } catch {
-        // Sky/atmosphere not supported in all styles
+        // Atmosphere not supported
+      }
+
+      // 3. Light direction for atmosphere glow
+      try {
+        map.setLight({
+          anchor: 'map',
+          position: [1.5, 90, 80],
+        } as any);
+      } catch {
+        // Light not supported
       }
     });
 
@@ -174,7 +185,6 @@ export default function ThreatMap({
     map.on('load', () => {
       mapReadyRef.current = true;
       try {
-        registerShapeIcons(map);
         addSources(map);
         addLayers(map);
         setupInteractions(map);
@@ -507,54 +517,59 @@ export default function ThreatMap({
       },
     });
 
-    // Unclustered facilities — shape icons per sector type
+    // Unclustered facilities — reliable circle layer, colored by sector
+    // Circle layers are GPU-native, always render, and have perfect click hit-testing.
     map.addLayer({
       id: LAYER_IDS.PLANTS_UNCLUSTERED,
-      type: 'symbol',
+      type: 'circle',
       source: SOURCE_IDS.PLANTS,
       filter: ['!', ['has', 'point_count']],
-      layout: {
-        'icon-image': sectorIconExpression() as maplibregl.ExpressionSpecification,
-        'icon-size': [
+      paint: {
+        'circle-color': sectorColorExpression() as maplibregl.ExpressionSpecification,
+        'circle-radius': [
           'interpolate',
           ['linear'],
           ['zoom'],
-          // zoom 2-4: tiny icons
+          // zoom 2-4: tiny dots, solar smallest
           2, [
             'case',
-            ['==', ['get', 'sector'], 'solar'], 0.2,
-            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000], 0.35,
-            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500], 0.3,
-            0.25,
+            ['==', ['get', 'sector'], 'solar'], 1,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000], 3,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500], 2.5,
+            1.5,
           ],
-          // zoom 6: moderate
+          // zoom 6: moderate scaling
           6, [
             'case',
-            ['==', ['get', 'sector'], 'solar'], 0.25,
-            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000], 0.5,
-            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500], 0.4,
-            0.3,
+            ['==', ['get', 'sector'], 'solar'], 1.5,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000], 6,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500], 5,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 100], 4,
+            3,
           ],
-          // zoom 10+: full size
+          // zoom 10+: full detail
           10, [
             'case',
-            ['==', ['get', 'sector'], 'solar'], 0.35,
-            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000], 0.75,
-            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500], 0.6,
-            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 100], 0.5,
-            0.4,
+            ['==', ['get', 'sector'], 'solar'], 4,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000], 12,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500], 9,
+            ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 100], 7,
+            5,
           ],
         ] as maplibregl.ExpressionSpecification,
-        'icon-allow-overlap': true,
-        'icon-ignore-placement': true,
-      },
-      paint: {
-        'icon-opacity': [
+        'circle-opacity': [
           'case',
           ['==', ['get', 'sector'], 'solar'],
-          ['interpolate', ['linear'], ['zoom'], 2, 0.35, 6, 0.55, 9, 0.85],
-          ['interpolate', ['linear'], ['zoom'], 2, 0.6, 6, 0.8, 9, 0.95],
+          ['interpolate', ['linear'], ['zoom'], 2, 0.3, 6, 0.5, 9, 0.8],
+          ['interpolate', ['linear'], ['zoom'], 2, 0.6, 6, 0.8, 9, 0.9],
         ] as maplibregl.ExpressionSpecification,
+        'circle-stroke-width': [
+          'interpolate', ['linear'], ['zoom'],
+          2, 0,
+          8, 0.5,
+          12, 1,
+        ] as maplibregl.ExpressionSpecification,
+        'circle-stroke-color': 'rgba(255,255,255,0.15)',
       },
     });
 
