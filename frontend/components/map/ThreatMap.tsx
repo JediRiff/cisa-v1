@@ -20,6 +20,8 @@ import {
   cableRoutesToGeoJSON,
   legacyFacilitiesToGeoJSON,
   riskScoreToColor,
+  riskColorExpression,
+  sectorRiskScore,
   formatCapacity,
 } from './utils';
 import { registerShapeIcons, sectorIconExpression } from './shapeIcons';
@@ -34,6 +36,8 @@ const LAYER_IDS = {
   // Power plants
   PLANTS_CLUSTER_CIRCLES: 'plants-cluster-circles',
   PLANTS_CLUSTER_COUNT: 'plants-cluster-count',
+  PLANTS_RISK_GLOW: 'plants-risk-glow',
+  PLANTS_RISK_BORDER: 'plants-risk-border',
   PLANTS_UNCLUSTERED: 'plants-unclustered',
   PLANTS_LABELS: 'plants-labels',
   // Infrastructure
@@ -110,8 +114,8 @@ export default function ThreatMap({
         container: mapContainer.current,
         style: MAP_STYLE,
         center: [-98.5, 39.8], // Center of continental US
-        zoom: 3.5,
-        minZoom: 1.5,
+        zoom: 2.8,
+        minZoom: 1,
         maxZoom: 18,
         attributionControl: false,
       });
@@ -126,6 +130,22 @@ export default function ThreatMap({
     } catch {
       console.warn('[ThreatMap] Globe projection not supported, using mercator');
     }
+
+    // Set sky/atmosphere for the globe — dark space background
+    map.on('style.load', () => {
+      try {
+        map.setSky({
+          'sky-color': '#030810',
+          'sky-horizon-blend': 0.5,
+          'horizon-color': '#060d1a',
+          'horizon-fog-blend': 0.8,
+          'fog-color': '#030810',
+          'fog-ground-blend': 1.0,
+        } as any);
+      } catch {
+        // Sky/atmosphere not supported in all styles
+      }
+    });
 
     // Compact attribution in bottom-right
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
@@ -212,9 +232,17 @@ export default function ThreatMap({
       clusterMinPoints: CLUSTER_CONFIG.clusterMinPoints,
     });
 
-    // Try loading external GeoJSON and swap if available
+    // Try loading external GeoJSON and swap if available.
+    // Inject risk_score into each feature for risk visualization layers.
     fetchGeoJSON('/data/power-plants.geojson').then((data) => {
       if (data) {
+        for (const feature of data.features) {
+          if (feature.properties && !feature.properties.risk_score) {
+            const sector = (feature.properties.sector ?? 'other') as string;
+            const cap = Number(feature.properties.capacityMW ?? feature.properties.capacity_mw ?? 0);
+            feature.properties.risk_score = sectorRiskScore(sector, cap);
+          }
+        }
         const src = map.getSource(SOURCE_IDS.PLANTS) as maplibregl.GeoJSONSource | undefined;
         if (src) src.setData(data);
       }
@@ -376,6 +404,108 @@ export default function ThreatMap({
     });
 
     // Cluster count labels removed — cluster size communicates density
+
+    // ============================
+    // Risk visualization layers (behind shape icons)
+    // ============================
+
+    // Risk glow — soft blurred halo, colored by risk score
+    // Higher risk = more prominent glow
+    map.addLayer({
+      id: LAYER_IDS.PLANTS_RISK_GLOW,
+      type: 'circle',
+      source: SOURCE_IDS.PLANTS,
+      filter: ['!', ['has', 'point_count']],
+      paint: {
+        'circle-color': riskColorExpression() as maplibregl.ExpressionSpecification,
+        'circle-radius': [
+          'interpolate', ['linear'], ['zoom'],
+          2, [
+            'case',
+            ['==', ['get', 'sector'], 'solar'], 3,
+            ['<=', ['coalesce', ['get', 'risk_score'], 5], 2.5], 6,
+            ['<=', ['coalesce', ['get', 'risk_score'], 5], 3.5], 5,
+            4,
+          ],
+          6, [
+            'case',
+            ['==', ['get', 'sector'], 'solar'], 5,
+            ['<=', ['coalesce', ['get', 'risk_score'], 5], 2.5], 10,
+            ['<=', ['coalesce', ['get', 'risk_score'], 5], 3.5], 8,
+            6,
+          ],
+          10, [
+            'case',
+            ['==', ['get', 'sector'], 'solar'], 8,
+            ['<=', ['coalesce', ['get', 'risk_score'], 5], 2.5], 18,
+            ['<=', ['coalesce', ['get', 'risk_score'], 5], 3.5], 14,
+            10,
+          ],
+        ] as maplibregl.ExpressionSpecification,
+        'circle-blur': 0.8,
+        'circle-opacity': [
+          'interpolate', ['linear'],
+          ['coalesce', ['get', 'risk_score'], 5],
+          1.0, 0.35,   // Severe: bright glow
+          2.5, 0.25,   // High: visible glow
+          3.5, 0.12,   // Elevated: subtle glow
+          4.5, 0.05,   // Guarded: barely visible
+          5.0, 0.02,   // Low: almost none
+        ] as maplibregl.ExpressionSpecification,
+      },
+    });
+
+    // Risk border ring — sharp colored outline around each facility
+    map.addLayer({
+      id: LAYER_IDS.PLANTS_RISK_BORDER,
+      type: 'circle',
+      source: SOURCE_IDS.PLANTS,
+      filter: ['!', ['has', 'point_count']],
+      paint: {
+        'circle-color': 'transparent',
+        'circle-radius': [
+          'interpolate', ['linear'], ['zoom'],
+          2, [
+            'case',
+            ['==', ['get', 'sector'], 'solar'], 2,
+            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 1000], 4.5,
+            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 500], 3.5,
+            3,
+          ],
+          6, [
+            'case',
+            ['==', ['get', 'sector'], 'solar'], 3,
+            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 1000], 7,
+            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 500], 5.5,
+            4.5,
+          ],
+          10, [
+            'case',
+            ['==', ['get', 'sector'], 'solar'], 5,
+            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 1000], 12,
+            ['>=', ['coalesce', ['get', 'capacity_mw'], 0], 500], 9,
+            7,
+          ],
+        ] as maplibregl.ExpressionSpecification,
+        'circle-stroke-width': [
+          'interpolate', ['linear'], ['zoom'],
+          2, 1,
+          6, 1.5,
+          10, 2,
+        ] as maplibregl.ExpressionSpecification,
+        'circle-stroke-color': riskColorExpression() as maplibregl.ExpressionSpecification,
+        'circle-stroke-opacity': [
+          'interpolate', ['linear'],
+          ['coalesce', ['get', 'risk_score'], 5],
+          1.0, 0.8,   // Severe: strong ring
+          2.5, 0.6,   // High: clear ring
+          3.5, 0.35,  // Elevated: visible
+          4.5, 0.15,  // Guarded: subtle
+          5.0, 0.08,  // Low: barely there
+        ] as maplibregl.ExpressionSpecification,
+        'circle-opacity': 0,
+      },
+    });
 
     // Unclustered facilities — shape icons per sector type
     map.addLayer({
@@ -948,6 +1078,8 @@ export default function ThreatMap({
       lv.geothermal || lv.biomass;
 
     setVis(LAYER_IDS.PLANTS_CLUSTER_CIRCLES, anySectorVisible);
+    setVis(LAYER_IDS.PLANTS_RISK_GLOW, anySectorVisible);
+    setVis(LAYER_IDS.PLANTS_RISK_BORDER, anySectorVisible);
     setVis(LAYER_IDS.PLANTS_LABELS, anySectorVisible);
 
     // Build sector filter for unclustered points
@@ -966,28 +1098,32 @@ export default function ThreatMap({
       if (lv.geothermal) visibleSectors.push('geothermal');
       if (lv.biomass) visibleSectors.push('biomass');
 
+      const sectorFilter: maplibregl.FilterSpecification = [
+        'all',
+        ['!', ['has', 'point_count']],
+        ['in', ['get', 'sector'], ['literal', visibleSectors]],
+      ] as maplibregl.FilterSpecification;
+
       try {
-        if (map.getLayer(LAYER_IDS.PLANTS_UNCLUSTERED)) {
-          map.setFilter(LAYER_IDS.PLANTS_UNCLUSTERED, [
-            'all',
-            ['!', ['has', 'point_count']],
-            ['in', ['get', 'sector'], ['literal', visibleSectors]],
-          ]);
-          setVis(LAYER_IDS.PLANTS_UNCLUSTERED, true);
+        // Apply same sector filter to all unclustered layers
+        for (const layerId of [
+          LAYER_IDS.PLANTS_UNCLUSTERED,
+          LAYER_IDS.PLANTS_RISK_GLOW,
+          LAYER_IDS.PLANTS_RISK_BORDER,
+          LAYER_IDS.PLANTS_LABELS,
+        ]) {
+          if (map.getLayer(layerId)) {
+            map.setFilter(layerId, sectorFilter);
+          }
         }
-        // Also filter labels
-        if (map.getLayer(LAYER_IDS.PLANTS_LABELS)) {
-          map.setFilter(LAYER_IDS.PLANTS_LABELS, [
-            'all',
-            ['!', ['has', 'point_count']],
-            ['in', ['get', 'sector'], ['literal', visibleSectors]],
-          ]);
-        }
+        setVis(LAYER_IDS.PLANTS_UNCLUSTERED, true);
       } catch {
         // Filters may fail if layers aren't ready
       }
     } else {
       setVis(LAYER_IDS.PLANTS_UNCLUSTERED, false);
+      setVis(LAYER_IDS.PLANTS_RISK_GLOW, false);
+      setVis(LAYER_IDS.PLANTS_RISK_BORDER, false);
     }
 
     // Infrastructure

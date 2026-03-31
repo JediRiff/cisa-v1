@@ -118,11 +118,7 @@ function createShapeIcon(
   ctx.globalAlpha = 0.9;
   ctx.fill();
 
-  // Subtle white stroke
-  ctx.globalAlpha = 0.25;
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = PIXEL_RATIO * 0.8;
-  ctx.stroke();
+  // No white stroke — risk border circle layer provides the outline
 
   const imageData = ctx.getImageData(0, 0, pxSize, pxSize);
   return {

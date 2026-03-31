@@ -29,6 +29,59 @@ export function riskScoreToLabel(score: number): string {
 }
 
 /**
+ * Sector-based risk heuristic. Returns a score 1.0–5.0.
+ * Nuclear/oil carry higher baseline risk due to regulatory exposure,
+ * physical security requirements, and nation-state targeting.
+ * This is a starting heuristic — can be replaced with real computed
+ * scores from calculateFacilityRisk() when threat data is available.
+ *
+ * Capacity also influences risk: larger plants = more critical = lower score.
+ */
+export function sectorRiskScore(sector: string, capacityMW: number): number {
+  const baseScores: Record<string, number> = {
+    nuclear: 2.1,
+    oil: 3.2,
+    hydro: 3.3,
+    pump_storage: 3.4,
+    gas: 3.5,
+    coal: 3.6,
+    geothermal: 3.8,
+    offshore_wind: 4.0,
+    wind: 4.2,
+    biomass: 4.3,
+    storage: 4.1,
+    solar: 4.5,
+    other: 4.0,
+  };
+  let score = baseScores[sector] ?? 4.0;
+
+  // Large plants are more critical — nudge score lower (more risk)
+  if (capacityMW >= 2000) score -= 0.4;
+  else if (capacityMW >= 1000) score -= 0.3;
+  else if (capacityMW >= 500) score -= 0.2;
+  else if (capacityMW >= 100) score -= 0.1;
+
+  return Math.max(1.0, Math.min(5.0, score));
+}
+
+/**
+ * MapLibre expression: map 'risk_score' property to a color.
+ * Uses interpolation for smooth gradients across the 1–5 range.
+ */
+export function riskColorExpression(): unknown[] {
+  return [
+    'interpolate',
+    ['linear'],
+    ['coalesce', ['get', 'risk_score'], 4.5],
+    1.0, '#ef4444',  // Severe — red
+    2.0, '#f97316',  // High — orange
+    3.0, '#eab308',  // Elevated — yellow
+    4.0, '#3b82f6',  // Guarded — blue
+    5.0, '#22c55e',  // Low — green
+  ];
+}
+
+/**
  * Generate a GeoJSON great-circle arc between two [lng, lat] points.
  * Returns an array of [lng, lat] coordinate pairs suitable for a
  * GeoJSON LineString geometry. Uses spherical interpolation for
@@ -270,6 +323,7 @@ export function legacyFacilitiesToGeoJSON(
         }
       }
 
+      const mappedSector = sectorMap[f.sector] ?? 'other';
       return {
         type: 'Feature',
         geometry: {
@@ -279,11 +333,12 @@ export function legacyFacilitiesToGeoJSON(
         properties: {
           id: f.id,
           name: f.name,
-          sector: sectorMap[f.sector] ?? 'other',
+          sector: mappedSector,
           originalSector: f.sector,
           operator: f.operator,
           capacity: f.capacity ?? '',
           capacity_mw: capacityMW,
+          risk_score: sectorRiskScore(mappedSector, capacityMW),
         },
       };
     }),
