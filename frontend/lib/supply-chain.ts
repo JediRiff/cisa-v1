@@ -19,6 +19,7 @@ export interface VendorAlert {
   kevCount: number
   cveCount: number
   products: string[]       // Affected product names from KEVs/threat items
+  cveIds: string[]         // CVE IDs for linking to NVD
 }
 
 // ── Vendor Name Normalization ──
@@ -193,16 +194,17 @@ export function buildVendorAlerts(
   kevItems: { vendor?: string; product?: string; cveId?: string }[],
   threatItems: { aiAffectedVendors?: string[]; title?: string; description?: string }[],
 ): VendorAlert[] {
-  const alertMap = new Map<string, { kevCount: number; cveCount: number; products: Set<string> }>()
+  const alertMap = new Map<string, { kevCount: number; cveCount: number; products: Set<string>; cveIds: Set<string> }>()
 
   // Count KEVs per vendor
   for (const kev of kevItems) {
     if (!kev.vendor) continue
     const normalized = normalizeVendor(kev.vendor)
     if (!normalized) continue
-    const entry = alertMap.get(normalized) || { kevCount: 0, cveCount: 0, products: new Set<string>() }
+    const entry = alertMap.get(normalized) || { kevCount: 0, cveCount: 0, products: new Set<string>(), cveIds: new Set<string>() }
     entry.kevCount++
     if (kev.product) entry.products.add(kev.product)
+    if (kev.cveId) entry.cveIds.add(kev.cveId)
     alertMap.set(normalized, entry)
   }
 
@@ -212,7 +214,7 @@ export function buildVendorAlerts(
     for (const vendorName of item.aiAffectedVendors) {
       const normalized = normalizeVendor(vendorName)
       if (!normalized) continue
-      const entry = alertMap.get(normalized) || { kevCount: 0, cveCount: 0, products: new Set<string>() }
+      const entry = alertMap.get(normalized) || { kevCount: 0, cveCount: 0, products: new Set<string>(), cveIds: new Set<string>() }
       entry.cveCount++
       alertMap.set(normalized, entry)
     }
@@ -224,5 +226,6 @@ export function buildVendorAlerts(
     kevCount: data.kevCount,
     cveCount: data.cveCount,
     products: Array.from(data.products),
+    cveIds: Array.from(data.cveIds),
   }))
 }

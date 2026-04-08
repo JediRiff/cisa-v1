@@ -224,9 +224,21 @@ export default function DetailPanel({
                     {alert.vendor}
                   </span>
                   {alert.kevCount > 0 && (
-                    <span className="text-[9px] font-bold text-red-400 bg-red-500/20 px-1.5 py-0.5 rounded">
-                      {alert.kevCount} KEV{alert.kevCount !== 1 ? 's' : ''}
-                    </span>
+                    alert.cveIds?.length > 0 ? (
+                      <a
+                        href={`https://nvd.nist.gov/vuln/detail/${alert.cveIds[0]}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[9px] font-bold text-red-400 bg-red-500/20 px-1.5 py-0.5 rounded hover:bg-red-500/30 transition-colors cursor-pointer"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {alert.kevCount} KEV{alert.kevCount !== 1 ? 's' : ''} &rarr;
+                      </a>
+                    ) : (
+                      <span className="text-[9px] font-bold text-red-400 bg-red-500/20 px-1.5 py-0.5 rounded">
+                        {alert.kevCount} KEV{alert.kevCount !== 1 ? 's' : ''}
+                      </span>
+                    )
                   )}
                   {alert.cveCount > 0 && (
                     <span className="text-[9px] font-bold text-orange-400 bg-orange-500/20 px-1.5 py-0.5 rounded">
@@ -475,45 +487,6 @@ export default function DetailPanel({
                   </span>
                   <span className="text-[9px] text-gray-600 flex-shrink-0">{ttp.tactic}</span>
                 </a>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Campaign Exposure ── */}
-        {campaigns.length > 0 && (
-          <div>
-            <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Crosshair className="w-3 h-3 text-amber-400" />
-              Campaign Exposure
-            </h4>
-            <div className="space-y-1.5">
-              {campaigns.map((campaign: any) => (
-                <div
-                  key={campaign.id}
-                  className="bg-white/[0.03] border border-white/5 rounded-lg p-2.5"
-                >
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="text-[11px] font-semibold text-white">
-                      {campaign.actorName}
-                    </span>
-                    <span
-                      className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded ${
-                        campaign.confidence === 'high'
-                          ? 'text-red-400 bg-red-500/20'
-                          : campaign.confidence === 'medium'
-                          ? 'text-amber-400 bg-amber-500/20'
-                          : 'text-gray-400 bg-gray-500/20'
-                      }`}
-                    >
-                      {campaign.confidence}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 text-[10px] text-gray-400">
-                    <span>{campaign.correlatedItems?.length || 0} items</span>
-                    <span>Severity: {campaign.avgSeverity?.toFixed(2) || '--'}</span>
-                  </div>
-                </div>
               ))}
             </div>
           </div>

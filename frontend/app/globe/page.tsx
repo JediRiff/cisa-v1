@@ -377,23 +377,9 @@ export default function GlobePage() {
       selectedFeature.type === 'data_center' ? 'storage' :
       selectedFeature.type === 'substation' ? 'grid' : 'other'
 
-    // Use ONLY sector-specific threats — no fallback to allItems
-    const sectorItems = data.threatsBySector?.[expandedSector] || []
-
-    // For ICS-heavy sectors, also include cross-cutting ICS threats (classified under 'other')
-    const icsHeavySectors = ['nuclear', 'gas', 'oil', 'hydro', 'coal', 'other']
-    let candidateItems = [...sectorItems]
-    if (icsHeavySectors.includes(expandedSector) && expandedSector !== 'other') {
-      const crossCutting = data.threatsBySector?.['other'] || []
-      candidateItems.push(...crossCutting)
-    }
-    // Dedupe by item ID
-    const seen = new Set<string>()
-    candidateItems = candidateItems.filter((item: any) => {
-      if (seen.has(item.id)) return false
-      seen.add(item.id)
-      return true
-    })
+    // Show ONLY sector-specific threats — no cross-cutting, no fallback
+    // If nuclear has 2 items and solar has 0, that's accurate and prescriptive
+    const candidateItems = data.threatsBySector?.[expandedSector] || []
 
     return candidateItems
       .map((item: any) => ({

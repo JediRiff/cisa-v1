@@ -114,14 +114,14 @@ export function classifyThreatBySector(title: string, description: string): Ener
     }
   }
 
-  // If cross-cutting keywords match but no specific sector did,
-  // the threat applies to all ICS-heavy sectors
+  // If cross-cutting ICS keywords match but no specific sector did,
+  // classify as 'other' only — do NOT push into every sector.
+  // This prevents generic "Siemens SCADA vuln" from showing under nuclear, gas, oil, etc.
   if (sectors.length === 0) {
     const crossCutMatch = CROSS_CUTTING_KEYWORDS.some(kw => matchesIndicator(text, kw))
     const vendorMatch = ICS_VENDOR_KEYWORDS.some(kw => matchesIndicator(text, kw))
     if (crossCutMatch || vendorMatch) {
-      // ICS/SCADA threats apply to: nuclear, gas, oil, hydro, coal, and grid ops
-      sectors.push('nuclear', 'gas', 'oil', 'hydro', 'coal', 'other')
+      sectors.push('other')
     }
   }
 

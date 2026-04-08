@@ -64,22 +64,22 @@ export const DEFAULT_LAYER_VISIBILITY: LayerVisibility = {
   attack_arcs: true,
 };
 
-// Sector colors — luminescent palette inspired by OpenGridWorks
-// Designed to glow against dark backgrounds without overwhelming
+// Sector colors — CISA/USA-themed professional palette
+// Subdued, governmental tones that read as authoritative on dark backgrounds
 export const SECTOR_COLORS: Record<EnergySector, string> = {
-  solar: '#f5e6c8',        // Warm pale cream — subtle, won't dominate
-  wind: '#7dd3fc',         // Light sky blue
-  offshore_wind: '#818cf8', // Soft indigo
-  storage: '#c4b5fd',      // Lavender
-  pump_storage: '#a78bfa',  // Medium purple
-  hydro: '#38bdf8',        // Bright cyan blue
-  nuclear: '#4ade80',      // Luminescent green
-  gas: '#fb923c',          // Soft orange
-  coal: '#94a3b8',         // Cool slate
-  oil: '#a8a29e',          // Warm stone
-  geothermal: '#f87171',   // Soft red
-  biomass: '#86efac',      // Mint green
-  other: '#cbd5e1',        // Light slate
+  solar: '#D4A84B',        // Muted gold
+  wind: '#6B9BC3',         // Steel blue
+  offshore_wind: '#4A7FAF', // Deeper steel blue
+  storage: '#8B7EC8',      // Muted violet
+  pump_storage: '#7B6DB8', // Deeper violet
+  hydro: '#4B98B5',        // Teal
+  nuclear: '#C75050',      // CISA red — most critical sector
+  gas: '#C8884B',          // Amber/bronze
+  coal: '#7A8694',         // Cool slate
+  oil: '#A0876E',          // Warm stone
+  geothermal: '#B86B5A',   // Muted terra cotta
+  biomass: '#6B9B7A',      // Sage green
+  other: '#8A95A5',        // Blue-gray
 };
 
 // Sector labels for UI display
