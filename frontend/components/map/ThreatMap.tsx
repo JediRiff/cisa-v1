@@ -585,10 +585,10 @@ export default function ThreatMap({
       },
       paint: {
         'icon-opacity': [
-          'case',
-          ['==', ['get', 'sector'], 'solar'],
-          ['interpolate', ['linear'], ['zoom'], 2, 0.5, 6, 0.7, 9, 0.9],
-          0.9,
+          'interpolate', ['linear'], ['zoom'],
+          2, ['case', ['==', ['get', 'sector'], 'solar'], 0.5, 0.9],
+          6, ['case', ['==', ['get', 'sector'], 'solar'], 0.7, 0.9],
+          9, 0.9,
         ] as maplibregl.ExpressionSpecification,
       },
     });

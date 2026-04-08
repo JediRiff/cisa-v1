@@ -86,16 +86,22 @@ export async function GET(request: NextRequest) {
     let aiResults: AIAnalysisResult[] = []
 
     if (energyItems.length > 0) {
-      console.log(`Analyzing ${energyItems.length} energy-relevant items with AI...`)
-      aiResults = await analyzeThreatsWithAI(
-        energyItems.map(item => ({
-          id: item.id,
-          title: item.title,
-          description: item.description,
-          source: item.source,
-        }))
-      )
-      console.log(`AI analysis complete: ${aiResults.length} results`)
+      try {
+        console.log(`Analyzing ${energyItems.length} energy-relevant items with AI...`)
+        aiResults = await analyzeThreatsWithAI(
+          energyItems.map(item => ({
+            id: item.id,
+            title: item.title,
+            description: item.description,
+            source: item.source,
+          }))
+        )
+        console.log(`AI analysis complete: ${aiResults.length} results`)
+      } catch (aiError) {
+        console.error('AI analysis failed:', aiError)
+        feedResult.errors.push('AI analysis: ' + (aiError instanceof Error ? aiError.message : 'Failed'))
+        // Continue without AI results — keyword-based severity still works
+      }
     }
 
     // Merge AI results into threat items
