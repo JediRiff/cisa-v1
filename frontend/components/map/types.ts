@@ -74,7 +74,7 @@ export const SECTOR_COLORS: Record<EnergySector, string> = {
   pump_storage: '#7B6DB8', // Deeper violet
   hydro: '#4B98B5',        // Teal
   nuclear: '#C75050',      // CISA red — most critical sector
-  gas: '#C8884B',          // Amber/bronze
+  gas: '#E8E4DE',          // Bright white — red/white/blue theme
   coal: '#7A8694',         // Cool slate
   oil: '#A0876E',          // Warm stone
   geothermal: '#B86B5A',   // Muted terra cotta

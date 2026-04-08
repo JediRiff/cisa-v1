@@ -56,7 +56,7 @@ const FEED_SOURCES = [
   { name: 'CISA KEV', url: 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json', type: 'json', sourceType: 'government' as const },
   { name: 'CISA Advisories', url: 'https://www.cisa.gov/cybersecurity-advisories/all.xml', type: 'rss', sourceType: 'government' as const },
   { name: 'ICS-CERT', url: 'https://www.cisa.gov/cybersecurity-advisories/ics-advisories.xml', type: 'rss', sourceType: 'government' as const },
-  { name: 'UK NCSC', url: 'https://www.ncsc.gov.uk/api/1/services/v1/report-rss-feed.xml', type: 'rss', sourceType: 'government' as const },
+  // UK NCSC removed — last alert was ~2000 days old, not energy-specific
 
   // Tier 2: Security Vendors
   { name: 'Microsoft Security', url: 'https://www.microsoft.com/en-us/security/blog/feed/', type: 'rss', sourceType: 'vendor' as const },
@@ -143,13 +143,13 @@ function parseRSS(xml: string, sourceName: string, sourceType: ThreatItem['sourc
 
 function parseOTX(json: any, sourceName: string, sourceType: ThreatItem['sourceType']): ThreatItem[] {
   const results = json.results || []
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const fourteenDaysAgo = new Date()
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
 
   return results
     .filter((pulse: any) => {
       const created = new Date(pulse.created)
-      return created >= thirtyDaysAgo
+      return created >= fourteenDaysAgo
     })
     .slice(0, 15)
     .map((pulse: any) => {
@@ -175,11 +175,11 @@ function parseOTX(json: any, sourceName: string, sourceType: ThreatItem['sourceT
 
 function parseKEV(json: any): ThreatItem[] {
   const vulnerabilities = json.vulnerabilities || []
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const fourteenDaysAgo = new Date()
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
 
   return vulnerabilities
-    .filter((vuln: any) => new Date(vuln.dateAdded) >= thirtyDaysAgo)
+    .filter((vuln: any) => new Date(vuln.dateAdded) >= fourteenDaysAgo)
     .slice(0, 25)
     .map((vuln: any) => {
       const title = vuln.cveID + ': ' + vuln.vendorProject + ' ' + vuln.product
@@ -233,10 +233,10 @@ export async function fetchAllFeeds(): Promise<FeedResult> {
         const json = JSON.parse(text)
         // Store raw KEV items for recommendations (most recent 10 by due date)
         const vulns = json.vulnerabilities || []
-        const thirtyDaysAgo = new Date()
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        const fourteenDaysAgo = new Date()
+        fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 30)
         kevItems = vulns
-          .filter((v: any) => new Date(v.dateAdded) >= thirtyDaysAgo)
+          .filter((v: any) => new Date(v.dateAdded) >= fourteenDaysAgo)
           .sort((a: any, b: any) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime())
           .slice(0, 10)
           .map((v: any) => ({
