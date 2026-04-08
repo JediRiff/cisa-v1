@@ -160,8 +160,7 @@ export default function ThreatMap({
       }
     });
 
-    // Compact attribution in bottom-right
-    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+    // Attribution handled by DataSourcesOverlay — no built-in control needed
 
     // Navigation controls
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
