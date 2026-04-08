@@ -31,7 +31,6 @@ const DATA_SOURCES: DataSourceCategory[] = [
     sources: [
       { name: 'CISA KEV Catalog', url: 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog' },
       { name: 'ICS-CERT Advisories', url: 'https://www.cisa.gov/news-events/ics-advisories' },
-      { name: 'UK NCSC', url: 'https://www.ncsc.gov.uk' },
       { name: 'AlienVault OTX', url: 'https://otx.alienvault.com' },
     ],
   },
