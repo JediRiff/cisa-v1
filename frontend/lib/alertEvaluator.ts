@@ -9,7 +9,7 @@ export interface AlertContext {
   capriScore: number
   kevItems: any[]
   threatItems: any[]
-  facilityRiskScores: Record<string, number>
+  facilityThreatScores: Record<string, number>
 }
 
 interface FiredAlert {
@@ -108,15 +108,15 @@ function evaluateRule(rule: AlertRule, ctx: AlertContext): FiredAlert | null {
 
     case 'facility_risk_below': {
       const threshold = rule.threshold ?? 2.0
-      const critical = Object.entries(ctx.facilityRiskScores).filter(
+      const critical = Object.entries(ctx.facilityThreatScores).filter(
         ([, score]) => score < threshold
       )
       if (critical.length > 0) {
         const worst = critical.reduce((a, b) => (a[1] < b[1] ? a : b))
         return {
           rule,
-          title: `Facility Risk Below ${threshold.toFixed(1)}`,
-          description: `${critical.length} facility/facilities with risk score below ${threshold.toFixed(1)}. Worst: ${worst[0]} at ${worst[1].toFixed(1)}.`,
+          title: `Facility Threat Score Below ${threshold.toFixed(1)}`,
+          description: `${critical.length} facility/facilities with threat score below ${threshold.toFixed(1)}. Worst: ${worst[0]} at ${worst[1].toFixed(1)}.`,
           alertType: 'critical_threat',
           details: {
             facilitiesAffected: critical.length,

@@ -1,6 +1,9 @@
 // CAPRI Threat Intelligence Feed Aggregator
 // Fetches from 13+ verified sources (Tiers 1-3)
 
+import type { EnergySector } from '@/components/map/types'
+import { classifyThreatBySector } from './sector-keywords'
+
 export interface ThreatItem {
   id: string
   title: string
@@ -8,9 +11,10 @@ export interface ThreatItem {
   link: string
   pubDate: string
   source: string
-  sourceType: 'government' | 'vendor' | 'energy'
+  sourceType: 'government' | 'vendor' | 'energy' | 'social'
   severity: 'critical' | 'high' | 'medium' | 'low' | 'unknown'
   isEnergyRelevant: boolean
+  sectors?: EnergySector[]
   // AI Analysis fields (populated by Claude analysis)
   aiSeverityScore?: number           // 1-10
   aiThreatType?: 'apt' | 'ransomware' | 'vulnerability' | 'supply-chain' | 'other'
@@ -71,6 +75,7 @@ const FEED_SOURCES = [
 ]
 
 import { ENERGY_KEYWORDS, matchesIndicator, isEnergyRelevantKEV } from './indicators'
+import { fetchSocialThreats } from './social-feeds'
 
 // djb2 hash for deterministic RSS item IDs (stable across fetches)
 function hashString(str: string): string {
@@ -86,31 +91,17 @@ function checkEnergyRelevance(title: string, description: string): boolean {
   return ENERGY_KEYWORDS.some(keyword => matchesIndicator(text, keyword))
 }
 
-function extractSeverity(title: string, description: string): ThreatItem['severity'] {
-  const text = (title + ' ' + description).toLowerCase()
-
-  // Explicit severity keywords → direct match
-  if (text.includes('critical') || text.includes('emergency') || text.includes('actively exploited') || text.includes('zero-day') || text.includes('0-day')) return 'critical'
-  if (text.includes('high severity') || text.includes('urgent') || text.includes('severe')) return 'high'
-  if (text.includes('medium severity') || text.includes('moderate')) return 'medium'
-  if (text.includes('low severity') || text.includes('informational')) return 'low'
-
-  // Ransomware, active exploitation, RCE → critical
-  if (/\b(ransomware|remote code execution|rce|wiper|destructive|supply.chain.attack|actively.exploit)\b/.test(text)) return 'critical'
-
-  // Nation-state / APT activity → high
-  if (/\b(apt\d+|volt typhoon|sandworm|lazarus|kimsuky|xenotime|chernovite|kamacite|nation.state|state.sponsored|advanced persistent threat)\b/.test(text)) return 'high'
-
-  // ICS/SCADA/OT threats → high
-  if (/\b(scada|plc|hmi|rtu|dcs|modbus|dnp3|iec.61850|industroyer|crashoverride|triton|pipedream|incontroller|frostygoop)\b/.test(text)) return 'high'
-
-  // General threat/vuln indicators → medium (instead of unknown)
-  if (/\b(vulnerability|exploit|attack|malware|threat|breach|backdoor|trojan|phishing|campaign|intrusion|compromise)\b/.test(text)) return 'medium'
-
-  // If from a security vendor and has any content, default to medium rather than unknown
-  if (text.length > 50) return 'medium'
-
-  return 'unknown'
+// Severity is now classified by the unified classifySeverity() in lib/severity.ts.
+// This wrapper provides backward-compatible signature for initial feed parsing
+// (before AI/EPSS scores are available). Post-AI reconciliation happens in the API route.
+function extractSeverity(title: string, description: string, source?: string, sourceType?: ThreatItem['sourceType']): ThreatItem['severity'] {
+  const { classifySeverity } = require('./severity')
+  return classifySeverity({
+    title,
+    description,
+    source: source || '',
+    sourceType: sourceType || 'vendor',
+  })
 }
 
 function parseRSS(xml: string, sourceName: string, sourceType: ThreatItem['sourceType']): ThreatItem[] {
@@ -142,7 +133,8 @@ function parseRSS(xml: string, sourceName: string, sourceType: ThreatItem['sourc
       source: sourceName,
       sourceType,
       severity: extractSeverity(title, description),
-      isEnergyRelevant: checkEnergyRelevance(title, description)
+      isEnergyRelevant: checkEnergyRelevance(title, description),
+      sectors: classifyThreatBySector(title, description),
     })
   }
 
@@ -176,6 +168,7 @@ function parseOTX(json: any, sourceName: string, sourceType: ThreatItem['sourceT
         sourceType,
         severity: extractSeverity(title, fullDesc),
         isEnergyRelevant: checkEnergyRelevance(title, fullDesc),
+        sectors: classifyThreatBySector(title, fullDesc),
       }
     })
 }
@@ -188,17 +181,22 @@ function parseKEV(json: any): ThreatItem[] {
   return vulnerabilities
     .filter((vuln: any) => new Date(vuln.dateAdded) >= thirtyDaysAgo)
     .slice(0, 25)
-    .map((vuln: any) => ({
-      id: 'KEV-' + vuln.cveID,
-      title: vuln.cveID + ': ' + vuln.vendorProject + ' ' + vuln.product,
-      description: vuln.shortDescription || vuln.vulnerabilityName || 'No description',
-      link: 'https://nvd.nist.gov/vuln/detail/' + vuln.cveID,
-      pubDate: new Date(vuln.dateAdded).toISOString(),
-      source: 'CISA KEV',
-      sourceType: 'government' as const,
-      severity: 'critical' as const,
-      isEnergyRelevant: isEnergyRelevantKEV(vuln.vendorProject || '', vuln.shortDescription || '', vuln.product || '')
-    }))
+    .map((vuln: any) => {
+      const title = vuln.cveID + ': ' + vuln.vendorProject + ' ' + vuln.product
+      const description = vuln.shortDescription || vuln.vulnerabilityName || 'No description'
+      return {
+        id: 'KEV-' + vuln.cveID,
+        title,
+        description,
+        link: 'https://nvd.nist.gov/vuln/detail/' + vuln.cveID,
+        pubDate: new Date(vuln.dateAdded).toISOString(),
+        source: 'CISA KEV',
+        sourceType: 'government' as const,
+        severity: 'critical' as const,
+        isEnergyRelevant: isEnergyRelevantKEV(vuln.vendorProject || '', vuln.shortDescription || '', vuln.product || ''),
+        sectors: classifyThreatBySector(title, description),
+      }
+    })
 }
 
 export async function fetchAllFeeds(): Promise<FeedResult> {
@@ -264,8 +262,17 @@ export async function fetchAllFeeds(): Promise<FeedResult> {
     }
   })
 
-  const results = await Promise.all(fetchPromises)
+  // Fetch social/community sources in parallel with main feeds
+  const [results, socialItems] = await Promise.all([
+    Promise.all(fetchPromises),
+    fetchSocialThreats().catch(err => {
+      errors.push('Social feeds: ' + (err instanceof Error ? err.message : 'Failed'))
+      return [] as ThreatItem[]
+    }),
+  ])
   results.forEach(result => items.push(...result))
+  if (socialItems.length > 0) sourcesOnline++
+  items.push(...socialItems)
 
   // Deduplicate: same CVE across multiple sources → keep highest-tier source
   const beforeCount = items.length
@@ -279,7 +286,7 @@ export async function fetchAllFeeds(): Promise<FeedResult> {
     errors,
     lastUpdated: new Date().toISOString(),
     sourcesOnline,
-    sourcesTotal: FEED_SOURCES.length,
+    sourcesTotal: FEED_SOURCES.length + 1, // +1 for social/community feeds
     deduplicatedCount: beforeCount - deduped.length
   }
 }

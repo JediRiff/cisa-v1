@@ -55,7 +55,7 @@ async function triggerAlert(score: number): Promise<void> {
   // Browser notification
   if (Notification.permission === 'granted') {
     new Notification('CAPRI-E Alert: SEVERE', {
-      body: `Energy sector risk score dropped to ${score.toFixed(1)}. Immediate attention recommended.`,
+      body: `Energy sector threat score dropped to ${score.toFixed(1)}. Immediate attention recommended.`,
       icon: '/favicon.ico',
       tag: 'capri-severe-alert', // Prevents duplicate notifications
       requireInteraction: true
@@ -73,7 +73,7 @@ async function triggerAlert(score: number): Promise<void> {
           alert: 'CAPRI-E SEVERE',
           score: score,
           level: 'SEVERE',
-          message: `Energy sector risk score dropped to ${score.toFixed(1)}`,
+          message: `Energy sector threat score dropped to ${score.toFixed(1)}`,
           timestamp: new Date().toISOString()
         })
       })

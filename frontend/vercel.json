@@ -10,5 +10,11 @@
         }
       ]
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/refresh-feeds",
+      "schedule": "*/15 * * * *"
+    }
   ]
 }

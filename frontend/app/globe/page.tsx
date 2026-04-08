@@ -22,7 +22,7 @@ import {
   type ExpandedSector,
   threatActors as allThreatActors,
   energyFacilities,
-  calculateFacilityRisk,
+  calculateFacilityThreatScore,
 } from '@/components/globe/worldData'
 import { matchesIndicator } from '@/lib/indicators'
 import {
@@ -35,6 +35,7 @@ import type { VendorAlert } from '@/lib/supply-chain'
 import LayerPanel from '@/components/map/LayerPanel'
 import DetailPanel from '@/components/map/DetailPanel'
 import FacilityPopup from '@/components/map/FacilityPopup'
+import DataSourcesOverlay from '@/components/map/DataSourcesOverlay'
 import AlertSettingsPanel from '@/components/AlertSettingsPanel'
 import { AlertConfig, loadAlertConfig } from '@/lib/alertRules'
 import { evaluateAlertRules, dispatchAlerts, AlertContext } from '@/lib/alertEvaluator'
@@ -57,6 +58,7 @@ const ThreatMap = dynamic(() => import('@/components/map/ThreatMap'), {
 interface ThreatData {
   score: { score: number; label: string; color: string; factors: any[] }
   threats: { all: any[]; energyRelevant: any[]; critical: any[] }
+  threatsBySector?: Record<string, any[]>
   campaigns?: CampaignCandidate[]
   gridStress?: { facilityId: string; respondent: string; demandMW: number; peakCapacityMW: number; utilization: number; stressLevel: string; period: string }[]
   kev: any[]
@@ -194,10 +196,14 @@ function scoreThreatRelevance(
     const stateName = stateNames[state.toUpperCase()]
     if (stateName && text.includes(stateName)) score += 20
   }
-  // Sector keyword match (baseline relevance)
-  const keywords = expandedSectorKeywords[sector as ExpandedSector]
-  if (keywords && keywords.some((kw) => matchesIndicator(text, kw))) {
-    score += 10
+  // Sector match — use pre-classified sectors if available, fallback to keywords
+  if (item.sectors && item.sectors.length > 0) {
+    if (item.sectors.includes(sector)) score += 10
+  } else {
+    const keywords = expandedSectorKeywords[sector as ExpandedSector]
+    if (keywords && keywords.some((kw: string) => matchesIndicator(text, kw))) {
+      score += 10
+    }
   }
   // Severity bonus
   if (item.severity === 'critical') score += 5
@@ -293,12 +299,12 @@ export default function GlobePage() {
     return data.campaigns.filter(c => c.confidence === 'high' || c.confidence === 'medium')
   }, [data?.campaigns])
 
-  // Facility risk scores for map visualization
-  const facilityRiskScores = useMemo(() => {
+  // Facility threat scores for map visualization
+  const facilityThreatScores = useMemo(() => {
     if (!data) return {}
     const scores: Record<string, number> = {}
     for (const facility of energyFacilities) {
-      const risk = calculateFacilityRisk(facility, data.threats.all || [], data.kev || [], data.gridStress, data.vendorAlerts)
+      const risk = calculateFacilityThreatScore(facility, data.threats.all || [], data.kev || [], data.gridStress, data.vendorAlerts)
       scores[facility.id] = risk.score
     }
     return scores
@@ -306,8 +312,8 @@ export default function GlobePage() {
 
   // ── Detail panel computed data ──
 
-  // Risk for selected feature
-  const selectedRisk = useMemo(() => {
+  // Threat score for selected feature
+  const selectedThreatScore = useMemo(() => {
     if (!selectedFeature || !data) return null
     if (selectedFeature.type === 'threat_actor') return null
     // Find matching legacy facility for risk calc
@@ -315,7 +321,7 @@ export default function GlobePage() {
     if (!facilityId) return null
     const facility = energyFacilities.find(f => f.id === facilityId)
     if (!facility) return null
-    return calculateFacilityRisk(
+    return calculateFacilityThreatScore(
       facility,
       data.threats.all || [],
       data.kev || [],
@@ -325,6 +331,7 @@ export default function GlobePage() {
   }, [selectedFeature, data])
 
   // Facility-specific threats — scored by relevance to this exact facility
+  // Uses pre-classified item.sectors for O(1) lookup, falls back to keyword matching
   const selectedSectorThreats = useMemo(() => {
     if (!selectedFeature || !data) return []
     const allItems = [...(data.threats.all || []), ...(data.kev || [])]
@@ -334,13 +341,20 @@ export default function GlobePage() {
       const actorName = (selectedFeature.properties.name as string || '').toLowerCase()
       const targetSectors = (selectedFeature.properties.targetSectors as string || '').split(', ').filter(Boolean)
       return allItems
-        .map((item) => {
+        .map((item: any) => {
           const text = `${item.title || ''} ${item.shortDescription || ''} ${item.description || ''}`.toLowerCase()
           let score = 0
           if (text.includes(actorName)) score += 100
-          for (const s of targetSectors) {
-            const kws = expandedSectorKeywords[s as ExpandedSector]
-            if (kws && kws.some((kw) => matchesIndicator(text, kw))) score += 10
+          // Use pre-classified sectors if available
+          if (item.sectors && item.sectors.length > 0) {
+            for (const s of targetSectors) {
+              if (item.sectors.includes(s)) score += 10
+            }
+          } else {
+            for (const s of targetSectors) {
+              const kws = expandedSectorKeywords[s as ExpandedSector]
+              if (kws && kws.some((kw: string) => matchesIndicator(text, kw))) score += 10
+            }
           }
           return { item, score }
         })
@@ -363,15 +377,19 @@ export default function GlobePage() {
       selectedFeature.type === 'data_center' ? 'storage' :
       selectedFeature.type === 'substation' ? 'grid' : 'other'
 
-    return allItems
-      .map((item) => ({
+    // Prefer sector-filtered items from the API (pre-computed), with scoring for ranking
+    const sectorItems = data.threatsBySector?.[expandedSector]
+    const candidateItems = sectorItems && sectorItems.length > 0 ? sectorItems : allItems
+
+    return candidateItems
+      .map((item: any) => ({
         item,
         score: scoreThreatRelevance(item, name, operator, state, expandedSector),
       }))
-      .filter(({ score }) => score > 0)
-      .sort((a, b) => b.score - a.score)
+      .filter(({ score }: { score: number }) => score > 0)
+      .sort((a: { score: number }, b: { score: number }) => b.score - a.score)
       .slice(0, 12)
-      .map(({ item }) => item)
+      .map(({ item }: { item: any }) => item)
   }, [selectedFeature, data])
 
   // Targeting actors for selected feature — matches expanded sector names
@@ -423,7 +441,7 @@ export default function GlobePage() {
       capriScore: data.score?.score ?? 5,
       kevItems: data.kev || [],
       threatItems: data.threats?.all || [],
-      facilityRiskScores,
+      facilityThreatScores: facilityThreatScores,
     }
     const alerts = evaluateAlertRules(alertConfig, context)
     if (alerts.length > 0) {
@@ -431,7 +449,7 @@ export default function GlobePage() {
         setAlertConfig(loadAlertConfig())
       })
     }
-  }, [data, facilityRiskScores]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data, facilityThreatScores]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Feature Selection ──
 
@@ -592,7 +610,7 @@ export default function GlobePage() {
           {selectedFeature && (
             <DetailPanel
               feature={selectedFeature}
-              risk={selectedRisk}
+              risk={selectedThreatScore}
               sectorThreats={selectedSectorThreats}
               targetingActors={selectedTargetingActors}
               campaigns={selectedCampaigns}
@@ -600,6 +618,12 @@ export default function GlobePage() {
               onClose={() => setSelectedFeature(null)}
             />
           )}
+
+          {/* Overlay: Data Sources Attribution */}
+          <DataSourcesOverlay
+            sourcesOnline={data?.meta?.sourcesOnline}
+            sourcesTotal={data?.meta?.sourcesTotal}
+          />
         </div>
 
         {/* Right Sidebar: Threat Feed */}

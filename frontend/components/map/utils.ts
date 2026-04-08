@@ -6,10 +6,10 @@ import type { EnergySector } from './types';
 import { SECTOR_COLORS } from './types';
 
 /**
- * Convert a CAPRI 1-5 risk score to a CSS color.
+ * Convert a CAPRI 1-5 threat score to a CSS color.
  * 1 = Severe (red), 5 = Normal (green).
  */
-export function riskScoreToColor(score: number): string {
+export function threatScoreToColor(score: number): string {
   if (score <= 1.5) return '#ef4444'; // red — severe
   if (score <= 2.5) return '#f97316'; // orange — high
   if (score <= 3.5) return '#eab308'; // yellow — elevated
@@ -18,9 +18,9 @@ export function riskScoreToColor(score: number): string {
 }
 
 /**
- * Convert a CAPRI 1-5 risk score to a human label.
+ * Convert a CAPRI 1-5 threat score to a human label.
  */
-export function riskScoreToLabel(score: number): string {
+export function threatScoreToLabel(score: number): string {
   if (score <= 1.5) return 'Severe';
   if (score <= 2.5) return 'High';
   if (score <= 3.5) return 'Elevated';
@@ -29,15 +29,15 @@ export function riskScoreToLabel(score: number): string {
 }
 
 /**
- * Sector-based risk heuristic. Returns a score 1.0–5.0.
- * Nuclear/oil carry higher baseline risk due to regulatory exposure,
+ * Sector-based threat heuristic. Returns a score 1.0–5.0.
+ * Nuclear/oil carry higher baseline threat due to regulatory exposure,
  * physical security requirements, and nation-state targeting.
  * This is a starting heuristic — can be replaced with real computed
- * scores from calculateFacilityRisk() when threat data is available.
+ * scores from calculateFacilityThreatScore() when threat data is available.
  *
- * Capacity also influences risk: larger plants = more critical = lower score.
+ * Capacity also influences threat: larger plants = more critical = lower score.
  */
-export function sectorRiskScore(sector: string, capacityMW: number): number {
+export function sectorThreatScore(sector: string, capacityMW: number): number {
   const baseScores: Record<string, number> = {
     nuclear: 2.1,
     oil: 3.2,
@@ -55,7 +55,7 @@ export function sectorRiskScore(sector: string, capacityMW: number): number {
   };
   let score = baseScores[sector] ?? 4.0;
 
-  // Large plants are more critical — nudge score lower (more risk)
+  // Large plants are more critical — nudge score lower (higher threat)
   if (capacityMW >= 2000) score -= 0.4;
   else if (capacityMW >= 1000) score -= 0.3;
   else if (capacityMW >= 500) score -= 0.2;
@@ -65,14 +65,14 @@ export function sectorRiskScore(sector: string, capacityMW: number): number {
 }
 
 /**
- * MapLibre expression: map 'risk_score' property to a color.
+ * MapLibre expression: map 'threat_score' property to a color.
  * Uses interpolation for smooth gradients across the 1–5 range.
  */
-export function riskColorExpression(): unknown[] {
+export function threatColorExpression(): unknown[] {
   return [
     'interpolate',
     ['linear'],
-    ['coalesce', ['get', 'risk_score'], 4.5],
+    ['coalesce', ['get', 'threat_score'], 4.5],
     1.0, '#ef4444',  // Severe — red
     2.0, '#f97316',  // High — orange
     3.0, '#eab308',  // Elevated — yellow
@@ -338,7 +338,7 @@ export function legacyFacilitiesToGeoJSON(
           operator: f.operator,
           capacity: f.capacity ?? '',
           capacity_mw: capacityMW,
-          risk_score: sectorRiskScore(mappedSector, capacityMW),
+          threat_score: sectorThreatScore(mappedSector, capacityMW),
         },
       };
     }),

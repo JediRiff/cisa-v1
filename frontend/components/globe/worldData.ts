@@ -42,7 +42,7 @@ export interface ThreatActor {
   description: string
 }
 
-export interface FacilityRisk {
+export interface FacilityThreatScore {
   score: number              // 1-5 scale (1=severe, 5=normal, matching CAPRI convention)
   label: string              // 'Critical' | 'High' | 'Elevated' | 'Guarded' | 'Low'
   color: string              // CSS color for display
@@ -52,7 +52,7 @@ export interface FacilityRisk {
   relevantKevCount: number   // KEVs matching this sector
   overdueKevCount: number    // Overdue KEVs
   ransomwareKevCount: number // KEVs with known ransomware use
-  factors: string[]          // Human-readable risk factors
+  factors: string[]          // Human-readable threat factors
   // Grid stress (grid-sector facilities only)
   gridStressScore: number    // Raw grid stress sub-score (0-2)
   gridStressLevel?: string   // 'normal' | 'elevated' | 'high' | 'critical'
@@ -67,18 +67,18 @@ export interface FacilityRisk {
   rawTotal: number           // Sum of sub-scores before inversion (0-10)
 }
 
-// Calculate risk score for a single facility based on real threat data
-export function calculateFacilityRisk(
+// Calculate threat score for a single facility based on real threat data
+export function calculateFacilityThreatScore(
   facility: EnergyFacility,
   threatItems: any[],
   kevItems: any[],
   gridStressData?: { facilityId: string; stressLevel: string; utilization: number }[],
   vendorAlerts?: VendorAlert[],
-): FacilityRisk {
+): FacilityThreatScore {
   const sector = facility.sector
 
   // 1. Threat actor assessment (0-4 points)
-  // Each targeting actor adds weight; more actors = higher risk
+  // Each targeting actor adds weight; more actors = higher threat level
   const targetingActors = threatActors.filter((a) =>
     a.targetSectors.includes(sector)
   )
@@ -158,7 +158,7 @@ export function calculateFacilityRisk(
   const inverted = 5 - (rawScore / 10) * 4
   const score = Math.max(Math.min(Math.round(inverted * 10) / 10, 5), 1)
 
-  // Build human-readable risk factors
+  // Build human-readable threat factors
   const factors: string[] = []
   if (actorCount > 0) {
     factors.push(`${actorCount} nation-state threat actor${actorCount > 1 ? 's' : ''} target${actorCount === 1 ? 's' : ''} this sector`)
@@ -383,7 +383,7 @@ export const expandedSectorKeywords: Record<ExpandedSector, string[]> = {
   ],
 }
 
-/** Map an expanded sector to the nearest legacy Sector for risk calc. */
+/** Map an expanded sector to the nearest legacy Sector for threat score calc. */
 export function expandedToLegacySector(sector: ExpandedSector): Sector {
   switch (sector) {
     case 'nuclear': return 'nuclear'
@@ -391,7 +391,7 @@ export function expandedToLegacySector(sector: ExpandedSector): Sector {
     case 'pump_storage': return 'hydro'
     case 'gas': return 'natural_gas'
     case 'oil': return 'oil'
-    // Renewables, storage, coal, and 'other' map to 'grid' (ICS/SCADA risk profile)
+    // Renewables, storage, coal, and 'other' map to 'grid' (ICS/SCADA threat profile)
     case 'solar': case 'wind': case 'offshore_wind': case 'storage':
     case 'coal': case 'geothermal': case 'biomass': case 'other':
       return 'grid'
@@ -408,7 +408,7 @@ export function matchesExpandedSectorKeywords(text: string, sector: ExpandedSect
 /**
  * Sector-specific ICS weighting multiplier.
  * Nuclear, grid, and gas/oil facilities with ICS/SCADA exposure
- * receive higher risk weighting than purely-IT sectors.
+ * receive higher threat weighting than purely-IT sectors.
  */
 export function sectorICSWeight(sector: ExpandedSector): number {
   switch (sector) {
@@ -429,22 +429,22 @@ export function sectorICSWeight(sector: ExpandedSector): number {
 }
 
 /**
- * Enhanced facility risk for expanded sector set.
- * Wraps the existing calculateFacilityRisk() and applies:
+ * Enhanced facility threat score for expanded sector set.
+ * Wraps the existing calculateFacilityThreatScore() and applies:
  *   1. Capacity-weighted risk (larger plants matter more)
  *   2. Sector-specific ICS weighting
  *   3. Expanded keyword matching for the new sectors
  *
- * Returns a FacilityRisk with the adjusted score.
+ * Returns a FacilityThreatScore with the adjusted score.
  */
-export function calculateExpandedFacilityRisk(
+export function calculateExpandedFacilityThreatScore(
   facility: { id: string; sector: ExpandedSector; capacity?: string; operator?: string; name: string; lat: number; lng: number },
   threatItems: any[],
   kevItems: any[],
   gridStressData?: { facilityId: string; stressLevel: string; utilization: number }[],
   vendorAlerts?: VendorAlert[],
-): FacilityRisk {
-  // Map to legacy facility shape for the base risk calculation
+): FacilityThreatScore {
+  // Map to legacy facility shape for the base threat score calculation
   const legacySector = expandedToLegacySector(facility.sector)
   const legacyFacility: EnergyFacility = {
     id: facility.id,
@@ -455,7 +455,7 @@ export function calculateExpandedFacilityRisk(
     operator: facility.operator || 'Unknown',
     capacity: facility.capacity,
   }
-  const baseRisk = calculateFacilityRisk(legacyFacility, threatItems, kevItems, gridStressData, vendorAlerts)
+  const baseRisk = calculateFacilityThreatScore(legacyFacility, threatItems, kevItems, gridStressData, vendorAlerts)
 
   // Additional expanded-sector CVE matches (keywords the legacy sector may miss)
   const expandedCves = threatItems.filter((item) => {
@@ -1057,7 +1057,7 @@ export const facilityClusters: FacilityCluster[] = [
 /** Assign each facility to its nearest qualifying cluster; singletons stay unclustered. */
 export function computeResolvedClusters(
   facilities: EnergyFacility[],
-  riskScores: Record<string, number>,
+  threatScores: Record<string, number>,
 ): { clusters: ResolvedCluster[]; unclustered: EnergyFacility[] } {
   // Assign each facility to the nearest cluster whose radius it falls within
   const assignments = new Map<string, EnergyFacility[]>()
@@ -1094,7 +1094,7 @@ export function computeResolvedClusters(
       continue
     }
     const worstRisk = members.reduce((worst, f) => {
-      const s = riskScores[f.id] ?? 5
+      const s = threatScores[f.id] ?? 5
       return s < worst ? s : worst
     }, 5)
     clusters.push({ cluster: c, facilities: members, worstRisk })
@@ -1103,8 +1103,8 @@ export function computeResolvedClusters(
   return { clusters, unclustered }
 }
 
-/** Map a 1-5 CAPRI risk score to a CSS color (reusable across components). */
-export function riskScoreToColor(score: number): string {
+/** Map a 1-5 CAPRI threat score to a CSS color (reusable across components). */
+export function threatScoreToColor(score: number): string {
   if (score <= 1.5) return '#ef4444'  // red — severe
   if (score <= 2.5) return '#f97316'  // orange — high
   if (score <= 3.5) return '#eab308'  // yellow — elevated

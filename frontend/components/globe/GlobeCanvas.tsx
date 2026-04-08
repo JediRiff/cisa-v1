@@ -76,7 +76,7 @@ export interface GlobeCanvasProps {
   selectedFacilityId?: string | null
   selectedActorName?: string | null
   activeCampaignActors?: string[]
-  facilityRiskScores?: Record<string, number>
+  facilityThreatScores?: Record<string, number>
   layerVisibility?: LayerVisibility
 }
 
@@ -193,11 +193,11 @@ function loadCountryOutlines(globeGroup: THREE.Group, radius: number) {
     })
 }
 
-export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClusterClick, onEmptyClick, selectedFacilityId, selectedActorName, activeCampaignActors, facilityRiskScores, layerVisibility }: GlobeCanvasProps) {
+export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClusterClick, onEmptyClick, selectedFacilityId, selectedActorName, activeCampaignActors, facilityThreatScores, layerVisibility }: GlobeCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const callbacksRef = useRef({ onFacilityClick, onThreatActorClick, onClusterClick, onEmptyClick })
   const activeCampaignActorsRef = useRef<string[]>(activeCampaignActors || [])
-  const facilityRiskScoresRef = useRef<Record<string, number>>(facilityRiskScores || {})
+  const facilityThreatScoresRef = useRef<Record<string, number>>(facilityThreatScores || {})
   const selectionRef = useRef({ selectedFacilityId, selectedActorName })
   const layerVisibilityRef = useRef<LayerVisibility>(layerVisibility || DEFAULT_LAYER_VISIBILITY)
   const facilityMarkersRef = useRef<FacilityMarkerRef[]>([])
@@ -233,18 +233,18 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClu
     activeCampaignActorsRef.current = activeCampaignActors || []
   }, [activeCampaignActors])
 
-  // Keep facilityRiskScores ref up to date, update bar heights + cluster badges
+  // Keep facilityThreatScores ref up to date, update bar heights + cluster badges
   useEffect(() => {
-    facilityRiskScoresRef.current = facilityRiskScores || {}
+    facilityThreatScoresRef.current = facilityThreatScores || {}
     // Update close-layer bar heights
     facilityMarkersRef.current.forEach(fm => {
-      const score = facilityRiskScoresRef.current[fm.facility.id]
+      const score = facilityThreatScoresRef.current[fm.facility.id]
       if (score != null) {
         const height = 0.012 + (1 - (score - 1) / 4) * 0.075
         fm.mesh.scale.set(1, height / 0.012, 1)
       }
     })
-  }, [facilityRiskScores])
+  }, [facilityThreatScores])
 
   // Keep layer visibility ref up to date and toggle groups
   useEffect(() => {
@@ -499,7 +499,7 @@ export default function GlobeCanvas({ onFacilityClick, onThreatActorClick, onClu
       const pos = latLngToVector3(coords.lat, coords.lng, 1.012)
       const color = sectorColors[facility.sector]
 
-      const riskScore = facilityRiskScoresRef.current[facility.id]
+      const riskScore = facilityThreatScoresRef.current[facility.id]
       const baseHeight = 0.012
       const height = riskScore != null
         ? 0.012 + (1 - (riskScore - 1) / 4) * 0.075

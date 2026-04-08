@@ -43,16 +43,8 @@ const VT_HIGH_CATEGORIES = /\b(trojan|apt|rat|backdoor|exploit|botnet|infosteale
 const VT_ENERGY_CATEGORIES = /\b(industrial|scada|ics|plc|energy|critical.infrastructure)\b/i
 
 function extractSeverity(text: string): ThreatItem['severity'] {
-  const lower = text.toLowerCase()
-  if (lower.includes('critical') || lower.includes('zero-day') || lower.includes('0-day') || lower.includes('actively exploited')) return 'critical'
-  if (/\b(ransomware|remote code execution|rce|wiper|destructive)\b/.test(lower)) return 'critical'
-  if (lower.includes('high') || lower.includes('urgent') || lower.includes('severe')) return 'high'
-  if (/\b(apt\d+|nation.state|scada|plc|modbus|ics)\b/.test(lower)) return 'high'
-  if (lower.includes('medium') || lower.includes('moderate')) return 'medium'
-  if (/\b(vulnerability|exploit|attack|malware|threat|breach|backdoor|trojan|phishing)\b/.test(lower)) return 'medium'
-  if (lower.includes('low') || lower.includes('informational')) return 'low'
-  if (lower.length > 50) return 'medium'
-  return 'unknown'
+  const { classifySeverity } = require('./severity')
+  return classifySeverity({ title: text, description: '', source: '', sourceType: 'vendor' })
 }
 
 // ─── AbuseIPDB ──────────────────────────────────────────────────────────────────

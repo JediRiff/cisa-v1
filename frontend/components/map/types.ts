@@ -128,8 +128,8 @@ export const SECTOR_SHAPES: Record<EnergySector, MarkerShape> = {
   other: 'circle',
 };
 
-// Facility risk — preserves the existing worldData.ts model
-export interface FacilityRisk {
+// Facility threat score — preserves the existing worldData.ts model
+export interface FacilityThreatScore {
   score: number;            // 1-5 (1=Severe, 5=Normal)
   label: string;
   color: string;
@@ -150,7 +150,7 @@ export interface SelectedFeature {
   type: 'plant' | 'data_center' | 'substation' | 'cable' | 'threat_actor';
   properties: Record<string, unknown>;
   coordinates: [number, number];
-  risk?: FacilityRisk;
+  threatScore?: FacilityThreatScore;
 }
 
 // Map interaction callbacks

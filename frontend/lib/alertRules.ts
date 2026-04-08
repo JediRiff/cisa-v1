@@ -43,8 +43,8 @@ export const DEFAULT_RULES: AlertRule[] = [
   { id: 'ns-nuclear', type: 'nation_state_sector', label: 'Nation-State: Nuclear', description: 'Nation-state threat activity targeting nuclear sector', enabled: true, sector: 'nuclear' },
 
   // Facility risk thresholds
-  { id: 'facility-risk-below-2', type: 'facility_risk_below', label: 'Facility Risk Severe', description: 'Any facility risk score drops below 2.0', enabled: true, threshold: 2.0 },
-  { id: 'facility-risk-below-3', type: 'facility_risk_below', label: 'Facility Risk High', description: 'Any facility risk score drops below 3.0', enabled: false, threshold: 3.0 },
+  { id: 'facility-risk-below-2', type: 'facility_risk_below', label: 'Facility Threat Severe', description: 'Any facility threat score drops below 2.0', enabled: true, threshold: 2.0 },
+  { id: 'facility-risk-below-3', type: 'facility_risk_below', label: 'Facility Threat High', description: 'Any facility threat score drops below 3.0', enabled: false, threshold: 3.0 },
 ]
 
 const STORAGE_KEY = 'capri-alert-config'

@@ -1,10 +1,12 @@
 // CAPRI Threat Intelligence API Endpoint
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchAllFeeds, ThreatItem } from '@/lib/feeds'
+import type { EnergySector } from '@/components/map/types'
 import { fetchAllEnrichment, fetchEPSSScores, getConfiguredEnrichmentCount, EnrichmentKeys } from '@/lib/enrichment'
 import { calculateEnergyScore } from '@/lib/scoring'
 import { analyzeThreatsWithAI, AIAnalysisResult } from '@/lib/ai-analysis'
 import { detectCampaigns } from '@/lib/campaign-correlation'
+import { classifySeverity } from '@/lib/severity'
 import { threatActors } from '@/components/globe/worldData'
 import { NATION_STATE_INDICATORS, matchesIndicator, matchesICSContext, isEnergyRelevantKEV } from '@/lib/indicators'
 import { fetchGridStress } from '@/lib/eia930'
@@ -115,6 +117,20 @@ export async function GET(request: NextRequest) {
       return item
     })
 
+    // Post-AI severity reconciliation: re-classify with all signals available
+    feedResult.items = feedResult.items.map(item => ({
+      ...item,
+      severity: classifySeverity({
+        title: item.title,
+        description: item.description,
+        source: item.source,
+        sourceType: item.sourceType,
+        aiSeverityScore: item.aiSeverityScore,
+        epssScore: item.epssScore,
+        isKEV: item.source === 'CISA KEV',
+      }),
+    }))
+
     // Detect active campaigns by correlating feed items against actor TTP signatures
     const campaigns = detectCampaigns(feedResult.items, threatActors)
     const activeCampaignCount = campaigns.filter(c => c.confidence === 'high' || c.confidence === 'medium').length
@@ -172,6 +188,19 @@ export async function GET(request: NextRequest) {
     // Build per-vendor alert aggregation from KEVs + AI-extracted vendor mentions
     const vendorAlerts = buildVendorAlerts(kevActions, feedResult.items)
 
+    // Pre-compute threats by energy sector for per-facility filtering
+    const allSectors: EnergySector[] = [
+      'solar', 'wind', 'offshore_wind', 'storage', 'pump_storage',
+      'hydro', 'nuclear', 'gas', 'coal', 'oil',
+      'geothermal', 'biomass', 'other',
+    ]
+    const threatsBySector: Record<string, ThreatItem[]> = {}
+    for (const sector of allSectors) {
+      threatsBySector[sector] = feedResult.items
+        .filter(item => item.sectors && item.sectors.includes(sector))
+        .slice(0, 25)
+    }
+
     // Build response data
     const responseData = {
       success: true,
@@ -181,6 +210,7 @@ export async function GET(request: NextRequest) {
         energyRelevant: feedResult.items.filter(item => item.isEnergyRelevant).slice(0, 20),
         critical: feedResult.items.filter(item => item.severity === 'critical').slice(0, 20),
       },
+      threatsBySector,
       campaigns,
       gridStress: gridStressResult.entries,
       kev: kevActions,

@@ -48,16 +48,16 @@ export default function FacilityPopup({ feature, position }: FacilityPopupProps)
       break
   }
 
-  // Risk badge
-  const riskScore = feature.risk?.score
-  let riskColor = '#6b7280'
-  let riskLabel = ''
-  if (riskScore !== undefined) {
-    if (riskScore <= 1.5) { riskColor = '#ef4444'; riskLabel = 'SEV' }
-    else if (riskScore <= 2.5) { riskColor = '#f97316'; riskLabel = 'HIGH' }
-    else if (riskScore <= 3.5) { riskColor = '#eab308'; riskLabel = 'ELEV' }
-    else if (riskScore <= 4.5) { riskColor = '#3b82f6'; riskLabel = 'GRD' }
-    else { riskColor = '#22c55e'; riskLabel = 'LOW' }
+  // Threat badge
+  const threatScore = feature.threatScore?.score
+  let threatColor = '#6b7280'
+  let threatLabel = ''
+  if (threatScore !== undefined) {
+    if (threatScore <= 1.5) { threatColor = '#ef4444'; threatLabel = 'SEV' }
+    else if (threatScore <= 2.5) { threatColor = '#f97316'; threatLabel = 'HIGH' }
+    else if (threatScore <= 3.5) { threatColor = '#eab308'; threatLabel = 'ELEV' }
+    else if (threatScore <= 4.5) { threatColor = '#3b82f6'; threatLabel = 'GRD' }
+    else { threatColor = '#22c55e'; threatLabel = 'LOW' }
   }
 
   // Offset popup so it doesn't overlap the cursor
@@ -85,12 +85,12 @@ export default function FacilityPopup({ feature, position }: FacilityPopupProps)
           <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: accentColor }}>
             {typeLabel}
           </span>
-          {riskScore !== undefined && (
+          {threatScore !== undefined && (
             <span
               className="text-[9px] font-bold font-mono ml-auto px-1 py-0.5 rounded"
-              style={{ color: riskColor, background: `${riskColor}20` }}
+              style={{ color: threatColor, background: `${threatColor}20` }}
             >
-              {riskScore.toFixed(1)} {riskLabel}
+              {threatScore.toFixed(1)} {threatLabel}
             </span>
           )}
         </div>

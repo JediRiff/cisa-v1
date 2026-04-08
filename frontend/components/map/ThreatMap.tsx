@@ -19,9 +19,9 @@ import {
   buildAttackArcsGeoJSON,
   cableRoutesToGeoJSON,
   legacyFacilitiesToGeoJSON,
-  riskScoreToColor,
-  riskColorExpression,
-  sectorRiskScore,
+  threatScoreToColor,
+  threatColorExpression,
+  sectorThreatScore,
   formatCapacity,
 } from './utils';
 import { threatActors, energyFacilities } from '../globe/worldData';
@@ -238,14 +238,14 @@ export default function ThreatMap({
     });
 
     // Try loading external GeoJSON and swap if available.
-    // Inject risk_score into each feature for risk visualization layers.
+    // Inject threat_score into each feature for risk visualization layers.
     fetchGeoJSON('/data/power-plants.geojson').then((data) => {
       if (data) {
         for (const feature of data.features) {
-          if (feature.properties && !feature.properties.risk_score) {
+          if (feature.properties && !feature.properties.threat_score) {
             const sector = (feature.properties.sector ?? 'other') as string;
             const cap = Number(feature.properties.capacityMW ?? feature.properties.capacity_mw ?? 0);
-            feature.properties.risk_score = sectorRiskScore(sector, cap);
+            feature.properties.threat_score = sectorThreatScore(sector, cap);
           }
         }
         const src = map.getSource(SOURCE_IDS.PLANTS) as maplibregl.GeoJSONSource | undefined;
@@ -390,43 +390,43 @@ export default function ThreatMap({
     // Risk visualization layers (behind shape icons)
     // ============================
 
-    // Risk glow — soft blurred halo, colored by risk score
-    // Higher risk = more prominent glow
+    // Threat glow — soft blurred halo, colored by threat score
+    // Higher threat = more prominent glow
     map.addLayer({
       id: LAYER_IDS.PLANTS_RISK_GLOW,
       type: 'circle',
       source: SOURCE_IDS.PLANTS,
       filter: ['has', 'sector'],  // Only render features with sector property
       paint: {
-        'circle-color': riskColorExpression() as maplibregl.ExpressionSpecification,
+        'circle-color': threatColorExpression() as maplibregl.ExpressionSpecification,
         'circle-radius': [
           'interpolate', ['linear'], ['zoom'],
           2, [
             'case',
             ['==', ['get', 'sector'], 'solar'], 3,
-            ['<=', ['coalesce', ['get', 'risk_score'], 5], 2.5], 6,
-            ['<=', ['coalesce', ['get', 'risk_score'], 5], 3.5], 5,
+            ['<=', ['coalesce', ['get', 'threat_score'], 5], 2.5], 6,
+            ['<=', ['coalesce', ['get', 'threat_score'], 5], 3.5], 5,
             4,
           ],
           6, [
             'case',
             ['==', ['get', 'sector'], 'solar'], 5,
-            ['<=', ['coalesce', ['get', 'risk_score'], 5], 2.5], 10,
-            ['<=', ['coalesce', ['get', 'risk_score'], 5], 3.5], 8,
+            ['<=', ['coalesce', ['get', 'threat_score'], 5], 2.5], 10,
+            ['<=', ['coalesce', ['get', 'threat_score'], 5], 3.5], 8,
             6,
           ],
           10, [
             'case',
             ['==', ['get', 'sector'], 'solar'], 8,
-            ['<=', ['coalesce', ['get', 'risk_score'], 5], 2.5], 18,
-            ['<=', ['coalesce', ['get', 'risk_score'], 5], 3.5], 14,
+            ['<=', ['coalesce', ['get', 'threat_score'], 5], 2.5], 18,
+            ['<=', ['coalesce', ['get', 'threat_score'], 5], 3.5], 14,
             10,
           ],
         ] as maplibregl.ExpressionSpecification,
         'circle-blur': 0.8,
         'circle-opacity': [
           'interpolate', ['linear'],
-          ['coalesce', ['get', 'risk_score'], 5],
+          ['coalesce', ['get', 'threat_score'], 5],
           1.0, 0.35,   // Severe: bright glow
           2.5, 0.25,   // High: visible glow
           3.5, 0.12,   // Elevated: subtle glow
@@ -474,10 +474,10 @@ export default function ThreatMap({
           6, 1.5,
           10, 2,
         ] as maplibregl.ExpressionSpecification,
-        'circle-stroke-color': riskColorExpression() as maplibregl.ExpressionSpecification,
+        'circle-stroke-color': threatColorExpression() as maplibregl.ExpressionSpecification,
         'circle-stroke-opacity': [
           'interpolate', ['linear'],
-          ['coalesce', ['get', 'risk_score'], 5],
+          ['coalesce', ['get', 'threat_score'], 5],
           1.0, 0.8,   // Severe: strong ring
           2.5, 0.6,   // High: clear ring
           3.5, 0.35,  // Elevated: visible
@@ -819,7 +819,7 @@ export default function ThreatMap({
             </div>
             ${operator ? `<div style="color:#64748b;font-size:10px;margin-bottom:4px;">${escapeHtml(operator)}</div>` : ''}
             <div style="display:flex;align-items:center;gap:6px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.06);">
-              <span style="font-size:10px;color:#64748b;">Risk:</span>
+              <span style="font-size:10px;color:#64748b;">Threat:</span>
               <span style="font-size:11px;font-weight:600;color:${risk.color};">${risk.score}</span>
               <span style="font-size:9px;color:${risk.color};opacity:0.8;">${risk.label}</span>
             </div>
@@ -878,7 +878,7 @@ export default function ThreatMap({
       const capacityMW = Number(props.capacityMW ?? props.capacity_mw) || 0;
       const capStr = capacityMW >= 1000 ? `${(capacityMW / 1000).toFixed(1)} GW` : capacityMW > 0 ? `${Math.round(capacityMW)} MW` : '';
 
-      // Risk indicator
+      // Threat indicator
       const riskSectors: Record<string, { score: string; label: string; color: string }> = {
         nuclear: { score: '2.1', label: 'High', color: '#f97316' },
         hydro: { score: '3.2', label: 'Elevated', color: '#eab308' },
@@ -921,7 +921,7 @@ export default function ThreatMap({
                 <div style="font-size:9px;color:${risk.color};opacity:0.8;text-transform:uppercase;letter-spacing:0.5px;">${risk.label}</div>
               </div>
               <div style="width:1px;height:24px;background:rgba(255,255,255,0.08);"></div>
-              <div style="font-size:10px;color:#94a3b8;line-height:1.4;">CAPRI Risk Score</div>
+              <div style="font-size:10px;color:#94a3b8;line-height:1.4;">CAPRI Threat Score</div>
             </div>
             <div style="font-size:11px;color:#94a3b8;line-height:1.5;">
               ${props.operator ? `<div style="margin-bottom:2px;"><span style="color:#64748b;">Operator:</span> ${escapeHtml(props.operator)}</div>` : ''}

@@ -9,7 +9,7 @@ import {
   Factory,
   Crosshair,
 } from 'lucide-react'
-import type { SelectedFeature, FacilityRisk } from './types'
+import type { SelectedFeature, FacilityThreatScore } from './types'
 import { SECTOR_COLORS, SECTOR_LABELS, INFRA_COLORS, EnergySector } from './types'
 import type { ThreatActor, MitreTTP } from '@/components/globe/worldData'
 
@@ -51,8 +51,8 @@ function formatTimeAgo(dateStr: string): string {
 
 interface DetailPanelProps {
   feature: SelectedFeature
-  /** Risk score computed for the selected feature (power plant / infra) */
-  risk?: FacilityRisk | null
+  /** Threat score computed for the selected feature (power plant / infra) */
+  risk?: FacilityThreatScore | null
   /** Threat items relevant to this feature's sector / type */
   sectorThreats?: any[]
   /** Threat actors targeting this feature's sector */
@@ -198,7 +198,48 @@ export default function DetailPanel({
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
-        {/* ── Relevant Alerts & CVEs (TOP of detail panel) ── */}
+        {/* ── Supply Chain Exposure (TOP of detail panel) ── */}
+        {vendorAlerts.length > 0 && (
+          <div>
+            <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Factory className="w-3 h-3 text-cyan-400" />
+              Supply Chain Exposure
+            </h4>
+            <div className="space-y-1">
+              {vendorAlerts.map((alert: any, i: number) => (
+                <div
+                  key={`${alert.vendor}-${i}`}
+                  className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 ${
+                    alert.kevCount > 0
+                      ? 'bg-red-500/10 border border-red-500/20'
+                      : 'bg-white/[0.03]'
+                  }`}
+                >
+                  <div
+                    className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      alert.kevCount > 0 ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'
+                    }`}
+                  />
+                  <span className="text-xs text-gray-200 capitalize flex-1">
+                    {alert.vendor}
+                  </span>
+                  {alert.kevCount > 0 && (
+                    <span className="text-[9px] font-bold text-red-400 bg-red-500/20 px-1.5 py-0.5 rounded">
+                      {alert.kevCount} KEV{alert.kevCount !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                  {alert.cveCount > 0 && (
+                    <span className="text-[9px] font-bold text-orange-400 bg-orange-500/20 px-1.5 py-0.5 rounded">
+                      {alert.cveCount} CVE{alert.cveCount !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Relevant Alerts & CVEs ── */}
         {sectorThreats.length > 0 && (
           <div>
             <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -246,13 +287,13 @@ export default function DetailPanel({
           </div>
         )}
 
-        {/* ── Risk Score (for plants and infrastructure) ── */}
+        {/* ── Threat Score (for plants and infrastructure) ── */}
         {risk && (
           <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3">
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                 <Shield className="w-3 h-3" />
-                Risk Assessment
+                Threat Assessment
               </h4>
               <div className="flex items-center gap-2">
                 <span
@@ -270,7 +311,7 @@ export default function DetailPanel({
               </div>
             </div>
 
-            {/* Risk bar */}
+            {/* Threat bar */}
             <div className="w-full h-1.5 bg-white/10 rounded-full mb-2">
               <div
                 className="h-full rounded-full transition-all"
@@ -281,7 +322,7 @@ export default function DetailPanel({
               />
             </div>
 
-            {/* Risk factors */}
+            {/* Threat factors */}
             <div className="space-y-1">
               {risk.factors.map((factor, i) => (
                 <div key={i} className="flex items-start gap-1.5">
@@ -496,47 +537,6 @@ export default function DetailPanel({
                   />
                   <span className="text-xs text-gray-200">{actor.name}</span>
                   <span className="text-[10px] text-gray-500 ml-auto">{actor.country}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Supply Chain Dependencies ── */}
-        {vendorAlerts.length > 0 && (
-          <div>
-            <h4 className="text-[10px] font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Factory className="w-3 h-3 text-cyan-400" />
-              Supply Chain Exposure
-            </h4>
-            <div className="space-y-1">
-              {vendorAlerts.map((alert: any, i: number) => (
-                <div
-                  key={`${alert.vendor}-${i}`}
-                  className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 ${
-                    alert.kevCount > 0
-                      ? 'bg-red-500/10 border border-red-500/20'
-                      : 'bg-white/[0.03]'
-                  }`}
-                >
-                  <div
-                    className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                      alert.kevCount > 0 ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'
-                    }`}
-                  />
-                  <span className="text-xs text-gray-200 capitalize flex-1">
-                    {alert.vendor}
-                  </span>
-                  {alert.kevCount > 0 && (
-                    <span className="text-[9px] font-bold text-red-400 bg-red-500/20 px-1.5 py-0.5 rounded">
-                      {alert.kevCount} KEV{alert.kevCount !== 1 ? 's' : ''}
-                    </span>
-                  )}
-                  {alert.cveCount > 0 && (
-                    <span className="text-[9px] font-bold text-orange-400 bg-orange-500/20 px-1.5 py-0.5 rounded">
-                      {alert.cveCount} CVE{alert.cveCount !== 1 ? 's' : ''}
-                    </span>
-                  )}
                 </div>
               ))}
             </div>
