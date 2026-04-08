@@ -175,11 +175,12 @@ function parseOTX(json: any, sourceName: string, sourceType: ThreatItem['sourceT
 
 function parseKEV(json: any): ThreatItem[] {
   const vulnerabilities = json.vulnerabilities || []
-  const fourteenDaysAgo = new Date()
-  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
+  // KEVs use 30-day window (CISA adds them less frequently than RSS posts)
+  const kevCutoff = new Date()
+  kevCutoff.setDate(kevCutoff.getDate() - 30)
 
   return vulnerabilities
-    .filter((vuln: any) => new Date(vuln.dateAdded) >= fourteenDaysAgo)
+    .filter((vuln: any) => new Date(vuln.dateAdded) >= kevCutoff)
     .slice(0, 25)
     .map((vuln: any) => {
       const title = vuln.cveID + ': ' + vuln.vendorProject + ' ' + vuln.product
@@ -233,10 +234,10 @@ export async function fetchAllFeeds(): Promise<FeedResult> {
         const json = JSON.parse(text)
         // Store raw KEV items for recommendations (most recent 10 by due date)
         const vulns = json.vulnerabilities || []
-        const fourteenDaysAgo = new Date()
-        fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 30)
+        const kevRawCutoff = new Date()
+        kevRawCutoff.setDate(kevRawCutoff.getDate() - 30)
         kevItems = vulns
-          .filter((v: any) => new Date(v.dateAdded) >= fourteenDaysAgo)
+          .filter((v: any) => new Date(v.dateAdded) >= kevRawCutoff)
           .sort((a: any, b: any) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime())
           .slice(0, 10)
           .map((v: any) => ({
