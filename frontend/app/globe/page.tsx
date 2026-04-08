@@ -31,7 +31,7 @@ import {
   SelectedFeature,
 } from '@/components/map/types'
 import type { CampaignCandidate } from '@/lib/campaign-correlation'
-import type { VendorAlert } from '@/lib/supply-chain'
+import { type VendorAlert, getSectorVendorNames } from '@/lib/supply-chain'
 import LayerPanel from '@/components/map/LayerPanel'
 import DetailPanel from '@/components/map/DetailPanel'
 import FacilityPopup from '@/components/map/FacilityPopup'
@@ -377,9 +377,23 @@ export default function GlobePage() {
       selectedFeature.type === 'data_center' ? 'storage' :
       selectedFeature.type === 'substation' ? 'grid' : 'other'
 
-    // Prefer sector-filtered items from the API (pre-computed), with scoring for ranking
-    const sectorItems = data.threatsBySector?.[expandedSector]
-    const candidateItems = sectorItems && sectorItems.length > 0 ? sectorItems : allItems
+    // Use ONLY sector-specific threats — no fallback to allItems
+    const sectorItems = data.threatsBySector?.[expandedSector] || []
+
+    // For ICS-heavy sectors, also include cross-cutting ICS threats (classified under 'other')
+    const icsHeavySectors = ['nuclear', 'gas', 'oil', 'hydro', 'coal', 'other']
+    let candidateItems = [...sectorItems]
+    if (icsHeavySectors.includes(expandedSector) && expandedSector !== 'other') {
+      const crossCutting = data.threatsBySector?.['other'] || []
+      candidateItems.push(...crossCutting)
+    }
+    // Dedupe by item ID
+    const seen = new Set<string>()
+    candidateItems = candidateItems.filter((item: any) => {
+      if (seen.has(item.id)) return false
+      seen.add(item.id)
+      return true
+    })
 
     return candidateItems
       .map((item: any) => ({
@@ -426,11 +440,18 @@ export default function GlobePage() {
     return data.campaigns.filter(c => c.affectedSectors.includes(sector!))
   }, [selectedFeature, data?.campaigns])
 
-  // Vendor alerts for selected feature
+  // Vendor alerts for selected feature — filtered by sector-specific vendors
   const selectedVendorAlerts = useMemo(() => {
     if (!selectedFeature || !data?.vendorAlerts) return []
     if (selectedFeature.type === 'threat_actor') return []
-    return data.vendorAlerts.filter(a => a.kevCount > 0 || a.cveCount > 0)
+    // Get the facility's sector and map to legacy for vendor lookup
+    const sector = (selectedFeature.properties.sector as string) || 'other'
+    const legacySector = mapToLegacySector(sector) || 'grid'
+    const sectorVendors = getSectorVendorNames(legacySector)
+    return data.vendorAlerts.filter((a: any) =>
+      (a.kevCount > 0 || a.cveCount > 0) &&
+      sectorVendors.has(a.vendor.toLowerCase())
+    )
   }, [selectedFeature, data?.vendorAlerts])
 
   // ── Alert Rule Evaluation ──

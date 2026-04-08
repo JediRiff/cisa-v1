@@ -129,6 +129,12 @@ const SECTOR_VENDOR_DEFAULTS: Record<Sector, VendorDependency[]> = {
   ],
 }
 
+/** Get the set of vendor names relevant to a given sector (for filtering vendor alerts). */
+export function getSectorVendorNames(sector: Sector): Set<string> {
+  const deps = SECTOR_VENDOR_DEFAULTS[sector] || SECTOR_VENDOR_DEFAULTS.grid
+  return new Set(deps.map(d => d.vendor))
+}
+
 // ── Per-Facility Overrides ──
 
 const FACILITY_VENDOR_OVERRIDES: Record<string, VendorDependency[]> = {
