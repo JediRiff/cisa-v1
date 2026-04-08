@@ -24,6 +24,7 @@ import {
   sectorThreatScore,
   formatCapacity,
 } from './utils';
+import { registerShapeIcons, sectorIconExpression } from './shapeIcons';
 import { threatActors, energyFacilities } from '../globe/worldData';
 import { submarineCables, lngShippingLanes } from '../globe/geoLayers';
 
@@ -38,6 +39,7 @@ const LAYER_IDS = {
   PLANTS_RISK_GLOW: 'plants-risk-glow',
   PLANTS_RISK_BORDER: 'plants-risk-border',
   PLANTS_UNCLUSTERED: 'plants-unclustered',
+  PLANTS_SHAPES: 'plants-shapes',
   PLANTS_LABELS: 'plants-labels',
   // Infrastructure
   SUBMARINE_CABLES: 'submarine-cables',
@@ -185,6 +187,7 @@ export default function ThreatMap({
     map.on('load', () => {
       mapReadyRef.current = true;
       try {
+        registerShapeIcons(map);
         addSources(map);
         addLayers(map);
         setupInteractions(map);
@@ -488,94 +491,105 @@ export default function ThreatMap({
       },
     });
 
-    // Unclustered facilities — circle layer colored by sector.
-    // Radii are large enough to see AND click at all zoom levels.
-    // Nuclear/hydro/gas get priority sizing so they're visible among 6k+ solar.
+    // Invisible click-target circle layer (needed for consistent hit detection)
     map.addLayer({
       id: LAYER_IDS.PLANTS_UNCLUSTERED,
       type: 'circle',
       source: SOURCE_IDS.PLANTS,
-      filter: ['has', 'sector'],  // Only render features with sector property
+      filter: ['has', 'sector'],
       paint: {
-        'circle-color': sectorColorExpression() as maplibregl.ExpressionSpecification,
+        'circle-color': 'transparent',
         'circle-radius': [
+          'interpolate', ['linear'], ['zoom'],
+          2, 4,
+          5, 6,
+          8, 10,
+          12, 14,
+        ] as maplibregl.ExpressionSpecification,
+        'circle-opacity': 0,
+      },
+    });
+
+    // Sector shape icons — triangles, squares, diamonds, stars, etc.
+    // Uses programmatic canvas-drawn icons registered in shapeIcons.ts
+    map.addLayer({
+      id: LAYER_IDS.PLANTS_SHAPES,
+      type: 'symbol',
+      source: SOURCE_IDS.PLANTS,
+      filter: ['has', 'sector'],
+      layout: {
+        'icon-image': sectorIconExpression() as maplibregl.ExpressionSpecification,
+        'icon-size': [
           'interpolate',
           ['linear'],
           ['zoom'],
-          // zoom 2: visible dots — nuclear/hydro/gas stand out
           2, [
             'case',
             ['in', ['get', 'sector'], ['literal', ['nuclear']]],
-            5,
+            0.5,
             ['in', ['get', 'sector'], ['literal', ['hydro', 'pump_storage']]],
-            4,
+            0.4,
             ['in', ['get', 'sector'], ['literal', ['gas', 'coal', 'oil', 'wind', 'offshore_wind']]],
-            3,
+            0.35,
             ['==', ['get', 'sector'], 'solar'],
-            1.5,
-            2.5,
+            0.2,
+            0.3,
           ],
-          // zoom 5: all clearly visible
           5, [
             'case',
             ['in', ['get', 'sector'], ['literal', ['nuclear']]],
-            7,
+            0.7,
             ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000],
-            7,
+            0.7,
             ['in', ['get', 'sector'], ['literal', ['hydro', 'pump_storage']]],
-            6,
+            0.6,
             ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500],
-            5.5,
+            0.55,
             ['in', ['get', 'sector'], ['literal', ['gas', 'coal', 'oil', 'wind', 'offshore_wind']]],
-            4.5,
+            0.45,
             ['==', ['get', 'sector'], 'solar'],
-            2.5,
-            3.5,
+            0.25,
+            0.35,
           ],
-          // zoom 8: detailed, capacity-scaled
           8, [
             'case',
             ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 2000],
-            14,
+            1.2,
             ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000],
-            11,
+            1.0,
             ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500],
-            9,
+            0.8,
             ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 100],
-            7,
+            0.65,
             ['==', ['get', 'sector'], 'solar'],
-            4,
-            6,
+            0.35,
+            0.5,
           ],
-          // zoom 12+: full detail
           12, [
             'case',
             ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 2000],
-            18,
+            1.6,
             ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 1000],
-            14,
+            1.3,
             ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 500],
-            11,
+            1.0,
             ['>=', ['coalesce', ['get', 'capacityMW'], ['get', 'capacity_mw'], 0], 100],
-            9,
+            0.8,
             ['==', ['get', 'sector'], 'solar'],
-            6,
-            7,
+            0.5,
+            0.65,
           ],
         ] as maplibregl.ExpressionSpecification,
-        'circle-opacity': [
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+      paint: {
+        'icon-opacity': [
           'case',
           ['==', ['get', 'sector'], 'solar'],
-          ['interpolate', ['linear'], ['zoom'], 2, 0.4, 6, 0.6, 9, 0.85],
-          0.85,
+          ['interpolate', ['linear'], ['zoom'], 2, 0.5, 6, 0.7, 9, 0.9],
+          0.9,
         ] as maplibregl.ExpressionSpecification,
-        'circle-stroke-width': [
-          'interpolate', ['linear'], ['zoom'],
-          2, 0.5,
-          8, 1,
-          12, 1.5,
-        ] as maplibregl.ExpressionSpecification,
-        'circle-stroke-color': 'rgba(255,255,255,0.2)',
       },
     });
 
@@ -762,6 +776,7 @@ export default function ThreatMap({
   const setupInteractions = useCallback((map: maplibregl.Map) => {
     // Clickable layers
     const clickableLayers = [
+      LAYER_IDS.PLANTS_SHAPES,       // Shape icon layer (primary click target)
       LAYER_IDS.PLANTS_UNCLUSTERED,
       LAYER_IDS.PLANTS_RISK_BORDER,  // Larger click target around facilities
       LAYER_IDS.THREAT_ACTORS,
@@ -832,9 +847,11 @@ export default function ThreatMap({
       tooltipRef.current?.remove();
     }
 
-    // Bind hover to both the main circle and the risk border (larger click target)
+    // Bind hover to shape icons, click target, and risk border
+    map.on('mousemove', LAYER_IDS.PLANTS_SHAPES, handlePlantHover);
     map.on('mousemove', LAYER_IDS.PLANTS_UNCLUSTERED, handlePlantHover);
     map.on('mousemove', LAYER_IDS.PLANTS_RISK_BORDER, handlePlantHover);
+    map.on('mouseleave', LAYER_IDS.PLANTS_SHAPES, handlePlantHoverLeave);
     map.on('mouseleave', LAYER_IDS.PLANTS_UNCLUSTERED, handlePlantHoverLeave);
     map.on('mouseleave', LAYER_IDS.PLANTS_RISK_BORDER, handlePlantHoverLeave);
 
@@ -1101,6 +1118,7 @@ export default function ThreatMap({
 
     setVis(LAYER_IDS.PLANTS_RISK_GLOW, anySectorVisible);
     setVis(LAYER_IDS.PLANTS_RISK_BORDER, anySectorVisible);
+    setVis(LAYER_IDS.PLANTS_SHAPES, anySectorVisible);
     setVis(LAYER_IDS.PLANTS_LABELS, anySectorVisible);
 
     // Build sector filter for plant layers
@@ -1128,6 +1146,7 @@ export default function ThreatMap({
       try {
         for (const layerId of [
           LAYER_IDS.PLANTS_UNCLUSTERED,
+          LAYER_IDS.PLANTS_SHAPES,
           LAYER_IDS.PLANTS_RISK_GLOW,
           LAYER_IDS.PLANTS_RISK_BORDER,
           LAYER_IDS.PLANTS_LABELS,
@@ -1137,11 +1156,13 @@ export default function ThreatMap({
           }
         }
         setVis(LAYER_IDS.PLANTS_UNCLUSTERED, true);
+        setVis(LAYER_IDS.PLANTS_SHAPES, true);
       } catch {
         // Filters may fail if layers aren't ready
       }
     } else {
       setVis(LAYER_IDS.PLANTS_UNCLUSTERED, false);
+      setVis(LAYER_IDS.PLANTS_SHAPES, false);
       setVis(LAYER_IDS.PLANTS_RISK_GLOW, false);
       setVis(LAYER_IDS.PLANTS_RISK_BORDER, false);
     }
