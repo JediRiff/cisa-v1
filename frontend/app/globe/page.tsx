@@ -583,10 +583,10 @@ export default function GlobePage() {
 
           {/* Overlay: Score Badge — positioned below legend */}
           {data?.score && !selectedFeature && (
-            <div className="absolute top-[calc(var(--legend-height,360px)+24px)] left-4 z-20 bg-[#0a1628]/85 backdrop-blur-xl border border-white/[0.06] rounded-xl px-4 py-3 shadow-2xl" style={{ minWidth: 200 }}>
+            <div className="absolute top-[calc(var(--legend-height,360px)+24px)] left-4 z-20 bg-[#0a1628]/85 backdrop-blur-xl border border-white/[0.06] rounded-xl px-4 py-3 shadow-2xl" style={{ minWidth: 240 }}>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1 font-semibold">CAPRI Score</p>
               <pre
-                className={`text-[7px] leading-[1.15] font-mono select-none ${getScoreColor(data.score.score)}`}
+                className={`text-[9px] leading-[1.15] font-mono select-none whitespace-pre overflow-visible ${getScoreColor(data.score.score)}`}
                 aria-hidden="true"
               >{scoreToAscii(data.score.score)}</pre>
               <span className="sr-only">{data.score.score.toFixed(1)}</span>
