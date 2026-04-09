@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { AlertTriangle, Shield, RefreshCw, Clock, CheckCircle, XCircle, Bell, BellOff, ChevronDown, MessageSquare, ArrowUp, AlertCircle, Settings, Search } from 'lucide-react'
 import { saveScore } from '@/lib/history'
 import { checkAndTriggerAlerts, requestNotificationPermission, getNotificationPermission, setWebhookUrl, getWebhookUrl } from '@/lib/alerts'
-import { NATION_STATE_INDICATORS, matchesIndicator, matchesICSContext } from '@/lib/indicators'
+import { matchesICSContext } from '@/lib/indicators'
 import ActionableRecommendations, { type KEVAction } from '@/components/ActionableRecommendations'
 import ScoreBreakdown from '@/components/ScoreBreakdown'
 import ScoringMethodology from '@/components/ScoringMethodology'
@@ -62,7 +62,6 @@ interface ApiResponse {
     alertsThisWeek: number
     last24h: {
       kev: number
-      nationState: number
       ics: number
       total: number
     }
@@ -70,7 +69,7 @@ interface ApiResponse {
   }
 }
 
-type ThreatFilter = 'all' | 'energy' | 'critical' | 'nation-state' | 'ics-ot'
+type ThreatFilter = 'all' | 'energy' | 'critical' | 'ics-ot'
 
 // ASCII art digit glyphs (5 rows each) — matches the ██╗ box-drawing style of the CAPRI banner
 const ASCII_DIGITS: Record<string, string[]> = {
@@ -219,11 +218,6 @@ export default function Dashboard() {
         return items.filter(item => item.isEnergyRelevant)
       case 'critical':
         return items.filter(item => item.severity === 'critical')
-      case 'nation-state':
-        return items.filter(item => {
-          const text = item.title + ' ' + item.description
-          return NATION_STATE_INDICATORS.some(ind => matchesIndicator(text, ind)) || item.aiThreatType === 'apt'
-        })
       case 'ics-ot':
         return items.filter(item => {
           const text = item.title + ' ' + item.description
@@ -236,16 +230,12 @@ export default function Dashboard() {
 
   // Get filter counts - memoized to avoid recalculation on every render
   const filterCounts = useMemo(() => {
-    if (!data?.threats.all) return { all: 0, energy: 0, critical: 0, nationState: 0, icsOt: 0 }
+    if (!data?.threats.all) return { all: 0, energy: 0, critical: 0, icsOt: 0 }
     const items = data.threats.all
     return {
       all: items.length,
       energy: items.filter(item => item.isEnergyRelevant).length,
       critical: items.filter(item => item.severity === 'critical').length,
-      nationState: items.filter(item => {
-        const text = item.title + ' ' + item.description
-        return NATION_STATE_INDICATORS.some(ind => matchesIndicator(text, ind)) || item.aiThreatType === 'apt'
-      }).length,
       icsOt: items.filter(item => {
         const text = item.title + ' ' + item.description
         return matchesICSContext(text)
@@ -453,7 +443,7 @@ export default function Dashboard() {
             score={data.score.score}
             label={data.score.label}
             color={data.score.color}
-            last24h={data.meta.last24h || { kev: 0, nationState: 0, ics: 0, total: 0 }}
+            last24h={data.meta.last24h || { kev: 0, ics: 0, total: 0 }}
           />
         </div>
       )}
@@ -545,7 +535,6 @@ export default function Dashboard() {
               <option value="all">All ({filterCounts.all})</option>
               <option value="energy">Energy ({filterCounts.energy})</option>
               <option value="critical">Critical ({filterCounts.critical})</option>
-              <option value="nation-state">Nation-State ({filterCounts.nationState})</option>
               <option value="ics-ot">ICS/OT ({filterCounts.icsOt})</option>
             </select>
           </div>
@@ -555,7 +544,6 @@ export default function Dashboard() {
               { id: 'all' as ThreatFilter, label: 'All', count: filterCounts.all },
               { id: 'energy' as ThreatFilter, label: 'Energy', count: filterCounts.energy },
               { id: 'critical' as ThreatFilter, label: 'Critical', count: filterCounts.critical },
-              { id: 'nation-state' as ThreatFilter, label: 'Nation-State', count: filterCounts.nationState },
               { id: 'ics-ot' as ThreatFilter, label: 'ICS/OT', count: filterCounts.icsOt },
             ].map((tab) => (
               <button

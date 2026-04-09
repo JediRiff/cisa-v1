@@ -81,7 +81,6 @@ export default function AlertSettingsPanel({ config, onConfigChange, onClose }: 
   // Group rules by type for display
   const scoreRules = config.rules.filter(r => r.type === 'capri_score_below')
   const kevRules = config.rules.filter(r => r.type === 'kev_sector')
-  const nsRules = config.rules.filter(r => r.type === 'nation_state_sector')
   const facilityRules = config.rules.filter(r => r.type === 'facility_risk_below')
 
   return (
@@ -142,7 +141,6 @@ export default function AlertSettingsPanel({ config, onConfigChange, onClose }: 
           {/* Rule Groups */}
           <RuleGroup title="CAPRI Score Alerts" rules={scoreRules} onToggle={toggleRule} onThresholdChange={updateThreshold} />
           <RuleGroup title="KEV Sector Alerts" rules={kevRules} onToggle={toggleRule} />
-          <RuleGroup title="Nation-State Sector Alerts" rules={nsRules} onToggle={toggleRule} />
           <RuleGroup title="Facility Risk Alerts" rules={facilityRules} onToggle={toggleRule} onThresholdChange={updateThreshold} />
 
           {/* Cooldown info */}

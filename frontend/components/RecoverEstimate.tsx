@@ -7,7 +7,6 @@ import { type ThreatItem } from '@/components/ThreatCard'
 
 interface Last24h {
   kev: number
-  nationState: number
   ics: number
   total: number
 }
@@ -36,9 +35,6 @@ function estimateEconomicImpact(threats: RecoverEstimateProps['threats'], kev: K
   const ransomwareKevs = kev.filter(k => k.ransomwareUse)
   const ransomwareCost = ransomwareKevs.length * 4_450_000
 
-  // Nation-state: items matching nation-state indicators
-  const nationStateCost = last24h.nationState * 1_200_000
-
   // ICS/OT: items matching ICS keywords
   const icsCost = last24h.ics * 2_800_000
 
@@ -46,14 +42,14 @@ function estimateEconomicImpact(threats: RecoverEstimateProps['threats'], kev: K
   const criticalItems = threats.critical.length
   const generalCost = criticalItems * 500_000
 
-  const totalWeekly = ransomwareCost + nationStateCost + icsCost + generalCost
+  const totalWeekly = ransomwareCost + icsCost + generalCost
 
   // Person-days: rough sector disruption estimate
-  const personDays = (ransomwareKevs.length * 45) + (last24h.nationState * 30) +
+  const personDays = (ransomwareKevs.length * 45) +
     (last24h.ics * 35) + (criticalItems * 10)
 
   // Recovery readiness: 5 = good (few active threats), 1 = bad (many active)
-  const pressure = Math.min((ransomwareKevs.length * 2 + last24h.nationState + last24h.ics) / 10, 1)
+  const pressure = Math.min((ransomwareKevs.length * 2 + last24h.ics) / 10, 1)
   const readiness = Math.round((5 - pressure * 4) * 10) / 10 // 5.0 -> 1.0
 
   const breakdown: CostBreakdownRow[] = [
@@ -63,13 +59,6 @@ function estimateEconomicImpact(threats: RecoverEstimateProps['threats'], kev: K
       unitCost: 4_450_000,
       subtotal: ransomwareCost,
       rationale: 'KEVs with confirmed ransomware use × $4.45M avg cost (IBM Cost of a Data Breach 2023)',
-    },
-    {
-      category: 'Nation-State Incident Risk',
-      count: last24h.nationState,
-      unitCost: 1_200_000,
-      subtotal: nationStateCost,
-      rationale: 'Nation-state threat items (24h) × $1.2M weighted cost per state-sponsored incident',
     },
     {
       category: 'ICS/OT Disruption',

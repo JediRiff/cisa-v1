@@ -71,7 +71,7 @@ interface ThreatData {
     errors: string[]
     activeCampaigns?: number
     vendorAlertCount?: number
-    last24h: { kev: number; nationState: number; ics: number; total: number }
+    last24h: { kev: number; ics: number; total: number }
     icsExposure?: { count: number; hasShodanKey: boolean }
   }
 }

@@ -44,7 +44,6 @@ export interface AlertTriggers {
   criticalThreats: boolean
   newKevEntries: boolean
   scoreElevatedOrSevere: boolean
-  nationStateActivity: boolean
 }
 
 interface AlertSettingsProps {
@@ -58,7 +57,6 @@ const DEFAULT_TRIGGERS: AlertTriggers = {
   criticalThreats: true,
   newKevEntries: true,
   scoreElevatedOrSevere: true,
-  nationStateActivity: true,
 }
 
 type WebhookPlatform = 'slack' | 'discord' | 'telegram' | 'generic'
@@ -115,7 +113,7 @@ export function isWebhookConfigured(): boolean {
 }
 
 // Webhook payload types
-export type WebhookAlertType = 'critical_threat' | 'kev_added' | 'score_change' | 'nation_state' | 'test'
+export type WebhookAlertType = 'critical_threat' | 'kev_added' | 'score_change' | 'test'
 
 export interface WebhookPayload {
   alertType: WebhookAlertType
@@ -451,21 +449,6 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                     </div>
                   </label>
 
-                  {/* Nation-State Activity */}
-                  <label className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={triggers.nationStateActivity}
-                      onChange={() => handleTriggerChange('nationStateActivity')}
-                      className="mt-0.5 h-5 w-5 rounded border-gray-300 text-cisa-navy focus:ring-cisa-navy"
-                    />
-                    <div>
-                      <span className="block font-medium text-gray-900 dark:text-gray-100">Nation-state actor activity</span>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        Alert when APT or nation-state threats are detected
-                      </span>
-                    </div>
-                  </label>
                 </div>
               </div>
 

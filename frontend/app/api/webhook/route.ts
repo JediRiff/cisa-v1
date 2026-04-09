@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 interface WebhookPayload {
-  alertType: 'critical_threat' | 'kev_added' | 'score_change' | 'nation_state' | 'test'
+  alertType: 'critical_threat' | 'kev_added' | 'score_change' | 'test'
   title: string
   description: string
   details?: Record<string, string | number | boolean>
@@ -22,7 +22,6 @@ const ALERT_TYPE_CONFIG: Record<string, { emoji: string; color: string; label: s
   critical_threat: { emoji: ':rotating_light:', color: '#DC2626', label: 'Critical Threat' },
   kev_added: { emoji: ':warning:', color: '#D97706', label: 'New KEV Entry' },
   score_change: { emoji: ':chart_with_downwards_trend:', color: '#B91C1C', label: 'Score Alert' },
-  nation_state: { emoji: ':globe_with_meridians:', color: '#7C3AED', label: 'Nation-State Activity' },
   test: { emoji: ':white_check_mark:', color: '#059669', label: 'Test Message' },
 }
 

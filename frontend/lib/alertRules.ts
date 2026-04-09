@@ -6,7 +6,6 @@ import { Sector } from '@/components/globe/worldData'
 export type AlertRuleType =
   | 'capri_score_below'
   | 'kev_sector'
-  | 'nation_state_sector'
   | 'facility_risk_below'
 
 export interface AlertRule {
@@ -37,10 +36,6 @@ export const DEFAULT_RULES: AlertRule[] = [
   { id: 'kev-grid', type: 'kev_sector', label: 'KEV: Grid Sector', description: 'New KEV matching grid/ICS sector keywords', enabled: true, sector: 'grid' },
   { id: 'kev-nuclear', type: 'kev_sector', label: 'KEV: Nuclear Sector', description: 'New KEV matching nuclear sector keywords', enabled: true, sector: 'nuclear' },
   { id: 'kev-water', type: 'kev_sector', label: 'KEV: Water Sector', description: 'New KEV matching water sector keywords', enabled: false, sector: 'water' },
-
-  // Nation-state activity per sector
-  { id: 'ns-grid', type: 'nation_state_sector', label: 'Nation-State: Grid', description: 'Nation-state threat activity targeting grid sector', enabled: true, sector: 'grid' },
-  { id: 'ns-nuclear', type: 'nation_state_sector', label: 'Nation-State: Nuclear', description: 'Nation-state threat activity targeting nuclear sector', enabled: true, sector: 'nuclear' },
 
   // Facility risk thresholds
   { id: 'facility-risk-below-2', type: 'facility_risk_below', label: 'Facility Threat Severe', description: 'Any facility threat score drops below 2.0', enabled: true, threshold: 2.0 },

@@ -8,7 +8,7 @@ import { analyzeThreatsWithAI, AIAnalysisResult } from '@/lib/ai-analysis'
 import { detectCampaigns } from '@/lib/campaign-correlation'
 import { classifySeverity } from '@/lib/severity'
 import { threatActors } from '@/components/globe/worldData'
-import { NATION_STATE_INDICATORS, matchesIndicator, matchesICSContext, isEnergyRelevantKEV } from '@/lib/indicators'
+import { matchesICSContext, isEnergyRelevantKEV } from '@/lib/indicators'
 import { fetchGridStress } from '@/lib/eia930'
 import { buildVendorAlerts } from '@/lib/supply-chain'
 
@@ -162,10 +162,6 @@ export async function GET(request: NextRequest) {
 
     const last24h = {
       kev: last24hEnergy.filter(item => item.source === 'CISA KEV').length,
-      nationState: last24hAll.filter(item => {
-        const text = item.title + ' ' + item.description
-        return NATION_STATE_INDICATORS.some(indicator => matchesIndicator(text, indicator))
-      }).length,
       ics: last24hAll.filter(item => {
         const text = item.title + ' ' + item.description
         return matchesICSContext(text)

@@ -3,7 +3,6 @@
 
 import { AlertConfig, AlertRule, COOLDOWN_MS, saveAlertConfig } from './alertRules'
 import { matchesSectorKeywords } from '@/components/globe/worldData'
-import { NATION_STATE_INDICATORS, matchesIndicator } from './indicators'
 
 export interface AlertContext {
   capriScore: number
@@ -16,7 +15,7 @@ interface FiredAlert {
   rule: AlertRule
   title: string
   description: string
-  alertType: 'critical_threat' | 'kev_added' | 'score_change' | 'nation_state'
+  alertType: 'critical_threat' | 'kev_added' | 'score_change'
   details: Record<string, string | number | boolean>
 }
 
@@ -81,30 +80,6 @@ function evaluateRule(rule: AlertRule, ctx: AlertContext): FiredAlert | null {
       return null
     }
 
-    case 'nation_state_sector': {
-      const sector = rule.sector
-      if (!sector) return null
-      const matchingThreats = ctx.threatItems.filter(item => {
-        const text = `${item.title || ''} ${item.shortDescription || ''} ${item.description || ''}`
-        const isNS = NATION_STATE_INDICATORS.some(ind => matchesIndicator(text.toLowerCase(), ind))
-        const isSector = matchesSectorKeywords(text, sector)
-        return isNS && isSector
-      })
-      if (matchingThreats.length > 0) {
-        return {
-          rule,
-          title: `Nation-State Threat: ${sector} Sector`,
-          description: `${matchingThreats.length} nation-state indicator(s) targeting the ${sector} sector.`,
-          alertType: 'nation_state',
-          details: {
-            sector,
-            matchCount: matchingThreats.length,
-            latestTitle: matchingThreats[0]?.title || 'Unknown',
-          },
-        }
-      }
-      return null
-    }
 
     case 'facility_risk_below': {
       const threshold = rule.threshold ?? 2.0
