@@ -83,6 +83,7 @@ interface ThreatMapProps {
   threatData?: Record<string, unknown>;
   onFeatureSelect?: (feature: SelectedFeature | null) => void;
   flyToTarget?: FlyToTarget | null;
+  highlightedActors?: string[];
   className?: string;
 }
 
@@ -95,6 +96,7 @@ export default function ThreatMap({
   threatData,
   onFeatureSelect,
   flyToTarget,
+  highlightedActors,
   className,
 }: ThreatMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -143,14 +145,14 @@ export default function ThreatMap({
         console.warn('[ThreatMap] Globe projection not supported, using mercator');
       }
 
-      // 2. Atmosphere — fades out as you zoom in
+      // 2. Atmosphere — subtle, fades out quickly
       try {
         map.setSky({
           'atmosphere-blend': [
             'interpolate', ['linear'], ['zoom'],
-            0, 1,   // Full atmosphere at global view
-            5, 1,   // Maintain through zoom 5
-            7, 0,   // Fade out by zoom 7 (regional view)
+            0, 0.35,  // Subtle atmosphere at global view
+            3, 0.15,  // Fade quickly
+            5, 0,     // Gone by zoom 5
           ],
         } as any);
       } catch {
@@ -165,6 +167,26 @@ export default function ThreatMap({
         } as any);
       } catch {
         // Light not supported
+      }
+
+      // 4. Darken globe — uniform dark tone across all land and water
+      try {
+        const style = map.getStyle();
+        if (style?.layers) {
+          for (const layer of style.layers) {
+            if (layer.type === 'background') {
+              map.setPaintProperty(layer.id, 'background-color', '#030810');
+            }
+            if (layer.type === 'fill' && layer.id.includes('water')) {
+              map.setPaintProperty(layer.id, 'fill-color', '#060d1a');
+            }
+            if (layer.type === 'fill' && (layer.id.includes('landcover') || layer.id.includes('landuse'))) {
+              map.setPaintProperty(layer.id, 'fill-opacity', 0.15);
+            }
+          }
+        }
+      } catch {
+        // Style modification not critical
       }
     });
 
@@ -247,6 +269,60 @@ export default function ThreatMap({
       duration: 1800,
     });
   }, [flyToTarget]);
+
+  // --------------------------------------------------------
+  // Highlight threat actors targeting selected facility
+  // --------------------------------------------------------
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReadyRef.current) return;
+
+    try {
+      if (highlightedActors && highlightedActors.length > 0) {
+        // Highlighted actors: full opacity + larger; others: dimmed
+        const nameList = ['literal', highlightedActors];
+        if (map.getLayer(LAYER_IDS.THREAT_ACTORS)) {
+          map.setPaintProperty(LAYER_IDS.THREAT_ACTORS, 'circle-opacity', [
+            'case',
+            ['in', ['get', 'name'], nameList],
+            1.0,
+            0.15,
+          ] as any);
+          map.setPaintProperty(LAYER_IDS.THREAT_ACTORS, 'circle-radius', [
+            'case',
+            ['in', ['get', 'name'], nameList],
+            ['interpolate', ['linear'], ['zoom'], 2, 6, 6, 9, 10, 12],
+            ['interpolate', ['linear'], ['zoom'], 2, 3, 6, 4, 10, 5],
+          ] as any);
+        }
+        if (map.getLayer(LAYER_IDS.THREAT_ACTORS_PULSE)) {
+          map.setPaintProperty(LAYER_IDS.THREAT_ACTORS_PULSE, 'circle-opacity', [
+            'case',
+            ['in', ['get', 'name'], nameList],
+            0.25,
+            0.0,
+          ] as any);
+        }
+        if (map.getLayer(LAYER_IDS.ATTACK_ARCS)) {
+          map.setLayoutProperty(LAYER_IDS.ATTACK_ARCS, 'visibility', 'visible');
+        }
+      } else {
+        // Reset to defaults
+        if (map.getLayer(LAYER_IDS.THREAT_ACTORS)) {
+          map.setPaintProperty(LAYER_IDS.THREAT_ACTORS, 'circle-opacity', 0.85);
+          map.setPaintProperty(LAYER_IDS.THREAT_ACTORS, 'circle-radius', [
+            'interpolate', ['linear'], ['zoom'],
+            2, 4, 6, 6, 10, 8,
+          ] as any);
+        }
+        if (map.getLayer(LAYER_IDS.THREAT_ACTORS_PULSE)) {
+          map.setPaintProperty(LAYER_IDS.THREAT_ACTORS_PULSE, 'circle-opacity', 0.12);
+        }
+      }
+    } catch {
+      // Layers may not be ready
+    }
+  }, [highlightedActors]);
 
   // --------------------------------------------------------
   // Add all GeoJSON sources

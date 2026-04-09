@@ -565,6 +565,7 @@ export default function GlobePage() {
             threatData={data as unknown as Record<string, unknown> | undefined}
             onFeatureSelect={handleFeatureSelect}
             flyToTarget={flyToTarget}
+            highlightedActors={selectedFeature && selectedFeature.type !== 'threat_actor' ? selectedTargetingActors.map(a => a.name) : undefined}
             className="w-full h-full"
           />
 
