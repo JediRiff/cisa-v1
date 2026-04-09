@@ -177,25 +177,43 @@ export function threatActorsToGeoJSON(actors: Array<{
   description: string;
   aliases?: string[];
 }>): GeoJSON.FeatureCollection {
+  // Offset co-located actors in a spiral so each is individually visible.
+  // Group by rounded coordinates, then apply small lng/lat offsets.
+  const coordKey = (a: { origin: { lat: number; lng: number } }) =>
+    `${a.origin.lat.toFixed(1)},${a.origin.lng.toFixed(1)}`;
+  const groups = new Map<string, number>();
+
   return {
     type: 'FeatureCollection',
-    features: actors.map((actor) => ({
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: [actor.origin.lng, actor.origin.lat],
-      },
-      properties: {
-        name: actor.name,
-        aliases: actor.aliases?.join(', ') ?? '',
-        country: actor.country,
-        type: actor.type,
-        color: actor.color,
-        targetSectors: actor.targetSectors.join(', '),
-        description: actor.description,
-        originName: actor.origin.name ?? '',
-      },
-    })),
+    features: actors.map((actor) => {
+      const key = coordKey(actor);
+      const idx = groups.get(key) ?? 0;
+      groups.set(key, idx + 1);
+
+      // Spiral offset: increasing radius, evenly spaced angles
+      const angle = idx * 2.4; // golden angle in radians for even spread
+      const radius = idx === 0 ? 0 : 0.6 + idx * 0.35; // degrees offset
+      const lngOffset = Math.cos(angle) * radius;
+      const latOffset = Math.sin(angle) * radius;
+
+      return {
+        type: 'Feature' as const,
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [actor.origin.lng + lngOffset, actor.origin.lat + latOffset],
+        },
+        properties: {
+          name: actor.name,
+          aliases: actor.aliases?.join(', ') ?? '',
+          country: actor.country,
+          type: actor.type,
+          color: actor.color,
+          targetSectors: actor.targetSectors.join(', '),
+          description: actor.description,
+          originName: actor.origin.name ?? '',
+        },
+      };
+    }),
   };
 }
 
