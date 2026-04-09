@@ -36,6 +36,7 @@ import LayerPanel from '@/components/map/LayerPanel'
 import DetailPanel from '@/components/map/DetailPanel'
 import FacilityPopup from '@/components/map/FacilityPopup'
 import DataSourcesOverlay from '@/components/map/DataSourcesOverlay'
+import FacilitySearch from '@/components/map/FacilitySearch'
 import AlertSettingsPanel from '@/components/AlertSettingsPanel'
 import { AlertConfig, loadAlertConfig } from '@/lib/alertRules'
 import { evaluateAlertRules, dispatchAlerts, AlertContext } from '@/lib/alertEvaluator'
@@ -219,6 +220,9 @@ export default function GlobePage() {
   const [loading, setLoading] = useState(true)
   const [rightPanelOpen, setRightPanelOpen] = useState(true)
   const [attackCount, setAttackCount] = useState(0)
+
+  // Fly-to target for search
+  const [flyToTarget, setFlyToTarget] = useState<{ lng: number; lat: number; zoom?: number } | null>(null)
 
   // Selected feature from the map
   const [selectedFeature, setSelectedFeature] = useState<SelectedFeature | null>(null)
@@ -560,7 +564,20 @@ export default function GlobePage() {
             visibleLayers={layerVisibility}
             threatData={data as unknown as Record<string, unknown> | undefined}
             onFeatureSelect={handleFeatureSelect}
+            flyToTarget={flyToTarget}
             className="w-full h-full"
+          />
+
+          {/* Overlay: Facility Search */}
+          <FacilitySearch
+            onSelect={(result) => {
+              setFlyToTarget({ lng: result.coordinates[0], lat: result.coordinates[1], zoom: 12 });
+              setSelectedFeature({
+                type: 'plant',
+                properties: result.properties,
+                coordinates: result.coordinates,
+              });
+            }}
           />
 
           {/* Overlay: Score Badge — positioned below legend */}

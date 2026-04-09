@@ -1,4 +1,4 @@
-import { ExternalLink, Sparkles, Info } from 'lucide-react'
+import { ExternalLink, Info } from 'lucide-react'
 
 export interface ThreatItem {
   id: string
@@ -116,9 +116,6 @@ export default function ThreatCard({ item, showExtendedDetails = false }: Threat
       <a href={item.link} target="_blank" rel="noopener noreferrer"
         className="font-medium text-gray-900 dark:text-gray-100 hover:text-cisa-navy dark:hover:text-blue-400 flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 mb-2 focus-visible:ring-2 focus-visible:ring-cisa-navy dark:focus-visible:ring-blue-400 focus-visible:ring-offset-1 rounded">
         <div className="flex items-start gap-2 min-w-0 flex-1">
-          {item.aiSeverityScore && (
-            <span title="AI Analyzed"><Sparkles className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" /></span>
-          )}
           <span className="break-words">{item.title}</span>
         </div>
         <ExternalLink className="h-4 w-4 flex-shrink-0 mt-1 hidden sm:block" />

@@ -622,8 +622,8 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                     </div>
                     <p className="mt-1 text-xs text-gray-400">
                       Free API key &rarr;{' '}
-                      <a href="https://www.abuseipdb.com/account/api" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                        abuseipdb.com/account/api
+                      <a href="https://www.abuseipdb.com/pricing" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        abuseipdb.com/pricing
                       </a>
                     </p>
                   </div>
@@ -733,8 +733,8 @@ export default function AlertSettings({ isOpen, onClose, currentScore, currentLa
                     </div>
                     <p className="mt-1 text-xs text-gray-400">
                       Free API key &rarr;{' '}
-                      <a href="https://viz.greynoise.io/account/api" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                        viz.greynoise.io/account/api
+                      <a href="https://docs.greynoise.io" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        docs.greynoise.io
                       </a>
                     </p>
                   </div>

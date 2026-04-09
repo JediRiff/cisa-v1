@@ -7,7 +7,7 @@ import { ThemeProvider, ThemeToggle } from '@/components/ThemeProvider'
 
 export const metadata: Metadata = {
   title: 'CAPRI - Cyber Alert Prioritization & Readiness Index | CISA',
-  description: 'Real-time threat intelligence dashboard for US energy sector critical infrastructure. Monitor cyber threats, ICS vulnerabilities, and security alerts with CISA Shields Up integration.',
+  description: 'Real-time threat intelligence dashboard for US energy sector critical infrastructure. Monitor cyber threats, ICS vulnerabilities, and security alerts.',
   keywords: [
     'cybersecurity',
     'threat intelligence',
@@ -19,7 +19,6 @@ export const metadata: Metadata = {
     'OT security',
     'cyber alerts',
     'vulnerability management',
-    'Shields Up',
     'industrial control systems',
   ],
   authors: [{ name: 'CISA - Cybersecurity and Infrastructure Security Agency' }],
@@ -142,10 +141,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </Link>
                 {/* Theme Toggle Button */}
                 <ThemeToggle />
-                <div className="text-right hidden md:block">
-                  <p className="text-xs text-blue-300 uppercase tracking-wider">Proposed for</p>
-                  <p className="font-semibold text-white">CISA Shields Up</p>
-                </div>
               </div>
             </div>
           </header>

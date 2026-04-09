@@ -72,10 +72,17 @@ const SOURCE_IDS = {
 // Component Props
 // ============================================================
 
+interface FlyToTarget {
+  lng: number;
+  lat: number;
+  zoom?: number;
+}
+
 interface ThreatMapProps {
   visibleLayers?: LayerVisibility;
   threatData?: Record<string, unknown>;
   onFeatureSelect?: (feature: SelectedFeature | null) => void;
+  flyToTarget?: FlyToTarget | null;
   className?: string;
 }
 
@@ -87,6 +94,7 @@ export default function ThreatMap({
   visibleLayers,
   threatData,
   onFeatureSelect,
+  flyToTarget,
   className,
 }: ThreatMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -225,6 +233,20 @@ export default function ThreatMap({
       applyLayerVisibility(map, lv);
     }
   }, [visibleLayers]);
+
+  // --------------------------------------------------------
+  // Fly to target when prop changes
+  // --------------------------------------------------------
+  useEffect(() => {
+    if (!flyToTarget) return;
+    const map = mapRef.current;
+    if (!map || !mapReadyRef.current) return;
+    map.flyTo({
+      center: [flyToTarget.lng, flyToTarget.lat],
+      zoom: flyToTarget.zoom ?? 12,
+      duration: 1800,
+    });
+  }, [flyToTarget]);
 
   // --------------------------------------------------------
   // Add all GeoJSON sources
