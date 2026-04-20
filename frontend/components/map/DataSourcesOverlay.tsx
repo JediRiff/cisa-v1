@@ -21,9 +21,8 @@ const DATA_SOURCES: DataSourceCategory[] = [
   {
     label: 'Facility Data',
     sources: [
-      { name: 'EIA', url: 'https://www.eia.gov' },
+      { name: 'EIA-930 Grid Monitor', url: 'https://www.eia.gov/electricity/gridmonitor' },
       { name: 'Global Energy Monitor', url: 'https://globalenergymonitor.org' },
-      { name: 'OpenStreetMap', url: 'https://www.openstreetmap.org' },
     ],
   },
   {
@@ -47,16 +46,8 @@ const DATA_SOURCES: DataSourceCategory[] = [
     ],
   },
   {
-    label: 'Grid Data',
-    sources: [
-      { name: 'EIA-930 Grid Monitor', url: 'https://www.eia.gov/electricity/gridmonitor' },
-    ],
-  },
-  {
     label: 'Social Intelligence',
     sources: [
-      { name: 'Bluesky', url: 'https://bsky.app' },
-      { name: 'Mastodon infosec.exchange', url: 'https://infosec.exchange' },
       { name: 'Reddit r/netsec', url: 'https://reddit.com/r/netsec' },
     ],
   },

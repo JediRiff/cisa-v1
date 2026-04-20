@@ -5,13 +5,11 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import {
   Shield,
-  Activity,
   AlertTriangle,
   ExternalLink,
   ChevronLeft,
   ChevronRight,
   RefreshCw,
-  Zap,
   Crosshair,
   Bell,
 } from 'lucide-react'
@@ -219,8 +217,6 @@ export default function GlobePage() {
   const [data, setData] = useState<ThreatData | null>(null)
   const [loading, setLoading] = useState(true)
   const [rightPanelOpen, setRightPanelOpen] = useState(true)
-  const [attackCount, setAttackCount] = useState(0)
-
   // Fly-to target for search
   const [flyToTarget, setFlyToTarget] = useState<{ lng: number; lat: number; zoom?: number } | null>(null)
 
@@ -272,16 +268,6 @@ export default function GlobePage() {
     const interval = setInterval(fetchData, 60000)
     return () => clearInterval(interval)
   }, [fetchData])
-
-  // Simulated live attack counter
-  useEffect(() => {
-    const base = data?.meta?.totalItems || 1247
-    setAttackCount(base)
-    const interval = setInterval(() => {
-      setAttackCount((prev) => prev + Math.floor(Math.random() * 3))
-    }, 3000 + Math.random() * 4000)
-    return () => clearInterval(interval)
-  }, [data?.meta?.totalItems])
 
   // ── Computed Values ──
 
@@ -485,18 +471,8 @@ export default function GlobePage() {
               <span className="text-gray-400">LIVE</span>
             </div>
             <div>
-              <span className="text-gray-500">IOCs: </span>
-              <span className="text-white">{attackCount.toLocaleString()}</span>
-            </div>
-            <div>
               <span className="text-gray-500">Active Threats: </span>
               <span className="text-red-400">{data?.meta?.last24h?.total || '--'}</span>
-            </div>
-            <div>
-              <span className="text-gray-500">Campaigns: </span>
-              <span className={(data?.meta?.activeCampaigns || 0) > 0 ? 'text-amber-400' : 'text-emerald-400'}>
-                {data?.meta?.activeCampaigns ?? '--'}
-              </span>
             </div>
             {data?.meta?.icsExposure?.hasShodanKey && (
               <div>
@@ -596,29 +572,6 @@ export default function GlobePage() {
             </div>
           )}
 
-          {/* Overlay: Bottom-left status widgets — glass morphism */}
-          <div className="absolute bottom-4 left-4 z-20 flex items-end gap-2">
-            <div className="bg-[#0a1628]/85 backdrop-blur-xl border border-white/[0.06] rounded-xl px-4 py-3 shadow-2xl">
-              <div className="flex items-center gap-3">
-                <Activity className="w-4 h-4 text-red-400 animate-pulse" />
-                <div>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Observed Attacks</p>
-                  <p className="text-lg font-bold font-mono text-red-400">{attackCount.toLocaleString()}</p>
-                </div>
-              </div>
-            </div>
-            {data?.kev && data.kev.length > 0 && (
-              <div className="bg-[#0a1628]/85 backdrop-blur-xl border border-red-500/10 rounded-xl px-4 py-3 shadow-2xl">
-                <div className="flex items-center gap-3">
-                  <Zap className="w-4 h-4 text-red-400" />
-                  <div>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Active KEVs</p>
-                    <p className="text-lg font-bold font-mono text-red-300">{data.kev.length}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* Overlay: Hover Popup */}
           {hoveredFeature && (
