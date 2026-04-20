@@ -2,7 +2,8 @@
 // Maps threat intelligence to energy sectors using 4 tiers:
 //   1. Direct sector keywords (nuclear, pipeline, etc.)
 //   2. Vendor-to-sector inference (Honeywell → nuclear, gas, oil)
-//   3. Universal IT vendors (Fortinet, Cisco → ALL sectors)
+//   3a. Perimeter security (Fortinet, Cisco ASA → ALL sectors)
+//   3b. Enterprise IT mgmt (Ivanti EPM, Cisco SD-WAN Manager → 'other' only)
 //   4. Equipment-based assumptions (DCS → nuclear/gas/oil, inverter → solar/storage)
 
 import type { EnergySector } from '@/components/map/types'
@@ -121,31 +122,42 @@ const VENDOR_TO_SECTORS: Record<string, EnergySector[]> = {
   'beckhoff':           ['other'],
 }
 
-// ── Tier 3: Universal IT/network vendors (ALL sectors) ──
-// Every energy facility uses firewalls, VPNs, switches, and endpoint security.
+// ── Tier 3a: Perimeter/OT-adjacent security (ALL sectors) ──
+// Products deployed at the IT/OT boundary of every energy facility:
+// firewalls, VPN concentrators, remote-access gateways, site edge devices.
 
-const UNIVERSAL_IT_VENDORS: string[] = [
-  'fortinet', 'fortigate', 'fortios',
-  'cisco', 'ios-xe', 'cisco asa', 'cisco talos',
-  'palo alto', 'pan-os', 'cortex',
-  'juniper', 'junos', 'srx',
-  'f5', 'big-ip',
-  'citrix', 'netscaler',
+const PERIMETER_SECURITY_VENDORS: string[] = [
+  'fortinet', 'fortigate', 'fortios', 'fortimanager',
+  'cisco asa', 'cisco ios-xe', 'cisco firepower', 'cisco anyconnect',
+  'palo alto', 'pan-os', 'globalprotect',
+  'juniper srx', 'junos',
+  'f5 big-ip', 'big-ip',
+  'citrix netscaler', 'netscaler adc', 'netscaler gateway',
   'sonicwall',
-  'ivanti', 'pulse secure', 'connect secure',
-  'vmware', 'esxi', 'vcenter',
-  'sophos',
-  'barracuda',
-  'zyxel',
+  'pulse secure', 'ivanti connect secure', 'ivanti pulse secure', 'ivanti policy secure',
+  'sophos xg', 'sophos utm',
   'watchguard',
-  'netgear',
-  'qnap',
-  'progress', 'moveit',
-  'connectwise',
+  'barracuda firewall', 'barracuda networkshield',
+  'zyxel', 'netgear',
+  'vmware esxi',
+  'sierra wireless', 'lantronix', 'digi international',
+]
+
+// ── Tier 3b: Enterprise IT management (corporate HQ only) ──
+// Management-plane products for corporate networks, MDM, backup, file transfer.
+// These do NOT live on wind/nuclear/oil generation OT networks — only 'other'
+// (corporate offices and data centers).
+
+const ENTERPRISE_IT_MGMT_VENDORS: string[] = [
+  'ivanti endpoint manager', 'ivanti epm', 'ivanti neurons', 'ivanti avalanche',
+  'cisco sd-wan manager', 'cisco vmanage', 'cisco dna center', 'cisco meraki',
+  'vmware vcenter', 'vcenter server', 'vmware nsx', 'vmware horizon',
+  'connectwise', 'kaseya',
   'veeam',
-  'lantronix',
-  'digi international',
-  'sierra wireless',
+  'progress moveit', 'moveit transfer',
+  'qnap',
+  'sophos central',
+  'citrix virtual apps', 'citrix xenapp',
 ]
 
 // ── Tier 4: Equipment-based inference ──
@@ -181,11 +193,12 @@ const ALL_SECTORS: EnergySector[] = [
 ]
 
 /**
- * Classify a threat item into matching energy sectors using 4-tier intelligence:
- * 1. Direct sector keywords (nuclear, pipeline, etc.)
- * 2. Vendor-to-sector inference (Honeywell → nuclear, gas, oil)
- * 3. Universal IT vendors (Fortinet → ALL sectors)
- * 4. Equipment-based assumptions (DCS → nuclear, gas, oil)
+ * Classify a threat item into matching energy sectors using tiered intelligence:
+ * 1.  Direct sector keywords (nuclear, pipeline, etc.)
+ * 2.  Vendor-to-sector inference (Honeywell → nuclear, gas, oil)
+ * 3a. Perimeter security (Fortinet, Cisco ASA → ALL sectors)
+ * 3b. Enterprise IT mgmt (Ivanti EPM, Cisco SD-WAN Manager → 'other' only)
+ * 4.  Equipment-based assumptions (DCS → nuclear, gas, oil)
  */
 export function classifyThreatBySector(title: string, description: string): EnergySector[] {
   const text = (title + ' ' + description).toLowerCase()
@@ -205,9 +218,14 @@ export function classifyThreatBySector(title: string, description: string): Ener
     }
   }
 
-  // Tier 3: Universal IT vendors → ALL sectors
-  if (UNIVERSAL_IT_VENDORS.some(v => matchesIndicator(text, v))) {
+  // Tier 3a: Perimeter security → ALL sectors (firewalls/VPNs exist at every facility edge)
+  if (PERIMETER_SECURITY_VENDORS.some(v => matchesIndicator(text, v))) {
     for (const s of ALL_SECTORS) sectorSet.add(s)
+  }
+
+  // Tier 3b: Enterprise IT management → only 'other' (corporate HQ, not generation OT)
+  if (ENTERPRISE_IT_MGMT_VENDORS.some(v => matchesIndicator(text, v))) {
+    sectorSet.add('other')
   }
 
   // Tier 4: Equipment-based inference
