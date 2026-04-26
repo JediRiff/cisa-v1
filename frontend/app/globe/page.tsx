@@ -240,6 +240,21 @@ export default function GlobePage() {
   const [alertSettingsOpen, setAlertSettingsOpen] = useState(false)
   const [alertConfig, setAlertConfig] = useState<AlertConfig>(() => loadAlertConfig())
 
+  // Track LayerPanel's actual rendered height so the CAPRI score badge below it
+  // never gets clipped when the legend is expanded with all sections open.
+  const [legendHeight, setLegendHeight] = useState(360)
+  useEffect(() => {
+    const el = document.querySelector<HTMLElement>('[data-legend-panel]')
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setLegendHeight(entry.contentRect.height)
+      }
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   function handleLayerToggle(key: keyof LayerVisibility) {
     setLayerVisibility(prev => {
       const next = { ...prev, [key]: !prev[key] }
@@ -557,9 +572,9 @@ export default function GlobePage() {
             }}
           />
 
-          {/* Overlay: Score Badge — positioned below legend */}
+          {/* Overlay: Score Badge — positioned below legend (16px legend top + measured height + 16px gap) */}
           {data?.score && !selectedFeature && (
-            <div className="absolute top-[calc(var(--legend-height,360px)+24px)] left-4 z-20 bg-[#0a1628]/85 backdrop-blur-xl border border-white/[0.06] rounded-xl px-4 py-3 shadow-2xl" style={{ minWidth: 240 }}>
+            <div className="absolute left-4 z-20 bg-[#0a1628]/85 backdrop-blur-xl border border-white/[0.06] rounded-xl px-4 py-3 shadow-2xl" style={{ minWidth: 240, top: legendHeight + 32 }}>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1 font-semibold">CAPRI Score</p>
               <pre
                 className={`text-[9px] leading-[1.15] font-mono select-none whitespace-pre overflow-visible ${getScoreColor(data.score.score)}`}

@@ -233,6 +233,7 @@ export default function LayerPanel({ layers, onToggle, featureCounts }: LayerPan
 
   return (
     <div
+      data-legend-panel="true"
       className="absolute top-4 left-4 z-20 overflow-hidden select-none"
       style={{ minWidth: collapsed ? 140 : 200, maxHeight: 'calc(100vh - 140px)' }}
     >
